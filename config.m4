@@ -146,7 +146,7 @@ if test "$PHP_NDARRAY" != "no"; then
   AC_DEFINE(HAVE_NDARRAY, 1, [ Have ndarray support ])
 
   PHP_NEW_EXTENSION(ndarray,
-  phpsci_ndarray.c \
+  numpower.c \
   src/initializers.c \
   src/ndmath/double_math.c \
   src/ndarray.c \
