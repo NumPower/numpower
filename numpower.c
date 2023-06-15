@@ -13,7 +13,7 @@
 #include "Zend/zend_alloc.h"
 #include "src/buffer.h"
 #include "src/iterators.h"
-#include "php_phpsci_ndarray.h"
+#include "php_numpower.h"
 #include "src/debug.h"
 #include "src/ndmath/arithmetics.h"
 #include "src/logic.h"
@@ -1412,7 +1412,7 @@ PHP_RSHUTDOWN_FUNCTION(ndarray)
 
 zend_module_entry ndarray_module_entry = {
 	STANDARD_MODULE_HEADER,
-	"NDArray",					    /* Extension name */
+	"NumPower",					    /* Extension name */
 	ext_functions,					/* zend_function_entry */
     PHP_MINIT(ndarray),             /* PHP_MINIT - Module initialization */
     NULL,							/* PHP_MSHUTDOWN - Module shutdown */
