@@ -164,7 +164,7 @@ PHP_METHOD(NDArray, __construct)
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_ZVAL(obj_zval)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray* array = Create_NDArray_FromZval(obj_zval);
+    NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
     add_to_buffer(array, sizeof(NDArray));
     ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(array));
 }
