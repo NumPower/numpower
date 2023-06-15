@@ -40,3 +40,4 @@ tests/**/*.db
 tests/**/*.mem
 tmp-php.ini
 *.dep
+.idea
