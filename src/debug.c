@@ -51,9 +51,8 @@ char*
 print_array(double* buffer, int ndims, int* shape, int* strides, int cur_dim, int* index, int num_elements) {
     char* str;
     int i, j;
-
     // Allocate memory for the string
-    str = (char*)emalloc(100000000 * sizeof(char));
+    str = (char*)malloc(100000000 * sizeof(char));
     if (str == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for string.\n");
         exit(1);
@@ -78,7 +77,6 @@ print_array(double* buffer, int ndims, int* shape, int* strides, int cur_dim, in
             for (int k = 0; k < ndims; k++) {
                 offset += index[k] * strides[k];
             }
-
             // Print the element
             sprintf(str + strlen(str), "%g", buffer[offset / sizeof(double)]);
 
