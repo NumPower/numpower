@@ -1,0 +1,9 @@
+src/logic.lo: /src/src/logic.c /src/src/logic.h /src/src/ndarray.h \
+ /usr/local/php/include/php/Zend/zend_types.h \
+ /usr/local/php/include/php/Zend/zend_portability.h \
+ /usr/local/php/include/php/Zend/zend_config.h \
+ /usr/local/php/include/php/main/../main/php_config.h \
+ /usr/local/php/include/php/Zend/../TSRM/TSRM.h \
+ /usr/local/php/include/php/main/php_config.h \
+ /usr/local/php/include/php/Zend/zend_range_check.h \
+ /usr/local/php/include/php/Zend/zend_long.h /src/src/iterators.h

@@ -1,0 +1,10 @@
+src/ndarray_ops.lo: /src/src/ndarray_ops.c /src/src/ndarray_ops.h \
+ /src/src/ndarray.h /usr/local/php/include/php/Zend/zend_types.h \
+ /usr/local/php/include/php/Zend/zend_portability.h \
+ /usr/local/php/include/php/Zend/zend_config.h \
+ /usr/local/php/include/php/main/../main/php_config.h \
+ /usr/local/php/include/php/Zend/../TSRM/TSRM.h \
+ /usr/local/php/include/php/main/php_config.h \
+ /usr/local/php/include/php/Zend/zend_range_check.h \
+ /usr/local/php/include/php/Zend/zend_long.h /src/src/indexing.h \
+ /src/src/initializers.h

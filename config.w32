@@ -1,0 +1,7 @@
+ARG_ENABLE('phpsci_ndarray', 'phpsci_ndarray support', 'no');
+
+if (PHP_PHPSCI_NDARRAY != 'no') {
+	AC_DEFINE('HAVE_PHPSCI_NDARRAY', 1, 'phpsci_ndarray support enabled');
+
+	EXTENSION('phpsci_ndarray', 'phpsci_ndarray.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
+}
