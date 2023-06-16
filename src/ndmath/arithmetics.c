@@ -540,6 +540,7 @@ NDArray_Mod_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise subtraction
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -548,7 +549,7 @@ NDArray_Mod_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
-
+    NDArrayIterator_INIT(result);
     for (int i = 0; i < numElements; i++) {
         resultData[i] = fmod(aData[i], bData[i]);
     }

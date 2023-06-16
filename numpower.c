@@ -1331,6 +1331,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, multiply, arginfo_ndarray_multiply, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, sum, arginfo_ndarray_sum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, prod, arginfo_ndarray_prod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, mod, arginfo_ndarray_mod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         ZEND_ME(NDArray, count, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, current, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
