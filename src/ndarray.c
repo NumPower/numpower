@@ -637,7 +637,8 @@ NDArray_ToCPU(NDArray *target)
 
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim);
     rtn->device = NDARRAY_DEVICE_CPU;
-
+#ifdef HAVE_CUBLAS
     cudaMemcpy(rtn->data, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyDeviceToHost);
+#endif
     return rtn;
 }
