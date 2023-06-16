@@ -608,13 +608,12 @@ NDArray_ToGPU(NDArray *target)
 
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim);
     rtn->device = NDARRAY_DEVICE_GPU;
-
+#ifdef HAVE_CUBLAS
     cudaMalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(double));
     cudaMemcpy(tmp_gpu, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyHostToDevice);
-
     efree(rtn->data);
     rtn->data = tmp_gpu;
-
+#endif
     return rtn;
 }
 
