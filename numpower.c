@@ -1308,7 +1308,7 @@ PHP_METHOD(NDArray, max)
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_prod, 0)
-    ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+    ZEND_ARG_INFO(0, a)
     ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, prod)
@@ -1334,6 +1334,24 @@ PHP_METHOD(NDArray, prod)
 
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
+}
+
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_array, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, array)
+{
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    RETURN_NDARRAY(nda, return_value);
 }
 
  /**
@@ -1435,6 +1453,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, diag, arginfo_ndarray_diag, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, full, arginfo_ndarray_full, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, array, arginfo_ndarray_array, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LINALG
         ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

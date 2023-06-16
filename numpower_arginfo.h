@@ -9,7 +9,6 @@ ZEND_END_ARG_INFO()
 
 ZEND_FUNCTION(print_r_);
 
-
 static const zend_function_entry ext_functions[] = {
 	ZEND_FE(print_r_, arginfo_print_r_)
 	ZEND_FE_END
