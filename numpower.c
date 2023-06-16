@@ -8,7 +8,7 @@
 #include <Zend/zend_interfaces.h>
 #include "php.h"
 #include "ext/standard/info.h"
-#include "phpsci_ndarray_arginfo.h"
+#include "numpower_arginfo.h"
 #include "src/initializers.h"
 #include "Zend/zend_alloc.h"
 #include "src/buffer.h"
