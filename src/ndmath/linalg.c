@@ -135,9 +135,9 @@ NDArray_SVD(NDArray *target) {
     rtn_u = Create_NDArray(U_shape, NDArray_NDIM(target), NDARRAY_TYPE_DOUBLE64);
     rtn_s = Create_NDArray(S_shape, 1, NDARRAY_TYPE_DOUBLE64);
     rtn_v = Create_NDArray(V_shape, NDArray_NDIM(target), NDARRAY_TYPE_DOUBLE64);
-    rtn_u->data = U;
-    rtn_s->data = S;
-    rtn_v->data = V;
+    rtn_u->data = (char*)U;
+    rtn_s->data = (char*)S;
+    rtn_v->data = (char*)V;
 
     rtns[0] = rtn_u;
     rtns[1] = rtn_s;

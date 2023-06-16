@@ -123,6 +123,9 @@ NDArray* NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
 int* NDArray_ToIntVector(NDArray *nda);
 NDArray* NDArray_ToGPU(NDArray *target);
 NDArray* NDArray_ToCPU(NDArray *target);
+int NDArray_ShapeCompare(NDArray *a, NDArray *b);
+NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
+int NDArray_IsBroadcastable(const NDArray* arr1, const NDArray* arr2);
 
 typedef double (*ElementWiseDoubleOperation)(double);
 NDArray* NDArray_Map(NDArray *array, ElementWiseDoubleOperation op);

@@ -249,6 +249,10 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     //    return;
     //}
     _reduce(0, 0, axis, array, rtn, operation);
+
+    if (null_axis == 1) {
+        efree(axis);
+    }
     return rtn;
 }
 
@@ -581,7 +585,7 @@ NDArray_ToIntVector(NDArray *nda) {
 }
 
 /**
- * Transfer NDArray to GPU
+ * Transfer NDArray to GPU and return a copy
  *
  * @param target
  */
@@ -615,7 +619,7 @@ NDArray_ToGPU(NDArray *target)
 }
 
 /**
- * Transfer NDArray to CPU
+ * Transfer NDArray to CPU and return a copy
  *
  * @param target
  */
@@ -626,6 +630,7 @@ NDArray_ToCPU(NDArray *target)
     int n_ndim = NDArray_NDIM(target);
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        // #todo This must be a copy
         return target;
     }
 
@@ -638,4 +643,75 @@ NDArray_ToCPU(NDArray *target)
     cudaMemcpy(rtn->data, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyDeviceToHost);
 #endif
     return rtn;
+}
+
+/**
+ * Return 1 if a.shape == b.shape or 0
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+int
+NDArray_ShapeCompare(NDArray *a, NDArray *b)
+{
+    if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
+        return 0;
+    }
+
+    for(int i; i < NDArray_NDIM(a); i++) {
+        if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/**
+ * Check if two NDArray are broadcastable
+ *
+ * @param arr1
+ * @param arr2
+ * @return
+ */
+int
+NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
+    // If either array has 0 dimensions, they're not broadcastable
+    if (array1->ndim == 0 || array2->ndim == 0) {
+        return 0;
+    }
+
+    // Start from trailing dimensions and move forward
+    int i = array1->ndim - 1;
+    int j = array2->ndim - 1;
+
+    while (i >= 0 && j >= 0) {
+        // If dimensions are not equal and neither is 1, arrays are not broadcastable
+        if (array1->dimensions[i] != array2->dimensions[j] && array1->dimensions[i] != 1 && array2->dimensions[j] != 1) {
+            return 0;
+        }
+        i--;
+        j--;
+    }
+
+    // If we've passed all checks, arrays are broadcastable
+    return 1;
+}
+
+/**
+ * Broadcast NDArray *a to NDArray *b shape and strides
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Broadcast(NDArray *a, NDArray *b) {
+    if (!NDArray_IsBroadcastable(a, b)) {
+        zend_throw_error(NULL, "Can´t broadcast array.", NDArray_NDIM(b), NDArray_NDIM(a));
+        return NULL;
+    }
+
+
 }

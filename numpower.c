@@ -862,6 +862,10 @@ PHP_METHOD(NDArray, subtract)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(a, 0));
     NDArray *ndb = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(b, 0));
+    if (!NDArray_ShapeCompare(nda, ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return;
+    }
     rtn = NDArray_Subtract_Double(nda, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -884,6 +888,10 @@ PHP_METHOD(NDArray, mod)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(a, 0));
     NDArray *ndb = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(b, 0));
+    if (!NDArray_ShapeCompare(nda, ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return;
+    }
     rtn = NDArray_Mod_Double(nda, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -906,6 +914,10 @@ PHP_METHOD(NDArray, pow)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(a, 0));
     NDArray *ndb = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(b, 0));
+    if (!NDArray_ShapeCompare(nda, ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return;
+    }
     rtn = NDArray_Pow_Double(nda, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -928,6 +940,10 @@ PHP_METHOD(NDArray, multiply)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(a, 0));
     NDArray *ndb = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(b, 0));
+    if (!NDArray_ShapeCompare(nda, ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return;
+    }
     rtn = NDArray_Multiply_Double(nda, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -950,6 +966,10 @@ PHP_METHOD(NDArray, divide)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(a, 0));
     NDArray *ndb = ZVAL_TO_NDARRAY(OBJ_PROP_NUM(b, 0));
+    if (!NDArray_ShapeCompare(nda, ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return;
+    }
     rtn = NDArray_Divide_Double(nda, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -972,6 +992,11 @@ PHP_METHOD(NDArray, add)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+
+    if (!NDArray_IsBroadcastable(nda, ndb)) {
+        zend_throw_error(NULL, "Can´t broadcast array.");
+    }
+
     rtn = NDArray_Add_Double(nda, ndb);
 
     if (Z_TYPE_P(a) == IS_ARRAY) {
