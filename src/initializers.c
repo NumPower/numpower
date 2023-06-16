@@ -6,7 +6,6 @@
 #include "Zend/zend_hash.h"
 #include "php.h"
 #include "iterators.h"
-#include <omp.h>
 #include <math.h>
 #include <time.h>
 
@@ -469,7 +468,6 @@ NDArray_Diag(NDArray *a) {
     rtn_shape[1] = NDArray_NUMELEMENTS(a);
     rtn = NDArray_Zeros(rtn_shape, 2);
 
-    #pragma omp parallel for private(i)
     for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         index = ((i * NDArray_STRIDES(rtn)[0]) + (i * NDArray_STRIDES(rtn)[1])) / NDArray_ELSIZE(rtn);
         NDArray_DDATA(rtn)[index] = NDArray_DDATA(a)[i];
@@ -488,7 +486,6 @@ NDArray*
 NDArray_Fill(NDArray *a, double fill_value) {
     int i;
 
-    #pragma omp parallel for private(i)
     for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         NDArray_DDATA(a)[i] = fill_value;
     }
@@ -505,5 +502,53 @@ NDArray_Full(int *shape, int ndim,  double fill_value) {
     memcpy(new_shape, shape, sizeof(int) * ndim);
     NDArray *rtn = NDArray_Zeros(new_shape, ndim);
     return NDArray_Fill(rtn, fill_value);
+}
+
+/**
+ * Create NDArray from double
+ * @return
+ */
+NDArray*
+NDArray_CreateFromDoubleScalar(double scalar) {
+    NDArray *rtn = safe_emalloc(1, sizeof(NDArray), 0);
+
+    rtn->ndim = 0;
+    rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
+    rtn->descriptor->numElements = 1;
+    rtn->descriptor->elsize = sizeof(double);
+    rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
+    rtn->data = (double*)emalloc(sizeof(double));
+    rtn->device = NDARRAY_DEVICE_CPU;
+    rtn->strides = NULL;
+    rtn->dimensions = NULL;
+    rtn->iterator = NULL;
+    rtn->base = NULL;
+    ((double*)rtn->data)[0] = scalar;
+
+    return rtn;
+}
+
+/**
+ * Create NDArray from long
+ * @return
+ */
+NDArray*
+NDArray_CreateFromLongScalar(long scalar) {
+    NDArray *rtn = safe_emalloc(1, sizeof(NDArray), 0);
+
+    rtn->ndim = 0;
+    rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
+    rtn->descriptor->numElements = 1;
+    rtn->descriptor->elsize = sizeof(double);
+    rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
+    rtn->data = (double*)emalloc(sizeof(double));
+    rtn->device = NDARRAY_DEVICE_CPU;
+    rtn->strides = NULL;
+    rtn->dimensions = NULL;
+    rtn->iterator = NULL;
+    rtn->base = NULL;
+    ((double*)rtn->data)[0] = (double)scalar;
+
+    return rtn;
 }
 

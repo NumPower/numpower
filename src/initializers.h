@@ -17,6 +17,8 @@ NDArray* NDArray_Uniform(double low, double high, int* shape, int ndim);
 NDArray* NDArray_Diag(NDArray *a);
 NDArray* NDArray_Fill(NDArray *a, double fill_value);
 NDArray* NDArray_Full(int *shape, int ndim,  double fill_value);
+NDArray* NDArray_CreateFromDoubleScalar(double scalar);
+NDArray* NDArray_CreateFromLongScalar(long scalar);
 int* Generate_Strides(int* dimensions, int dimensions_size, int elsize);
 
 #endif //PHPSCI_NDARRAY_INITIALIZERS_H

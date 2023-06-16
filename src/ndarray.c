@@ -244,6 +244,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
 
     // Allocate memory for the reduced buffer
     NDArray* rtn = NDArray_Zeros(out_shape, out_ndim);
+
     //if (reduced_buffer == NULL) {
     //    fprintf(stderr, "Memory allocation failed.\n");
     //    return;
@@ -266,6 +267,7 @@ NDArray_FREE(NDArray* array) {
     if (array == NULL) {
         return;
     }
+
     // Decrement the reference count
     if (array->refcount > 0) {
         array->refcount--;
@@ -433,7 +435,6 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
     memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
     rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array));
 
-    #pragma omp parallel for private(i)
     for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
         NDArray_DDATA(rtn)[i] = op(NDArray_DDATA(array)[i]);
     }
@@ -451,7 +452,7 @@ NDArray_Min(NDArray *target) {
     double* array = NDArray_DDATA(target);
     int length = NDArray_NUMELEMENTS(target);
     double min = array[0];
-    #pragma omp parallel for
+
     for (int i = 1; i < length; i++) {
         if (array[i] < min) {
             min = array[i];
@@ -471,7 +472,6 @@ NDArray_Max(NDArray *target) {
     double* array = NDArray_DDATA(target);
     int length = NDArray_NUMELEMENTS(target);
     double max = array[0];
-    #pragma omp parallel for
     for (int i = 1; i < length; i++) {
         if (array[i] > max) {
             max = array[i];
@@ -496,7 +496,6 @@ convertToStridedArrayToPHPArray(double* data, int* strides, int* dimensions, int
     //phpArray = (zval*)emalloc(sizeof(zval));
     array_init_size(&phpArray, ndim);
 
-    #pragma omp parallel for
     for (i = 0; i < dimensions[0]; i++) {
         // If it's not the innermost dimension, recursively convert the sub-array
         if (ndim > 1) {

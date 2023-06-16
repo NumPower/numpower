@@ -5,7 +5,6 @@
 #include "../config.h"
 #include "../initializers.h"
 #include "../debug.h"
-#include <omp.h>
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -33,7 +32,6 @@ double NDArray_Sum_Double(NDArray* a) {
 #ifndef HAVE_CBLAS
     value = cblas_dasum(NDArray_NUMELEMENTS(a), NDArray_DDATA(a), 1);
 #else
-    #pragma omp parallel for reduction(+:value)
     for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         value += NDArray_DDATA(a)[i];
     }
@@ -141,7 +139,6 @@ NDArray_Add_Double(NDArray* a, NDArray* b) {
             }
         }
 #else
-        #pragma omp parallel for reduction(+:sum)
         for (int i = 0; i < numElements; i++) {
             resultData[i] = aData[i] + bData[i];
         }
@@ -150,6 +147,41 @@ NDArray_Add_Double(NDArray* a, NDArray* b) {
     return result;
 }
 
+/**
+ * NDArray Product
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_Double_Prod(NDArray* a) {
+    double product = 1.0;
+#ifdef HAVE_AVX2
+    int remainder = NDArray_NUMELEMENTS(a) % 4;
+    int newSize = NDArray_NUMELEMENTS(a) - remainder;
+    __m256d productVec = _mm256_set1_pd(1.0);
+
+    for (int i = 0; i < newSize; i += 4) {
+        __m256d vectorVec = _mm256_loadu_pd(&NDArray_DDATA(a)[i]);
+        productVec = _mm256_mul_pd(productVec, vectorVec);
+    }
+
+
+    double* productPtr = (double*)&productVec;
+
+    for (int i = 0; i < 4; i++) {
+        product *= productPtr[i];
+    }
+
+    for (int i = newSize; i < NDArray_NUMELEMENTS(a); i++) {
+        product *= NDArray_DDATA(a)[i];
+    }
+#else
+    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+        product *= NDArray_DDATA(a)[i];
+    }
+#endif
+    return NDArray_CreateFromDoubleScalar(product);
+}
 
 /**
  * Multiply elements of a and b element-wise
@@ -224,7 +256,6 @@ NDArray* NDArray_Multiply_Double(NDArray* a, NDArray* b) {
         resultData[i] = aData[i] * bData[i];
     }
 #else
-    #pragma omp parallel for
     for (int i = 0; i < numElements; i++) {
         resultData[i] = aData[i] * bData[i];
     }
@@ -306,7 +337,6 @@ NDArray_Subtract_Double(NDArray* a, NDArray* b) {
         resultData[i] = aData[i] - bData[i];
     }
 #else
-    #pragma omp parallel for
     for (int i = 0; i < numElements; i++) {
         resultData[i] = aData[i] - bData[i];
     }
@@ -387,7 +417,6 @@ NDArray_Divide_Double(NDArray* a, NDArray* b) {
         resultData[i] = aData[i] - bData[i];
     }
 #else
-    #pragma omp parallel for
     for (int i = 0; i < numElements; i++) {
         resultData[i] = aData[i] / bData[i];
     }
@@ -451,7 +480,6 @@ NDArray_Pow_Double(NDArray* a, NDArray* b) {
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
 
-    #pragma omp parallel for
     for (int i = 0; i < numElements; i++) {
         resultData[i] = pow(aData[i], bData[i]);
     }
@@ -514,7 +542,6 @@ NDArray_Mod_Double(NDArray* a, NDArray* b) {
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
 
-    #pragma omp parallel for
     for (int i = 0; i < numElements; i++) {
         resultData[i] = fmod(aData[i], bData[i]);
     }
