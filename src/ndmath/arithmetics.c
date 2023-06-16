@@ -233,6 +233,7 @@ NDArray* NDArray_Multiply_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise product
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -241,7 +242,7 @@ NDArray* NDArray_Multiply_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
-
+    NDArrayIterator_INIT(result);
 #ifdef HAVE_AVX2
     int i;
     __m256d vec1, vec2, mul;
@@ -262,7 +263,6 @@ NDArray* NDArray_Multiply_Double(NDArray* a, NDArray* b) {
         resultData[i] = aData[i] * bData[i];
     }
 #endif
-
     return result;
 }
 
@@ -315,6 +315,7 @@ NDArray_Subtract_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise subtraction
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -323,6 +324,7 @@ NDArray_Subtract_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
+    NDArrayIterator_INIT(result);
 #ifdef HAVE_AVX2
     int i;
     __m256d vec1, vec2, sub;
@@ -395,6 +397,7 @@ NDArray_Divide_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise subtraction
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -403,6 +406,7 @@ NDArray_Divide_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
+    NDArrayIterator_INIT(result);
 #ifdef HAVE_AVX2
     int i;
     __m256d vec1, vec2, sub;
@@ -473,6 +477,7 @@ NDArray_Pow_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise subtraction
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -481,7 +486,7 @@ NDArray_Pow_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
-
+    NDArrayIterator_INIT(result);
     for (int i = 0; i < numElements; i++) {
         resultData[i] = pow(aData[i], bData[i]);
     }
