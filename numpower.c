@@ -43,37 +43,6 @@ get_object_uuid(zval* obj) {
     return Z_LVAL_P(OBJ_PROP_NUM(Z_OBJ_P(obj), 0));
 }
 
-
-/* {{{ void test1() */
-PHP_FUNCTION(test1)
-{
-    zval * value;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_ZVAL(value)
-    ZEND_PARSE_PARAMETERS_END();
-    buffer_init(1);
-    NDArray* array = Create_NDArray_FromZval(value);
-    test(array);
-}
-/* }}} */
-
-/* {{{ string test2( [ string $var ] ) */
-PHP_FUNCTION(test2)
-{
-	char *var = "World";
-	size_t var_len = sizeof("World") - 1;
-	zend_string *retval;
-
-	ZEND_PARSE_PARAMETERS_START(0, 1)
-		Z_PARAM_OPTIONAL
-		Z_PARAM_STRING(var, var_len)
-	ZEND_PARSE_PARAMETERS_END();
-
-	retval = strpprintf(0, "Hello %s", var);
-
-	RETURN_STR(retval);
-}
-
 NDArray* ZVAL_TO_NDARRAY(zval* obj) {
     if (Z_TYPE_P(obj) == IS_ARRAY) {
         return Create_NDArray_FromZval(obj);
@@ -1063,6 +1032,7 @@ PHP_METHOD(NDArray, svd)
         NDArray_FREE(nda);
     }
     RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
 }
 
 /**

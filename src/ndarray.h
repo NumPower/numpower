@@ -114,7 +114,6 @@ void NDArray_FREE(NDArray* array);
 char* NDArray_Print(NDArray *array, int do_return);
 NDArray* reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*));
 NDArray* single_reduce(NDArray* array, int* axis, double (*operation)(NDArray*));
-void test(NDArray* array);
 NDArray* NDArray_Compare(NDArray *a, NDArray *b);
 void NDArray_UpdateFlags(NDArray *array, int flagmask);
 double NDArray_Min(NDArray *target);

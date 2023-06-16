@@ -252,13 +252,6 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     return rtn;
 }
 
-
-void
-test(NDArray* array)
-{
-    NDArray_All(array);
-}
-
 /**
  * Free NDArray
  *
@@ -595,6 +588,7 @@ NDArray_ToIntVector(NDArray *nda) {
 NDArray*
 NDArray_ToGPU(NDArray *target)
 {
+#ifdef HAVE_CUBLAS
     double *tmp_gpu;
     int *new_shape;
     int n_ndim = NDArray_NDIM(target);
@@ -608,13 +602,16 @@ NDArray_ToGPU(NDArray *target)
 
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim);
     rtn->device = NDARRAY_DEVICE_GPU;
-#ifdef HAVE_CUBLAS
+
     cudaMalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(double));
     cudaMemcpy(tmp_gpu, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyHostToDevice);
     efree(rtn->data);
     rtn->data = tmp_gpu;
-#endif
     return rtn;
+#else
+    // @todo this must be a copy
+    return target;
+#endif
 }
 
 /**

@@ -120,7 +120,7 @@ NDArray_SVD(NDArray *target) {
     memcpy(output_data, NDArray_DDATA(target), sizeof(double) * NDArray_NUMELEMENTS(target));
 
     computeSVD(output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], U, S, V);
-
+    efree(output_data);
     U_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     V_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     S_shape = emalloc(sizeof(int));
