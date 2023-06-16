@@ -56,6 +56,7 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
     if (Z_TYPE_P(obj) == IS_OBJECT) {
         return buffer_get(get_object_uuid(obj));
     }
+    zend_throw_error(NULL, "Invalid object type");
     return NULL;
 }
 
@@ -154,6 +155,9 @@ PHP_METHOD(NDArray, __construct)
         Z_PARAM_ZVAL(obj_zval)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
     add_to_buffer(array, sizeof(NDArray));
     ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(array));
 }
@@ -167,7 +171,9 @@ PHP_METHOD(NDArray, toArray)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
-
+    if (array == NULL) {
+        return;
+    }
     rtn = NDArray_ToPHPArray(array);
     RETURN_ZVAL(&rtn, 0, 0);
     NDArray_FREE(array);
@@ -182,6 +188,9 @@ PHP_METHOD(NDArray, gpu)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
     rtn = NDArray_ToGPU(array);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -195,6 +204,9 @@ PHP_METHOD(NDArray, cpu)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
     rtn = NDArray_ToCPU(array);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -208,6 +220,9 @@ PHP_METHOD(NDArray, dump)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
     NDArray_Dump(array);
 }
 
@@ -292,6 +307,9 @@ PHP_METHOD(NDArray, zeros)
         Z_PARAM_ZVAL(shape_zval)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(shape_zval);
+    if (nda == NULL) {
+        return;
+    }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -346,6 +364,9 @@ PHP_METHOD(NDArray, normal)
             Z_PARAM_DOUBLE(scale)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
+    if (nda == NULL) {
+        return;
+    }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -374,6 +395,9 @@ PHP_METHOD(NDArray, standard_normal)
             Z_PARAM_ZVAL(size)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
+    if (nda == NULL) {
+        return;
+    }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -405,6 +429,9 @@ PHP_METHOD(NDArray, poisson)
             Z_PARAM_DOUBLE(lam)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
+    if (nda == NULL) {
+        return;
+    }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -438,6 +465,9 @@ PHP_METHOD(NDArray, uniform)
             Z_PARAM_DOUBLE(high)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
+    if (nda == NULL) {
+        return;
+    }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -464,6 +494,9 @@ PHP_METHOD(NDArray, diag)
             Z_PARAM_ZVAL(target)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(target);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Diag(nda);
     if (Z_TYPE_P(target) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -492,6 +525,9 @@ PHP_METHOD(NDArray, full)
         Z_PARAM_DOUBLE(fill_value)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda_shape = ZVAL_TO_NDARRAY(shape);
+    if (nda_shape == NULL) {
+        return;
+    }
     if (NDArray_NDIM(nda_shape) != 1) {
         zend_throw_error(NULL, "`shape` argument must be a vector");
         NDArray_FREE(nda_shape);
@@ -528,6 +564,9 @@ PHP_METHOD(NDArray, ones)
             Z_PARAM_ZVAL(shape_zval)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(shape_zval);
+    if (nda == NULL) {
+        return;
+    }
     shape = NDArray_ToIntVector(nda);
     rtn = NDArray_Ones(shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
@@ -556,6 +595,9 @@ PHP_METHOD(NDArray, all)
         Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         RETURN_LONG(NDArray_All(nda));
@@ -589,6 +631,9 @@ PHP_METHOD(NDArray, transpose)
             Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
@@ -617,6 +662,9 @@ PHP_METHOD(NDArray, abs)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_abs);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -641,6 +689,9 @@ PHP_METHOD(NDArray, sqrt)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_sqrt);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -665,6 +716,9 @@ PHP_METHOD(NDArray, square)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Multiply_Double(nda, nda);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -689,6 +743,9 @@ PHP_METHOD(NDArray, exp)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_exp);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -713,6 +770,9 @@ PHP_METHOD(NDArray, exp2)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_exp2);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -737,6 +797,9 @@ PHP_METHOD(NDArray, expm1)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_expm1);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -761,6 +824,9 @@ PHP_METHOD(NDArray, log)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_log);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -785,6 +851,9 @@ PHP_METHOD(NDArray, logb)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_logb);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
@@ -807,6 +876,9 @@ PHP_METHOD(NDArray, log10)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_log10);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
@@ -829,6 +901,9 @@ PHP_METHOD(NDArray, log1p)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_log1p);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
@@ -851,6 +926,9 @@ PHP_METHOD(NDArray, log2)
             Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
     rtn = NDArray_Map(nda, double_log2);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
@@ -874,6 +952,13 @@ PHP_METHOD(NDArray, subtract)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     if (!NDArray_ShapeCompare(nda, ndb)) {
         zend_throw_error(NULL, "Incompatible shapes");
         return;
@@ -902,6 +987,13 @@ PHP_METHOD(NDArray, mod)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     if (!NDArray_ShapeCompare(nda, ndb)) {
         zend_throw_error(NULL, "Incompatible shapes");
         return;
@@ -930,6 +1022,13 @@ PHP_METHOD(NDArray, pow)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     if (!NDArray_ShapeCompare(nda, ndb)) {
         zend_throw_error(NULL, "Incompatible shapes");
         return;
@@ -958,6 +1057,13 @@ PHP_METHOD(NDArray, multiply)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     if (!NDArray_ShapeCompare(nda, ndb)) {
         zend_throw_error(NULL, "Incompatible shapes");
         return;
@@ -987,6 +1093,12 @@ PHP_METHOD(NDArray, divide)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        return;
+    }
     if (!NDArray_ShapeCompare(nda, ndb)) {
         zend_throw_error(NULL, "Incompatible shapes");
         return;
@@ -1015,7 +1127,13 @@ PHP_METHOD(NDArray, add)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
-
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     if (!NDArray_IsBroadcastable(nda, ndb)) {
         zend_throw_error(NULL, "Can´t broadcast array.");
     }
@@ -1044,6 +1162,13 @@ PHP_METHOD(NDArray, matmul)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
     rtn = NDArray_Matmul(nda, ndb);
 
     CHECK_INPUT_AND_FREE(a, nda);
@@ -1066,6 +1191,9 @@ PHP_METHOD(NDArray, svd)
             Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
 
     rtns = NDArray_SVD(nda);
 
@@ -1092,6 +1220,9 @@ PHP_METHOD(NDArray, sum)
         Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
     if (ZEND_NUM_ARGS() == 2) {
         rtn = reduce(nda, &axis, NDArray_Add_Double);
     } else {
@@ -1124,6 +1255,9 @@ PHP_METHOD(NDArray, min)
             Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
     if (ZEND_NUM_ARGS() == 2) {
         axis_i = (int)axis;
         rtn = single_reduce(nda, &axis_i, NDArray_Min);
@@ -1157,6 +1291,9 @@ PHP_METHOD(NDArray, max)
             Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
     if (ZEND_NUM_ARGS() == 2) {
         axis_i = (int)axis;
         rtn = single_reduce(nda, &axis_i, NDArray_Min);
@@ -1185,7 +1322,9 @@ PHP_METHOD(NDArray, prod)
             Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
-
+    if (nda == NULL) {
+        return;
+    }
     if (ZEND_NUM_ARGS() == 2) {
         rtn = reduce(nda, &axis, NDArray_Multiply_Double);
     } else {
@@ -1196,9 +1335,6 @@ PHP_METHOD(NDArray, prod)
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
-
-
-
 
  /**
   * @param execute_data
