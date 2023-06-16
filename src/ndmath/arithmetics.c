@@ -4,7 +4,7 @@
 #include "../ndarray.h"
 #include "../config.h"
 #include "../initializers.h"
-#include "../debug.h"
+#include "../iterators.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -96,6 +96,7 @@ NDArray_Add_Double(NDArray* a, NDArray* b) {
     result->descriptor->elsize = sizeof(double);
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
+    result->device = NDArray_DEVICE(a);
 
     // Perform element-wise addition
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
@@ -104,6 +105,7 @@ NDArray_Add_Double(NDArray* a, NDArray* b) {
     double* aData = (double*)a->data;
     double* bData = (double*)b->data;
     int numElements = a->descriptor->numElements;
+    NDArrayIterator_INIT(result);
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
         double alpha = 1.0;

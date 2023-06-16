@@ -156,3 +156,13 @@ print_matrix(double* buffer, int ndims, int* shape, int* strides, int num_elemen
 #endif
     return rtn;
 }
+
+/**
+ * @param a
+ */
+void
+NDArrayIterator_DUMP(NDArray *a) {
+    printf("\n====================================\n");
+    printf("iterator.current_index:\t\t%d",a->iterator->current_index);
+    printf("\n====================================\n");
+}

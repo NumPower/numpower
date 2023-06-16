@@ -231,7 +231,7 @@ Create_NDArray(int* shape, int ndim, const char* type)
     // Calculate total size in bytes
     total_size = type_size * total_num_elements;
 
-    rtn = safe_emalloc(1, sizeof(NDArray), 0);
+    rtn = emalloc(sizeof(NDArray));
     rtn->descriptor = Create_Descriptor(total_num_elements, type_size, type);
     rtn->flags = 0;
     rtn->ndim = ndim;

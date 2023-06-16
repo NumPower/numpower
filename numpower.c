@@ -1020,7 +1020,6 @@ PHP_METHOD(NDArray, add)
     }
 
     rtn = NDArray_Add_Double(nda, ndb);
-
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);

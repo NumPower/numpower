@@ -38,7 +38,7 @@ NDArrayIterator_REWIND(NDArray* array) {
  */
 void
 NDArrayIterator_INIT(NDArray* array) {
-    NDArrayIterator* iterator = emalloc(sizeof(NDArrayIterator));
+    NDArrayIterator* iterator = (NDArrayIterator*)emalloc(sizeof(NDArrayIterator));
     iterator->current_index = 0;
     array->iterator = iterator;
 }
