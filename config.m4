@@ -72,6 +72,8 @@ AC_CHECK_HEADER([immintrin.h],
 
     ]
 )
+CFLAGS+=" -fopenmp "
+
 
 if test "$PHP_NDARRAY" != "no"; then
   dnl Write more examples of tests here...

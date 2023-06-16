@@ -65,14 +65,21 @@ computeSVD(double* A, int m, int n, double* U, double* S, double* V) {
     // Compute workspace size
     double work_size;
     int lwork = -1;  // query the workspace size
+#ifdef LAPACK_FORTRAN_STRLEN_END
+    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info, 0, 0);
+#elif
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info);
-
+#endif
     // Allocate workspace
     lwork = (int)work_size;
     double* work = (double*)emalloc(sizeof(double) * lwork);
 
     // Compute SVD
+#ifdef LAPACK_FORTRAN_STRLEN_END
+    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info, 0, 0);
+#elif
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
+#endif
 
     if (info > 0) {
         printf("SVD computation failed.\n");

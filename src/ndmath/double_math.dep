@@ -1,2 +1,0 @@
-src/ndmath/double_math.lo: /src/src/ndmath/double_math.c \
- /src/src/ndmath/double_math.h
