@@ -14,6 +14,10 @@
 #include <cublas_v2.h>
 #endif
 
+#ifdef HAVE_AVX2
+#include <immintrin.h>
+#endif
+
 /**
  *
  * @param arr
@@ -318,10 +322,23 @@ NDArray*
 NDArray_Ones(int *shape, int ndim) {
     NDArray* rtn = NDArray_Zeros(shape, ndim);
     int i;
+#ifdef HAVE_AVX2
+    __m256d one = _mm256_set1_pd(1.0);
+
+    for(i = 0; i < NDArray_NUMELEMENTS(rtn); i += 4) {
+        _mm256_storeu_pd((NDArray_DDATA(rtn) + i), one);
+    }
+
+    // handle tail elements, if size is not divisible by 4
+    for(i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 4; i < NDArray_NUMELEMENTS(rtn); ++i) {
+        NDArray_DDATA(rtn)[i] = 1.0;
+    }
+#else
     for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++)
     {
         NDArray_DDATA(rtn)[i] = 1.0;
     }
+#endif
     return rtn;
 }
 
