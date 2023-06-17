@@ -21,6 +21,7 @@
 #include "src/ndmath/double_math.h"
 #include "src/ndmath/linalg.h"
 #include "config.h"
+#include "src/types.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -314,7 +315,7 @@ PHP_METHOD(NDArray, zeros)
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
     }
-    rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda));
+    rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -568,7 +569,7 @@ PHP_METHOD(NDArray, ones)
         return;
     }
     shape = NDArray_ToIntVector(nda);
-    rtn = NDArray_Ones(shape, NDArray_NUMELEMENTS(nda));
+    rtn = NDArray_Ones(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -665,7 +666,9 @@ PHP_METHOD(NDArray, abs)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_abs);
+
+    rtn = NDArray_Map(nda, float_abs);
+
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -692,7 +695,7 @@ PHP_METHOD(NDArray, sqrt)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_sqrt);
+    rtn = NDArray_Map(nda, float_sqrt);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -719,7 +722,7 @@ PHP_METHOD(NDArray, square)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Multiply_Double(nda, nda);
+    rtn = NDArray_Multiply_Float(nda, nda);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -746,7 +749,7 @@ PHP_METHOD(NDArray, exp)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_exp);
+    rtn = NDArray_Map(nda, float_exp);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -773,7 +776,7 @@ PHP_METHOD(NDArray, exp2)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_exp2);
+    rtn = NDArray_Map(nda, float_exp2);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -800,7 +803,7 @@ PHP_METHOD(NDArray, expm1)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_expm1);
+    rtn = NDArray_Map(nda, float_expm1);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -827,7 +830,7 @@ PHP_METHOD(NDArray, log)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_log);
+    rtn = NDArray_Map(nda, float_log);
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -854,7 +857,7 @@ PHP_METHOD(NDArray, logb)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_logb);
+    rtn = NDArray_Map(nda, float_logb);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -879,7 +882,7 @@ PHP_METHOD(NDArray, log10)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_log10);
+    rtn = NDArray_Map(nda, float_log10);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -904,7 +907,7 @@ PHP_METHOD(NDArray, log1p)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_log1p);
+    rtn = NDArray_Map(nda, float_log1p);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -929,7 +932,7 @@ PHP_METHOD(NDArray, log2)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, double_log2);
+    rtn = NDArray_Map(nda, float_log2);
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -963,7 +966,7 @@ PHP_METHOD(NDArray, subtract)
         zend_throw_error(NULL, "Incompatible shapes");
         return;
     }
-    rtn = NDArray_Subtract_Double(nda, ndb);
+    rtn = NDArray_Subtract_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -998,7 +1001,7 @@ PHP_METHOD(NDArray, mod)
         zend_throw_error(NULL, "Incompatible shapes");
         return;
     }
-    rtn = NDArray_Mod_Double(nda, ndb);
+    rtn = NDArray_Mod_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(a, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -1033,7 +1036,7 @@ PHP_METHOD(NDArray, pow)
         zend_throw_error(NULL, "Incompatible shapes");
         return;
     }
-    rtn = NDArray_Pow_Double(nda, ndb);
+    rtn = NDArray_Pow_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -1068,7 +1071,7 @@ PHP_METHOD(NDArray, multiply)
         zend_throw_error(NULL, "Incompatible shapes");
         return;
     }
-    rtn = NDArray_Multiply_Double(nda, ndb);
+    rtn = NDArray_Multiply_Float(nda, ndb);
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
@@ -1103,7 +1106,7 @@ PHP_METHOD(NDArray, divide)
         zend_throw_error(NULL, "Incompatible shapes");
         return;
     }
-    rtn = NDArray_Divide_Double(nda, ndb);
+    rtn = NDArray_Divide_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -1137,8 +1140,7 @@ PHP_METHOD(NDArray, add)
     if (!NDArray_IsBroadcastable(nda, ndb)) {
         zend_throw_error(NULL, "Can´t broadcast array.");
     }
-
-    rtn = NDArray_Add_Double(nda, ndb);
+    rtn = NDArray_Add_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -1214,19 +1216,21 @@ PHP_METHOD(NDArray, sum)
     NDArray *rtn = NULL;
     zval *a;
     long axis;
+    int axis_i;
     ZEND_PARSE_PARAMETERS_START(1, 2)
         Z_PARAM_ZVAL(a)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
+    axis_i = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
-        rtn = reduce(nda, &axis, NDArray_Add_Double);
+        rtn = reduce(nda, &axis_i, NDArray_Add_Float);
     } else {
-        double value = NDArray_Sum_Double(nda);
+        double value = NDArray_Sum_Float(nda);
         CHECK_INPUT_AND_FREE(a, nda);
         RETURN_DOUBLE(value);
         return;
@@ -1316,19 +1320,21 @@ PHP_METHOD(NDArray, prod)
     NDArray *rtn = NULL;
     zval *a;
     long axis;
+    int axis_i;
     ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_ZVAL(a)
             Z_PARAM_OPTIONAL
             Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
+    axis_i = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
-        rtn = reduce(nda, &axis, NDArray_Multiply_Double);
+        rtn = reduce(nda, &axis_i, NDArray_Multiply_Float);
     } else {
-        rtn = NDArray_Double_Prod(nda);
+        rtn = NDArray_Float_Prod(nda);
         add_to_buffer(rtn, sizeof(NDArray));
     }
 

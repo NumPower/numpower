@@ -45,6 +45,7 @@ PHP_CHECK_LIBRARY(cublas,cublasDgemm,
   AC_DEFINE(HAVE_CUBLAS,1,[ ])
   PHP_ADD_LIBRARY(cublas,,NDARRAY_SHARED_LIBADD)
   AC_MSG_RESULT([CUBLAS detected ])
+  PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/Makefile.frag, $abs_builddir)
   CFLAGS+=" -lcublas -lcudart "
 ],[
     AC_MSG_RESULT([wrong cublas version or library not found.])
@@ -148,19 +149,19 @@ if test "$PHP_NDARRAY" != "no"; then
   AC_DEFINE(HAVE_NDARRAY, 1, [ Have ndarray support ])
 
   PHP_NEW_EXTENSION(ndarray,
-  numpower.c \
-  src/initializers.c \
-  src/ndmath/double_math.c \
-  src/ndarray.c \
-  src/debug.c \
-  src/buffer.c \
-  src/logic.c \
-  src/ndmath/linalg.c \
-  src/manipulation.c \
-  src/iterators.c \
-  src/ndarray_ops.c \
-  src/indexing.c \
-  src/ndmath/arithmetics.c \
-  src/types.c,
-  $ext_shared)
+      numpower.c \
+      src/initializers.c \
+      src/ndmath/double_math.c \
+      src/ndarray.c \
+      src/debug.c \
+      src/buffer.c \
+      src/logic.c \
+      src/ndmath/linalg.c \
+      src/manipulation.c \
+      src/iterators.c \
+      src/ndarray_ops.c \
+      src/indexing.c \
+      src/ndmath/arithmetics.c \
+      src/types.c,
+      $ext_shared)
 fi

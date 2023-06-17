@@ -14,18 +14,18 @@
  * @param a
  * @return
  */
-double
+float
 NDArray_All(NDArray *a) {
     int i;
-    double *array = NDArray_DDATA(a);
+    float *array = NDArray_FDATA(a);
 #ifdef HAVE_AVX2
-    __m256d zero = _mm256_set1_pd(0.0);
+    __m256 zero = _mm256_set1_ps(0.0f);
     for (i = 0; i < NDArray_NUMELEMENTS(a) - 3; i += 4) {
-        __m256d elements = _mm256_loadu_pd(&array[i]);
-        __m256d comparison = _mm256_cmp_pd(elements, zero, _CMP_NEQ_OQ);
+        __m256 elements = _mm256_loadu_ps(&array[i]);
+        __m256 comparison = _mm256_cmp_ps(elements, zero, _CMP_NEQ_OQ);
 
         // Perform horizontal OR operation on comparison results
-        int mask = _mm256_movemask_pd(comparison);
+        int mask = _mm256_movemask_ps(comparison);
         if (mask != 0x0F) {
             return 0;  // At least one element is zero
         }
@@ -72,7 +72,7 @@ _compare_ndarrays(NDArray *a, NDArray *b, int current_axis) {
             }
         }
         if (current_axis == NDArray_NDIM(a) - 1) {
-            if (NDArray_DDATA(slice_a)[0] != NDArray_DDATA(slice_b)[0]) {
+            if (NDArray_FDATA(slice_a)[0] != NDArray_FDATA(slice_b)[0]) {
                 NDArray_FREE(slice_a);
                 NDArray_FREE(slice_b);
                 return 0;

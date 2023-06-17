@@ -17,8 +17,8 @@ NDArray_Slice(NDArray* target, int start, int stop, int step)
 {
     NDArray* out;
     int* new_strides, *new_shape, *new_ndims;
-    double* outdata;
-    slice_double(
+    float* outdata;
+    slice_float(
             NDArray_DATA(target),
             NDArray_NDIM(target),
             NDArray_SHAPE(target),

@@ -10,6 +10,7 @@
 #define NDARRAY_UNLIKELY(x) (x)
 #define NDArray_DATA(a) ((void *)((a)->data))
 #define NDArray_DDATA(a) ((double *)((a)->data))
+#define NDArray_FDATA(a) ((float *)((a)->data))
 #define NDArray_NDIM(a) ((int)((a)->ndim))
 #define NDArray_FLAGS(a) ((int)((a)->flags))
 #define NDArray_SHAPE(a) ((int *)((a)->dimensions))
@@ -113,7 +114,7 @@ NDArray_CLEARFLAGS(NDArray *arr, int flags)
 void NDArray_FREE(NDArray* array);
 char* NDArray_Print(NDArray *array, int do_return);
 NDArray* reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*));
-NDArray* single_reduce(NDArray* array, int* axis, double (*operation)(NDArray*));
+NDArray* single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*));
 NDArray* NDArray_Compare(NDArray *a, NDArray *b);
 void NDArray_UpdateFlags(NDArray *array, int flagmask);
 double NDArray_Min(NDArray *target);
@@ -127,7 +128,7 @@ int NDArray_ShapeCompare(NDArray *a, NDArray *b);
 NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
 int NDArray_IsBroadcastable(const NDArray* arr1, const NDArray* arr2);
 
-typedef double (*ElementWiseDoubleOperation)(double);
+typedef float (*ElementWiseDoubleOperation)(float);
 NDArray* NDArray_Map(NDArray *array, ElementWiseDoubleOperation op);
 
 

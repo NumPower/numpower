@@ -53,7 +53,7 @@ NDArrayIterator_GET(NDArray* array)
     int output_ndim = array->ndim - 1;
     int* output_shape = emalloc(sizeof(int) * output_ndim);
     memcpy(output_shape, NDArray_SHAPE(array) + 1, sizeof(int) * output_ndim);
-    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDARRAY_TYPE_DOUBLE64);
+    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array));
     rtn->data = array->data + (array->iterator->current_index * NDArray_STRIDES(array)[0]);
     rtn->base = array;
     return rtn;

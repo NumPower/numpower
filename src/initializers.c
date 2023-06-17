@@ -137,9 +137,9 @@ NDArray_CreateBuffer(NDArray* array, int numElements, int elsize)
 void
 NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_index)
 {
-    double tmp;
+    float tmp;
     zval * element;
-    double * data_double;
+    float * data_double;
 
     ZEND_HASH_FOREACH_VAL(target_zval, element) {
                 ZVAL_DEREF(element);
@@ -148,14 +148,14 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
                 }
                 if (Z_TYPE_P(element) == IS_LONG) {
                     convert_to_long(element);
-                    data_double = (double *) NDArray_DATA(target);
-                    data_double[*first_index] = (double) zval_get_long(element);
+                    data_double = (float *) NDArray_DATA(target);
+                    data_double[*first_index] = (float) zval_get_long(element);
                     *first_index = *first_index + 1;
                 }
                 if (Z_TYPE_P(element) == IS_DOUBLE) {
                     convert_to_double(element);
-                    data_double = (double *) NDArray_DATA(target);
-                    data_double[*first_index] = (double) zval_get_double(element);
+                    data_double = (float *) NDArray_DATA(target);
+                    data_double[*first_index] = (float) zval_get_double(element);
                     *first_index = *first_index + 1;
                 }
                 if (Z_TYPE_P(element) == IS_STRING) {
@@ -305,9 +305,14 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
  * @return
  */
 NDArray*
-NDArray_Zeros(int *shape, int ndim) {
-    NDArray* rtn = Create_NDArray(shape, ndim, NDARRAY_TYPE_DOUBLE64);
-    rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(double));
+NDArray_Zeros(int *shape, int ndim, const char *type) {
+    NDArray* rtn = Create_NDArray(shape, ndim, type);
+    if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
+        rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(double));
+    }
+    if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
+        rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(float));
+    }
     return rtn;
 }
 
@@ -319,24 +324,41 @@ NDArray_Zeros(int *shape, int ndim) {
  * @return
  */
 NDArray*
-NDArray_Ones(int *shape, int ndim) {
-    NDArray* rtn = NDArray_Zeros(shape, ndim);
+NDArray_Ones(int *shape, int ndim, const char *type) {
+    NDArray* rtn = Create_NDArray(shape, ndim, type);
     int i;
 #ifdef HAVE_AVX2
-    __m256d one = _mm256_set1_pd(1.0);
+    if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
+        rtn->data = emalloc(sizeof(double) * NDArray_NUMELEMENTS(rtn));
+        __m256d one = _mm256_set1_pd(1.0);
 
-    for(i = 0; i < NDArray_NUMELEMENTS(rtn); i += 4) {
-        _mm256_storeu_pd((NDArray_DDATA(rtn) + i), one);
+        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i += 4) {
+            _mm256_storeu_pd((NDArray_DDATA(rtn) + i), one);
+        }
+
+        // handle tail elements, if size is not divisible by 4
+        for (i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 4; i < NDArray_NUMELEMENTS(rtn); ++i) {
+            NDArray_DDATA(rtn)[i] = 1.0;
+        }
     }
+    if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
+        rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
+        __m256 one = _mm256_set1_ps((float)1.0);
 
-    // handle tail elements, if size is not divisible by 4
-    for(i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 4; i < NDArray_NUMELEMENTS(rtn); ++i) {
-        NDArray_DDATA(rtn)[i] = 1.0;
+        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i += 8) {
+            _mm256_storeu_ps(&NDArray_FDATA(rtn)[i], one);
+        }
+
+        // handle tail elements, if size is not divisible by 4
+        for (i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 8; i < NDArray_NUMELEMENTS(rtn); ++i) {
+            NDArray_FDATA(rtn)[i] = (float)1.0;
+        }
     }
 #else
+    rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
     for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++)
     {
-        NDArray_DDATA(rtn)[i] = 1.0;
+        NDArray_FDATA(rtn)[i] = (float)1.0;
     }
 #endif
     return rtn;
@@ -353,7 +375,7 @@ NDArray_Identity(int size) {
     NDArray *rtn;
     int index;
     int *shape;
-    double *buffer_ptr;
+    float *buffer_ptr;
 
     if (size < 0) {
         zend_throw_error(NULL, "negative dimensions are not allowed");
@@ -363,13 +385,13 @@ NDArray_Identity(int size) {
     shape = emalloc(sizeof(int) * 2);
     shape[0] = size;
     shape[1] = size;
-    rtn = NDArray_Zeros(shape, 2);
+    rtn = NDArray_Zeros(shape, 2, NDARRAY_TYPE_FLOAT32);
 
-    buffer_ptr = NDArray_DDATA(rtn);
+    buffer_ptr = NDArray_FDATA(rtn);
     // Set the diagonal elements to one with the specified stride
     for (int i = 0; i < size; i++) {
-        index = ((i * size * sizeof(double)) + (i * sizeof(double))) / sizeof(double);
-        buffer_ptr[index] = 1.0;
+        index = ((i * size * sizeof(float)) + (i * sizeof(float))) / sizeof(float);
+        buffer_ptr[index] = 1.0f;
     }
     return rtn;
 }
@@ -383,7 +405,7 @@ NDArray_Identity(int size) {
 NDArray*
 NDArray_Normal(double loc, double scale, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
 
     // Set the seed for random number generation
     srand(time(NULL));
@@ -391,12 +413,12 @@ NDArray_Normal(double loc, double scale, int* shape, int ndim) {
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         // Box-Muller transform to generate standard normal samples
-        double u1 = (double)rand() / RAND_MAX;
-        double u2 = (double)rand() / RAND_MAX;
-        double z = sqrt(-2.0 * log(u1)) * cos(2.0 * M_PI * u2);
+        float u1 = (float)rand() / RAND_MAX;
+        float u2 = (float)rand() / RAND_MAX;
+        float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
 
         // Scale and shift the standard normal sample
-        NDArray_DDATA(rtn)[i] = loc + scale * z;
+        NDArray_FDATA(rtn)[i] = (float)loc + (float)scale * z;
     }
 
     return rtn;
@@ -422,23 +444,23 @@ NDArray_StandardNormal(int* shape, int ndim) {
 NDArray*
 NDArray_Poisson(double lam, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
 
     // Set the seed for random number generation
     srand(time(NULL));
 
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        double L = exp(-lam);
-        double p = 1.0;
+        float L = expf((float)-lam);
+        float p = 1.0f;
         int k = 0;
 
         do {
             k++;
-            double u = (double)rand() / RAND_MAX;
+            float u = (float)rand() / RAND_MAX;
             p *= u;
         } while (p > L);
-        NDArray_DDATA(rtn)[i] = k - 1.0;
+        NDArray_FDATA(rtn)[i] = (float)k - 1.0f;
     }
 
     return rtn;
@@ -453,15 +475,15 @@ NDArray_Poisson(double lam, int* shape, int ndim) {
 NDArray*
 NDArray_Uniform(double low, double high, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
 
     // Set the seed for random number generation
     srand(time(NULL));
 
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        double u = (double)rand() / RAND_MAX;
-        NDArray_DDATA(rtn)[i] = low + u * (high - low);
+        float u = (float)(rand() / RAND_MAX);
+        NDArray_FDATA(rtn)[i] = (float)low + u * ((float)high - (float)low);
     }
     return rtn;
 }
@@ -483,11 +505,11 @@ NDArray_Diag(NDArray *a) {
     int *rtn_shape = emalloc(sizeof(int) * 2);
     rtn_shape[0] = NDArray_NUMELEMENTS(a);
     rtn_shape[1] = NDArray_NUMELEMENTS(a);
-    rtn = NDArray_Zeros(rtn_shape, 2);
+    rtn = NDArray_Zeros(rtn_shape, 2, NDARRAY_TYPE_FLOAT32);
 
     for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         index = ((i * NDArray_STRIDES(rtn)[0]) + (i * NDArray_STRIDES(rtn)[1])) / NDArray_ELSIZE(rtn);
-        NDArray_DDATA(rtn)[index] = NDArray_DDATA(a)[i];
+        NDArray_FDATA(rtn)[index] = NDArray_FDATA(a)[i];
     }
 
     return rtn;
@@ -500,11 +522,11 @@ NDArray_Diag(NDArray *a) {
  * @return
  */
 NDArray*
-NDArray_Fill(NDArray *a, double fill_value) {
+NDArray_Fill(NDArray *a, float fill_value) {
     int i;
 
     for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        NDArray_DDATA(a)[i] = fill_value;
+        NDArray_FDATA(a)[i] = fill_value;
     }
     return a;
 }
@@ -517,8 +539,8 @@ NDArray*
 NDArray_Full(int *shape, int ndim,  double fill_value) {
     int *new_shape = emalloc(sizeof(int) * ndim);
     memcpy(new_shape, shape, sizeof(int) * ndim);
-    NDArray *rtn = NDArray_Zeros(new_shape, ndim);
-    return NDArray_Fill(rtn, fill_value);
+    NDArray *rtn = NDArray_Zeros(new_shape, ndim, NDARRAY_TYPE_FLOAT32);
+    return NDArray_Fill(rtn, (float)fill_value);
 }
 
 /**
@@ -541,6 +563,30 @@ NDArray_CreateFromDoubleScalar(double scalar) {
     rtn->iterator = NULL;
     rtn->base = NULL;
     ((double*)rtn->data)[0] = scalar;
+
+    return rtn;
+}
+
+/**
+ * Create NDArray from double
+ * @return
+ */
+NDArray*
+NDArray_CreateFromFloatScalar(float scalar) {
+    NDArray *rtn = safe_emalloc(1, sizeof(NDArray), 0);
+
+    rtn->ndim = 0;
+    rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
+    rtn->descriptor->numElements = 1;
+    rtn->descriptor->elsize = sizeof(float );
+    rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
+    rtn->data = emalloc(sizeof(float));
+    rtn->device = NDARRAY_DEVICE_CPU;
+    rtn->strides = NULL;
+    rtn->dimensions = NULL;
+    rtn->iterator = NULL;
+    rtn->base = NULL;
+    ((float *)rtn->data)[0] = scalar;
 
     return rtn;
 }
