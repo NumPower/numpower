@@ -67,7 +67,7 @@ computeSVD(double* A, int m, int n, double* U, double* S, double* V) {
     int lwork = -1;  // query the workspace size
 #ifdef LAPACK_FORTRAN_STRLEN_END
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info, 0, 0);
-#elif
+#else
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info);
 #endif
     // Allocate workspace
