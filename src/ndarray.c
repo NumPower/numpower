@@ -455,11 +455,11 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
  * @param target
  * @return
  */
-double
+float
 NDArray_Min(NDArray *target) {
-    double* array = NDArray_DDATA(target);
+    float* array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
-    double min = array[0];
+    float min = array[0];
 
     for (int i = 1; i < length; i++) {
         if (array[i] < min) {
@@ -475,11 +475,11 @@ NDArray_Min(NDArray *target) {
  * @param target
  * @return
  */
-double
+float
 NDArray_Max(NDArray *target) {
-    double* array = NDArray_DDATA(target);
+    float* array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
-    double max = array[0];
+    float max = array[0];
     for (int i = 1; i < length; i++) {
         if (array[i] > max) {
             max = array[i];

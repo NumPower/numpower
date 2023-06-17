@@ -117,8 +117,8 @@ NDArray* reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArr
 NDArray* single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*));
 NDArray* NDArray_Compare(NDArray *a, NDArray *b);
 void NDArray_UpdateFlags(NDArray *array, int flagmask);
-double NDArray_Min(NDArray *target);
-double NDArray_Max(NDArray *target);
+float NDArray_Min(NDArray *target);
+float NDArray_Max(NDArray *target);
 zval NDArray_ToPHPArray(NDArray *target);
 NDArray* NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
 int* NDArray_ToIntVector(NDArray *nda);
