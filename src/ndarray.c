@@ -12,7 +12,7 @@
 #include <Zend/zend_API.h>
 #include <Zend/zend_types.h>
 
-#ifndef HAVE_AVX2
+#ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
 
@@ -366,7 +366,7 @@ NDArray_Compare(NDArray *a, NDArray *b) {
         }
     }
 
-#ifdef PHP_HAVE_AVX2
+#ifdef HAVE_AVX2
     NDArrayIterator_REWIND(a);
     NDArrayIterator_REWIND(b);
     while(!NDArrayIterator_ISDONE(a)) {

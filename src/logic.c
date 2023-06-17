@@ -1,8 +1,9 @@
 #include "logic.h"
 #include "ndarray.h"
 #include "iterators.h"
+#include "../config.h"
 
-#ifndef HAVE_AVX2
+#ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
 
@@ -15,9 +16,10 @@
  */
 double
 NDArray_All(NDArray *a) {
-    __m256d zero = _mm256_set1_pd(0.0);
     int i;
     double *array = NDArray_DDATA(a);
+#ifdef HAVE_AVX2
+    __m256d zero = _mm256_set1_pd(0.0);
     for (i = 0; i < NDArray_NUMELEMENTS(a) - 3; i += 4) {
         __m256d elements = _mm256_loadu_pd(&array[i]);
         __m256d comparison = _mm256_cmp_pd(elements, zero, _CMP_NEQ_OQ);
@@ -37,6 +39,14 @@ NDArray_All(NDArray *a) {
     }
 
     return 1;  // All elements are non-zero
+#else
+    for (; i < NDArray_NUMELEMENTS(a); i++) {
+        if (array[i] == 0.0) {
+            return 0;  // Element is zero
+        }
+    }
+    return 1;
+#endif
 }
 
 /**
