@@ -1,14 +1,6 @@
 #include "double_math.h"
 #include <math.h>
 
-__global__
-void absKernel(double* d_array, int size) {
-    int index = threadIdx.x + blockIdx.x * blockDim.x;
-    if (index < size) {
-        d_array[index] = fabs(d_array[index]);
-    }
-}
-
 /**
  * @param val
  * @return
