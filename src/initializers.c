@@ -260,7 +260,7 @@ Create_NDArray(int* shape, int ndim, const char* type)
  * @return
  */
 NDArray*
-NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides, int* ndim) {
+NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides, const int* ndim) {
     NDArray* rtn = emalloc(sizeof(NDArray));
     int total_num_elements = 1;
     int out_ndim;
@@ -413,8 +413,8 @@ NDArray_Normal(double loc, double scale, int* shape, int ndim) {
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         // Box-Muller transform to generate standard normal samples
-        float u1 = (float)rand() / RAND_MAX;
-        float u2 = (float)rand() / RAND_MAX;
+        float u1 = (float)rand() / (float)RAND_MAX;
+        float u2 = (float)rand() / (float)RAND_MAX;
         float z = sqrtf(-2.0f * logf(u1)) * cosf(2.0f * (float)M_PI * u2);
 
         // Scale and shift the standard normal sample
@@ -457,7 +457,7 @@ NDArray_Poisson(double lam, int* shape, int ndim) {
 
         do {
             k++;
-            float u = (float)rand() / RAND_MAX;
+            float u = (float)rand() / (float)RAND_MAX;
             p *= u;
         } while (p > L);
         NDArray_FDATA(rtn)[i] = (float)k - 1.0f;
@@ -556,7 +556,7 @@ NDArray_CreateFromDoubleScalar(double scalar) {
     rtn->descriptor->numElements = 1;
     rtn->descriptor->elsize = sizeof(double);
     rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
-    rtn->data = (double*)emalloc(sizeof(double));
+    rtn->data = emalloc(sizeof(double));
     rtn->device = NDARRAY_DEVICE_CPU;
     rtn->strides = NULL;
     rtn->dimensions = NULL;
@@ -604,7 +604,7 @@ NDArray_CreateFromLongScalar(long scalar) {
     rtn->descriptor->numElements = 1;
     rtn->descriptor->elsize = sizeof(double);
     rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
-    rtn->data = (double*)emalloc(sizeof(double));
+    rtn->data = emalloc(sizeof(double));
     rtn->device = NDARRAY_DEVICE_CPU;
     rtn->strides = NULL;
     rtn->dimensions = NULL;

@@ -88,13 +88,14 @@ void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, 
     }
 }
 
-void _single_reduce_axis(int axis, NDArray* target, NDArray* rtn, double (*operation)(NDArray*)) {
+void
+_single_reduce_axis(int axis, NDArray* target, NDArray* rtn, float (*operation)(NDArray*)) {
     int i = 0;
     NDArrayAxisIterator *iterator = NDArrayAxisIterator_INIT(target, axis);
     NDArrayAxisIterator_REWIND(iterator);
 
     while(!NDArrayAxisIterator_ISDONE(iterator)) {
-        NDArray_DDATA(rtn)[i] = operation(NDArrayAxisIterator_GET(iterator));
+        NDArray_FDATA(rtn)[i] = operation(NDArrayAxisIterator_GET(iterator));
         NDArrayAxisIterator_NEXT(iterator);
         i++;
     }
