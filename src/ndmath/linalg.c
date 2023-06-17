@@ -77,7 +77,7 @@ computeSVD(double* A, int m, int n, double* U, double* S, double* V) {
     // Compute SVD
 #ifdef LAPACK_FORTRAN_STRLEN_END
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info, 0, 0);
-#elif
+#else
     dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
 #endif
 
