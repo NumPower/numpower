@@ -34,6 +34,6 @@ float float_floor(float val);
 float float_ceil(float val);
 float float_trunc(float val);
 float float_sinc(float val);
-
+float float_negate(float val);
 
 #endif //PHPSCI_NDARRAY_DOUBLE_MATH_H

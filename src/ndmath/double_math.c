@@ -215,3 +215,7 @@ float float_sinc(float val) {
         return sinf(M_PI * val) / (M_PI * val);
     }
 }
+
+float float_negate(float val) {
+    return -val;
+}

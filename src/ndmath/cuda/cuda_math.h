@@ -33,7 +33,6 @@ extern "C" {
     void cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB);
     void cuda_fill_float(float *a, float value, int n);
     int cuda_det_float(float *a, float *result, int n);
-
     void cuda_float_sin(int nblocks, float *d_array);
     void cuda_float_cos(int nblocks, float *d_array);
     void cuda_float_tan(int nblocks, float *d_array);
@@ -54,6 +53,7 @@ extern "C" {
     void cuda_float_floor(int nblocks, float *d_array);
     void cuda_float_sinc(int nblocks, float *d_array);
     void cuda_float_trunc(int nblocks, float *d_array);
+    void cuda_float_negate(int nblocks, float *d_array);
 #ifdef __cplusplus
 }
 #endif
