@@ -7,6 +7,7 @@
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include <nvml.h>
 #endif
 
 
@@ -260,8 +261,8 @@ print_matrix_float(float* buffer, int ndims, int* shape, int* strides, int num_e
     int *index = emalloc(ndims * sizeof(int));
     if (device == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        tmp_buffer = emalloc(num_elements * sizeof(double));
-        cudaMemcpy(tmp_buffer, buffer, num_elements * sizeof(double), cudaMemcpyDeviceToHost);
+        tmp_buffer = emalloc(num_elements * sizeof(float));
+        cudaMemcpy(tmp_buffer, buffer, num_elements * sizeof(float), cudaMemcpyDeviceToHost);
 #endif
     } else {
         tmp_buffer = buffer;
@@ -274,6 +275,49 @@ print_matrix_float(float* buffer, int ndims, int* shape, int* strides, int num_e
     }
 #endif
     return rtn;
+}
+
+void
+NDArray_DumpDevices() {
+#ifdef HAVE_CUBLAS
+    int deviceCount;
+    cudaError_t err = cudaGetDeviceCount(&deviceCount);
+
+    if (err != cudaSuccess) {
+        printf("Failed to retrieve device count: %s\n", cudaGetErrorString(err));
+        return 1;
+    }
+
+    printf("\n==============================================================================\n");
+    printf("Number of CUDA devices: %d\n", deviceCount);
+    for (int i = 0; i < deviceCount; ++i) {
+        struct cudaDeviceProp deviceProp;
+        err = cudaGetDeviceProperties(&deviceProp, i);
+
+        if (err != cudaSuccess) {
+            printf("Failed to get properties for device %d: %s\n", i, cudaGetErrorString(err));
+            return;
+        }
+        printf("\n---------------------------------------------------------------------------");
+        printf("\nDevice %d: %s\n", i, deviceProp.name);
+        printf("  Compute capability: %d.%d\n", deviceProp.major, deviceProp.minor);
+        printf("  Total global memory: %zu bytes\n", deviceProp.totalGlobalMem);
+        printf("  Max threads per block: %d\n", deviceProp.maxThreadsPerBlock);
+        printf("  Max threads in X-dimension of block: %d\n", deviceProp.maxThreadsDim[0]);
+        printf("  Max threads in Y-dimension of block: %d\n", deviceProp.maxThreadsDim[1]);
+        printf("  Max threads in Z-dimension of block: %d\n", deviceProp.maxThreadsDim[2]);
+        printf("  Max grid size in X-dimension: %d\n", deviceProp.maxGridSize[0]);
+        printf("  Max grid size in Y-dimension: %d\n", deviceProp.maxGridSize[1]);
+        printf("  Max grid size in Z-dimension: %d\n", deviceProp.maxGridSize[2]);
+        printf("  Max grid size in Z-dimension: %d\n", deviceProp.maxGridSize[2]);
+        printf("  Max grid size in Z-dimension: %d\n", deviceProp.maxGridSize[2]);
+        printf("  Max grid size in Z-dimension: %d\n", deviceProp.maxGridSize[2]);
+        printf("---------------------------------------------------------------------------\n");
+    }
+    printf("\n==============================================================================\n");
+#else
+    php_printf("\nNo GPU devices available. CUDA not enabled.\n");
+#endif
 }
 
 

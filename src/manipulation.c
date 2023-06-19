@@ -14,9 +14,8 @@
 #endif
 
 
-void transposeMatrix(double* matrix, double* output, int rows, int cols) {
+void transposeMatrix(const float* matrix, float* output, int rows, int cols) {
     int i, j;
-    #pragma omp parallel for private(i, j)
     for ( i = 0; i < rows; i++) {
         for ( j = 0; j < cols; j++) {
             output[j * rows + i] = matrix[i * cols + j];
@@ -35,6 +34,6 @@ NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
         zend_throw_error(NULL, "must be a 2-d array");
         return NULL;
     }
-    transposeMatrix(NDArray_DDATA(a), NDArray_DDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+    transposeMatrix(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
     return ret;
 }

@@ -22,4 +22,12 @@ NDArray* NDArray_CreateFromLongScalar(long scalar);
 int* Generate_Strides(int* dimensions, int dimensions_size, int elsize);
 NDArray* NDArray_CreateFromFloatScalar(float scalar);
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+    NDArray *NDArray_Copy(NDArray *a, int device);
+#ifdef __cplusplus
+}
+#endif
+
 #endif //PHPSCI_NDARRAY_INITIALIZERS_H

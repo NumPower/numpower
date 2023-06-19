@@ -1,6 +1,10 @@
 #ifndef PHPSCI_NDARRAY_NDARRAY_H
 #define PHPSCI_NDARRAY_NDARRAY_H
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include "stddef.h"
 #include <Zend/zend_types.h>
 
@@ -74,7 +78,7 @@ check_and_adjust_axis_msg(int *axis, int ndim)
 
     /* Check that index is valid, taking into account negative indices */
     if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
-        zend_throw_error(NULL, "Axis is out of bounds for array dimension");
+        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
         return -1;
     }
 
@@ -111,22 +115,41 @@ NDArray_CLEARFLAGS(NDArray *arr, int flags)
 }
 
 
-void NDArray_FREE(NDArray* array);
-char* NDArray_Print(NDArray *array, int do_return);
-NDArray* reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*));
-NDArray* single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*));
-NDArray* NDArray_Compare(NDArray *a, NDArray *b);
+void NDArray_FREE(NDArray *array);
+
+char *NDArray_Print(NDArray *array, int do_return);
+
+NDArray *reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *));
+
+NDArray *single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *));
+
+NDArray *NDArray_Compare(NDArray *a, NDArray *b);
+
 void NDArray_UpdateFlags(NDArray *array, int flagmask);
+
 float NDArray_Min(NDArray *target);
+
 float NDArray_Max(NDArray *target);
+
 zval NDArray_ToPHPArray(NDArray *target);
-NDArray* NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
-int* NDArray_ToIntVector(NDArray *nda);
-NDArray* NDArray_ToGPU(NDArray *target);
-NDArray* NDArray_ToCPU(NDArray *target);
+
+NDArray *NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
+
+int *NDArray_ToIntVector(NDArray *nda);
+
+NDArray *NDArray_ToGPU(NDArray *target);
+
+NDArray *NDArray_ToCPU(NDArray *target);
+
 int NDArray_ShapeCompare(NDArray *a, NDArray *b);
-NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
-int NDArray_IsBroadcastable(const NDArray* arr1, const NDArray* arr2);
+
+NDArray *NDArray_Broadcast(NDArray *a, NDArray *b);
+
+int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
+
+#ifdef __cplusplus
+}
+#endif
 
 typedef float (*ElementWiseDoubleOperation)(float);
 NDArray* NDArray_Map(NDArray *array, ElementWiseDoubleOperation op);

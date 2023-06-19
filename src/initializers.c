@@ -6,12 +6,14 @@
 #include "Zend/zend_hash.h"
 #include "php.h"
 #include "iterators.h"
+#include "debug.h"
 #include <math.h>
 #include <time.h>
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "ndmath/cuda/cuda_math.h"
 #endif
 
 #ifdef HAVE_AVX2
@@ -328,19 +330,6 @@ NDArray_Ones(int *shape, int ndim, const char *type) {
     NDArray* rtn = Create_NDArray(shape, ndim, type);
     int i;
 #ifdef HAVE_AVX2
-    if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
-        rtn->data = emalloc(sizeof(double) * NDArray_NUMELEMENTS(rtn));
-        __m256d one = _mm256_set1_pd(1.0);
-
-        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i += 4) {
-            _mm256_storeu_pd((NDArray_DDATA(rtn) + i), one);
-        }
-
-        // handle tail elements, if size is not divisible by 4
-        for (i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 4; i < NDArray_NUMELEMENTS(rtn); ++i) {
-            NDArray_DDATA(rtn)[i] = 1.0;
-        }
-    }
     if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
         rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
         __m256 one = _mm256_set1_ps((float)1.0);
@@ -525,8 +514,15 @@ NDArray*
 NDArray_Fill(NDArray *a, float fill_value) {
     int i;
 
-    for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        NDArray_FDATA(a)[i] = fill_value;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cuda_fill_float(NDArray_FDATA(a), fill_value, NDArray_NUMELEMENTS(a));
+        return a;
+#endif
+    } else {
+        for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+            NDArray_FDATA(a)[i] = fill_value;
+        }
     }
     return a;
 }
@@ -554,15 +550,15 @@ NDArray_CreateFromDoubleScalar(double scalar) {
     rtn->ndim = 0;
     rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
     rtn->descriptor->numElements = 1;
-    rtn->descriptor->elsize = sizeof(double);
-    rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
-    rtn->data = emalloc(sizeof(double));
+    rtn->descriptor->elsize = sizeof(float);
+    rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
+    rtn->data = emalloc(sizeof(float));
     rtn->device = NDARRAY_DEVICE_CPU;
     rtn->strides = NULL;
     rtn->dimensions = NULL;
     rtn->iterator = NULL;
     rtn->base = NULL;
-    ((double*)rtn->data)[0] = scalar;
+    ((float*)rtn->data)[0] = (float)scalar;
 
     return rtn;
 }
@@ -615,3 +611,36 @@ NDArray_CreateFromLongScalar(long scalar) {
     return rtn;
 }
 
+/**
+ * Copy NDArray
+ *
+ * @return
+ */
+NDArray*
+NDArray_Copy(NDArray *a, int device) {
+    NDArray *rtn;
+    if (device == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        rtn = emalloc(sizeof(NDArray));
+        rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
+        rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
+        rtn->device = NDARRAY_DEVICE_GPU;
+        rtn->refcount = 1;
+        rtn->flags = 0;
+        rtn->ndim = NDArray_NDIM(a);
+        cudaMalloc((void **) &rtn->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        cudaMemcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float), cudaMemcpyDeviceToDevice);
+        rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
+        rtn->descriptor->numElements = NDArray_NUMELEMENTS(a);
+        rtn->descriptor->elsize = NDArray_ELSIZE(a);
+        rtn->descriptor->type = NDArray_TYPE(a);
+        NDArrayIterator_INIT(rtn);
+
+        return rtn;
+#else
+
+#endif
+    }
+}

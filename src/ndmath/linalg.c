@@ -14,6 +14,7 @@
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "cuda/cuda_math.h"
 #endif
 
 /**
@@ -69,64 +70,33 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
     output_shape[1] = NDArray_SHAPE(b)[1];
 
     NDArray *result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32);
-
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        cublasHandle_t handle;
-        cublasCreate(&handle);
+        NDArray *result_gpu = NDArray_ToGPU(result);
+        NDArray_FREE(result);
+        cuda_matmul_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(result_gpu),
+                          NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[0]);
+        //cublasHandle_t handle;
+        //cublasCreate(&handle);
 
-        float alpha = 1.0, beta = 0.0;
+        //float alpha = 1.0, beta = 0.0;
 
-        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                    NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
-                    &alpha, NDArray_FDATA(b), NDArray_SHAPE(b)[1], NDArray_FDATA(a), NDArray_SHAPE(a)[1], &beta,
-                    NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
-        cublasDestroy(handle);
-        return result;
+        //cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
+        //            NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
+        //            &alpha, NDArray_FDATA(b), NDArray_SHAPE(b)[1], NDArray_FDATA(a), NDArray_SHAPE(a)[1], &beta,
+        //            NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
+        //cublasDestroy(handle);
+        return result_gpu;
 #endif
+    } else {
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
+                    NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1],
+                    1.0f, NDArray_FDATA(a), NDArray_SHAPE(a)[1], NDArray_FDATA(b), NDArray_SHAPE(b)[1],
+                    0.0f, NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
     }
-    cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1],
-                1.0f, NDArray_FDATA(a), NDArray_SHAPE(a)[1], NDArray_FDATA(b), NDArray_SHAPE(b)[1],
-                0.0f, NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
     return result;
 }
 
-void
-computeSVD(double* A, int m, int n, double* U, double* S, double* V) {
-    int lda = m;
-    int ldu = m;
-    int ldvt = n;
-
-    int info;
-
-    // Compute workspace size
-    double work_size;
-    int lwork = -1;  // query the workspace size
-#ifdef LAPACK_FORTRAN_STRLEN_END
-    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info, 0, 0);
-#else
-    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info);
-#endif
-    // Allocate workspace
-    lwork = (int)work_size;
-    double* work = (double*)emalloc(sizeof(double) * lwork);
-
-    // Compute SVD
-#ifdef LAPACK_FORTRAN_STRLEN_END
-    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info, 0, 0);
-#else
-    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
-#endif
-
-    if (info > 0) {
-        printf("SVD computation failed.\n");
-        return;
-    }
-
-    // Free allocated memory
-    efree(work);
-}
 
 void
 computeSVDFloat(float* A, int m, int n, float* U, float* S, float* V) {
@@ -152,7 +122,7 @@ computeSVDFloat(float* A, int m, int n, float* U, float* S, float* V) {
 #ifdef LAPACK_FORTRAN_STRLEN_END
     sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info, 0, 0);
 #else
-    dgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
+    sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
 #endif
 
     if (info > 0) {
@@ -164,6 +134,13 @@ computeSVDFloat(float* A, int m, int n, float* U, float* S, float* V) {
     efree(work);
 }
 
+#ifdef HAVE_CUBLAS
+void
+computeSVDFloatGPU(float* A, int m, int n, float* U, float* S, float* V) {
+    cuda_svd_float(A, U, V, S, m, n);
+}
+#endif
+
 /**
  * @return
  */
@@ -172,7 +149,7 @@ NDArray_SVD(NDArray *target) {
     NDArray **rtns;
     NDArray *rtn_s, *rtn_u, *rtn_v;
     double *U, *S, *V;
-    char *output_data;
+    float *output_data;
     float  *Uf, *Sf, *Vf;
     int *U_shape, *S_shape, *V_shape;
     int smallest_dim = -1;
@@ -187,13 +164,16 @@ NDArray_SVD(NDArray *target) {
             smallest_dim = NDArray_SHAPE(target)[i];
         }
     }
-
-    if(is_type(NDArray_TYPE(target), NDARRAY_TYPE_DOUBLE64)) {
-        S = (double *) emalloc(sizeof(double) * smallest_dim);
-        U = (double *) emalloc(sizeof(double) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
-        V = (double *) emalloc(sizeof(double) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
-        output_data = emalloc(sizeof(double) * NDArray_NUMELEMENTS(target));
-        memcpy(output_data, NDArray_DDATA(target), sizeof(double) * NDArray_NUMELEMENTS(target));
+    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cudaMalloc((void**)&Sf, sizeof(float) * smallest_dim);
+        cudaMalloc((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
+        cudaMalloc((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
+        cudaDeviceSynchronize();
+        output_data = NDArray_FDATA(target);
+ #else
+        return NULL;
+#endif
     } else {
         Sf = (float *) emalloc(sizeof(float) * smallest_dim);
         Uf = (float *) emalloc(sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
@@ -202,13 +182,20 @@ NDArray_SVD(NDArray *target) {
         memcpy(output_data, NDArray_FDATA(target), sizeof(float) * NDArray_NUMELEMENTS(target));
     }
 
-    if(is_type(NDArray_TYPE(target), NDARRAY_TYPE_DOUBLE64)) {
-        computeSVD((double*)output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], U, S, V);
+    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+
+        computeSVDFloatGPU(output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
+#else
+        return NULL;
+#endif
     } else {
-        computeSVDFloat((float *)output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
+        computeSVDFloat((float *) output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
     }
 
-    efree(output_data);
+    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        efree(output_data);
+    }
     U_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     V_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     S_shape = emalloc(sizeof(int));
@@ -237,6 +224,12 @@ NDArray_SVD(NDArray *target) {
     rtns[0] = rtn_u;
     rtns[1] = rtn_s;
     rtns[2] = rtn_v;
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+        rtn_u->device = NDARRAY_DEVICE_GPU;
+        rtn_s->device = NDARRAY_DEVICE_GPU;
+        rtn_v->device = NDARRAY_DEVICE_GPU;
+    }
 
     return rtns;
 }

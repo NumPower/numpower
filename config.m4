@@ -18,6 +18,32 @@ PHP_ARG_ENABLE([ndarray],
     [Enable ndarray support])],
   [no])
 
+PHP_CHECK_LIBRARY(cublas,cublasDgemm,
+[
+  AC_DEFINE(HAVE_CUBLAS,1,[ ])
+  PHP_ADD_LIBRARY(cublas,,NDARRAY_SHARED_LIBADD)
+  AC_MSG_RESULT([CUBLAS detected ])
+  PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/Makefile.frag, $abs_builddir)
+  CFLAGS+=" -lcublas -lcudart "
+],[
+    AC_MSG_RESULT([wrong cublas version or library not found.])
+    AC_CHECK_HEADER([immintrin.h],
+        [
+          AC_DEFINE(HAVE_AVX2,1,[Have AV2/SSE support])
+          AC_MSG_RESULT([AVX2/SSE detected ])
+          CFLAGS+=" -mavx2 "
+        ],[
+          AC_DEFINE(HAVE_AVX2,0,[Have AV2/SSE support])
+          AC_MSG_RESULT([AVX2/SSE not found ])
+        ], [
+
+        ]
+    )
+])
+
+
+
+
 PHP_CHECK_LIBRARY(cblas,cblas_sdot,
 [
   AC_DEFINE(HAVE_CBLAS,1,[ ])
@@ -40,16 +66,7 @@ PHP_CHECK_LIBRARY(cblas,cblas_sdot,
   -lcblas
 ])
 
-PHP_CHECK_LIBRARY(cublas,cublasDgemm,
-[
-  AC_DEFINE(HAVE_CUBLAS,1,[ ])
-  PHP_ADD_LIBRARY(cublas,,NDARRAY_SHARED_LIBADD)
-  AC_MSG_RESULT([CUBLAS detected ])
-  PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/Makefile.frag, $abs_builddir)
-  CFLAGS+=" -lcublas -lcudart "
-],[
-    AC_MSG_RESULT([wrong cublas version or library not found.])
-])
+
 
 PHP_CHECK_LIBRARY(lapack,dgesvd_,
 [
@@ -60,21 +77,6 @@ PHP_CHECK_LIBRARY(lapack,dgesvd_,
 ],[
     AC_MSG_RESULT([wrong LAPACKE version or library not found.])
 ])
-
-AC_CHECK_HEADER([immintrin.h],
-    [
-      AC_DEFINE(HAVE_AVX2,1,[Have AV2/SSE support])
-      AC_MSG_RESULT([AVX2/SSE detected ])
-      CFLAGS+=" -mavx2 "
-    ],[
-      AC_DEFINE(HAVE_AVX2,0,[Have AV2/SSE support])
-      AC_MSG_RESULT([AVX2/SSE not found ])
-    ], [
-
-    ]
-)
-CFLAGS+=" -fopenmp "
-
 
 if test "$PHP_NDARRAY" != "no"; then
   dnl Write more examples of tests here...

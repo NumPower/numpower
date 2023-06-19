@@ -3,6 +3,13 @@
 #include "iterators.h"
 #include "../config.h"
 
+
+#ifdef HAVE_CUBLAS
+#include "ndmath/cuda/cuda_math.h"
+#include "debug.h"
+
+#endif
+
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
@@ -56,32 +63,17 @@ NDArray_All(NDArray *a) {
 int
 _compare_ndarrays(NDArray *a, NDArray *b, int current_axis) {
     int diff = 1;
-    NDArray *slice_a, *slice_b;
-    NDArrayIterator_REWIND(a);
-    NDArrayIterator_REWIND(b);
 
-    while(!NDArrayIterator_ISDONE(a)) {
-        slice_a = NDArrayIterator_GET(a);
-        slice_b = NDArrayIterator_GET(b);
-        if (current_axis < NDArray_NDIM(a) - 1) {
-            diff = _compare_ndarrays(slice_a, slice_b, current_axis);
-            if (diff == 0) {
-                NDArray_FREE(slice_a);
-                NDArray_FREE(slice_b);
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        diff = cuda_equal_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_NUMELEMENTS(a));
+#endif
+    } else {
+        for (int i =0; i < NDArray_NUMELEMENTS(a); i++) {
+            if (NDArray_FDATA(a)[i] != NDArray_FDATA(b)[i]) {
                 diff = 0;
             }
         }
-        if (current_axis == NDArray_NDIM(a) - 1) {
-            if (NDArray_FDATA(slice_a)[0] != NDArray_FDATA(slice_b)[0]) {
-                NDArray_FREE(slice_a);
-                NDArray_FREE(slice_b);
-                return 0;
-            }
-        }
-        NDArray_FREE(slice_a);
-        NDArray_FREE(slice_b);
-        NDArrayIterator_NEXT(a);
-        NDArrayIterator_NEXT(b);
     }
     return diff;
 }

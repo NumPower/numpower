@@ -22,6 +22,7 @@
 #include "src/ndmath/linalg.h"
 #include "config.h"
 #include "src/types.h"
+#include "src/ndmath/cuda/cuda_math.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -90,6 +91,15 @@ void RETURN_NDARRAY(NDArray* array, zval* return_value) {
         return;
     }
     add_to_buffer(array, sizeof(NDArray));
+    object_init_ex(return_value, phpsci_ce_NDArray);
+    ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
+}
+
+void RETURN_NDARRAY_NOBUFFER(NDArray* array, zval* return_value) {
+    if (array == NULL) {
+        RETURN_THROWS();
+        return;
+    }
     object_init_ex(return_value, phpsci_ce_NDArray);
     ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
 }
@@ -163,6 +173,26 @@ PHP_METHOD(NDArray, __construct)
     ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(array));
 }
 
+ZEND_BEGIN_ARG_INFO(arginfo_fill, 1)
+    ZEND_ARG_INFO(0, value)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, fill)
+{
+    double value;
+    NDArray *rtn;
+    zval *obj_zval = getThis();
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_DOUBLE(value)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
+    rtn = NDArray_Fill(array, (float)value);
+    NDArray_ADDREF(array);
+    RETURN_NDARRAY_NOBUFFER(rtn, return_value);
+}
+
 ZEND_BEGIN_ARG_INFO(arginfo_toArray, 0)
 ZEND_END_ARG_INFO();
 PHP_METHOD(NDArray, toArray)
@@ -175,9 +205,13 @@ PHP_METHOD(NDArray, toArray)
     if (array == NULL) {
         return;
     }
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a PHP array.");
+        return;
+    }
     rtn = NDArray_ToPHPArray(array);
-    RETURN_ZVAL(&rtn, 0, 0);
     NDArray_FREE(array);
+    RETURN_ZVAL(&rtn, 0, 0);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_gpu, 0)
@@ -225,6 +259,15 @@ PHP_METHOD(NDArray, dump)
         return;
     }
     NDArray_Dump(array);
+}
+
+ZEND_BEGIN_ARG_INFO(arginfo_dump_devices, 0)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, dump_devices)
+{
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray_DumpDevices();
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_reshape, 1)
@@ -313,7 +356,7 @@ PHP_METHOD(NDArray, zeros)
     }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
-        shape[i] = (int) NDArray_DDATA(nda)[i];
+        shape[i] = (int) NDArray_FDATA(nda)[i];
     }
     rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32);
     NDArray_FREE(nda);
@@ -667,8 +710,15 @@ PHP_METHOD(NDArray, abs)
         return;
     }
 
-    rtn = NDArray_Map(nda, float_abs);
-
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_abs);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_abs);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -695,7 +745,15 @@ PHP_METHOD(NDArray, sqrt)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_sqrt);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_sqrt);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_sqrt);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -749,7 +807,15 @@ PHP_METHOD(NDArray, exp)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_exp);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_exp);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_exp);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -803,7 +869,16 @@ PHP_METHOD(NDArray, expm1)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_expm1);
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_expm1);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_expm1);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -830,7 +905,15 @@ PHP_METHOD(NDArray, log)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_log);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_log);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_log);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -857,7 +940,15 @@ PHP_METHOD(NDArray, logb)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_logb);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_logb);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_logb);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -882,7 +973,15 @@ PHP_METHOD(NDArray, log10)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_log10);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_log10);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_log10);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -907,7 +1006,15 @@ PHP_METHOD(NDArray, log1p)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_log1p);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_log1p);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_log1p);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -932,7 +1039,15 @@ PHP_METHOD(NDArray, log2)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Map(nda, float_log2);
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_log2);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_log2);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
     CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -1443,6 +1558,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, dump_devices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, cpu, arginfo_cpu, ZEND_ACC_PUBLIC)
 
@@ -1459,6 +1575,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, diag, arginfo_ndarray_diag, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, full, arginfo_ndarray_full, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, fill, arginfo_fill, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, array, arginfo_ndarray_array, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LINALG
@@ -1511,8 +1628,6 @@ static int ndarray_objects_compare(zval *obj1, zval *obj2)
 
     a = ZVAL_TO_NDARRAY(obj1);
     b = ZVAL_TO_NDARRAY(obj2);
-
-    ZVAL_LONG(&result, NDArray_ArrayEqual(a, b));
 
     if (NDArray_ArrayEqual(a, b)) {
         return 0;

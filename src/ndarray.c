@@ -19,6 +19,7 @@
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "ndmath/cuda/cuda_math.h"
 #endif
 
 void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArray*, NDArray*)) {
@@ -459,11 +460,19 @@ float
 NDArray_Min(NDArray *target) {
     float* array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
-    float min = array[0];
-
-    for (int i = 1; i < length; i++) {
-        if (array[i] < min) {
-            min = array[i];
+    float min = 0.f;
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        return cuda_min_float(array, NDArray_NUMELEMENTS(target));
+#else
+        return -1.f;
+#endif
+    } else {
+        min = array[0];
+        for (int i = 1; i < length; i++) {
+            if (array[i] < min) {
+                min = array[i];
+            }
         }
     }
     return min;
@@ -477,12 +486,21 @@ NDArray_Min(NDArray *target) {
  */
 float
 NDArray_Max(NDArray *target) {
+    float max = 0.f;
     float* array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
-    float max = array[0];
-    for (int i = 1; i < length; i++) {
-        if (array[i] > max) {
-            max = array[i];
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        return cuda_max_float(array, NDArray_NUMELEMENTS(target));
+#else
+      return -1.f;
+#endif
+    } else {
+        max = array[0];
+        for (int i = 1; i < length; i++) {
+            if (array[i] > max) {
+                max = array[i];
+            }
         }
     }
     return max;
@@ -496,7 +514,7 @@ NDArray_Max(NDArray *target) {
  * @return
  */
 zval
-convertToStridedArrayToPHPArray(double* data, int* strides, int* dimensions, int ndim, int elsize) {
+convertToStridedArrayToPHPArray(float* data, int* strides, int* dimensions, int ndim, int elsize) {
     zval phpArray;
     int i;
 
@@ -511,7 +529,7 @@ convertToStridedArrayToPHPArray(double* data, int* strides, int* dimensions, int
             zval subArray;
 
             // Calculate the pointer and strides for the sub-array
-            double* subData = data + (i * (strides[0]/elsize));
+            float* subData = data + (i * (strides[0]/elsize));
             int* subStrides = strides + 1;
             int* subDimensions = dimensions + 1;
 
@@ -537,7 +555,7 @@ convertToStridedArrayToPHPArray(double* data, int* strides, int* dimensions, int
 zval
 NDArray_ToPHPArray(NDArray *target) {
     zval phpArray;
-    phpArray = convertToStridedArrayToPHPArray(NDArray_DATA(target), NDArray_STRIDES(target),
+    phpArray = convertToStridedArrayToPHPArray(NDArray_FDATA(target), NDArray_STRIDES(target),
                                              NDArray_SHAPE(target), NDArray_NDIM(target), NDArray_ELSIZE(target));
     return phpArray;
 }
@@ -600,7 +618,7 @@ NDArray*
 NDArray_ToGPU(NDArray *target)
 {
 #ifdef HAVE_CUBLAS
-    double *tmp_gpu;
+    float *tmp_gpu;
     int *new_shape;
     int n_ndim = NDArray_NDIM(target);
 
@@ -614,10 +632,15 @@ NDArray_ToGPU(NDArray *target)
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32);
     rtn->device = NDARRAY_DEVICE_GPU;
 
-    cudaMalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(double));
-    cudaMemcpy(tmp_gpu, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyHostToDevice);
+    cudaMalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
+    cudaMemcpy(tmp_gpu, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyHostToDevice);
+    cudaError_t err = cudaDeviceSynchronize();
+    if (err != cudaSuccess) {
+        printf("Error synchronizing: %s\n", cudaGetErrorString(err));
+        // Handle error...
+    }
     efree(rtn->data);
-    rtn->data = tmp_gpu;
+    rtn->data = (char*)tmp_gpu;
     return rtn;
 #else
     // @todo this must be a copy
@@ -647,7 +670,7 @@ NDArray_ToCPU(NDArray *target)
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32);
     rtn->device = NDARRAY_DEVICE_CPU;
 #ifdef HAVE_CUBLAS
-    cudaMemcpy(rtn->data, NDArray_DDATA(target), NDArray_NUMELEMENTS(target) * sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy(rtn->data, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float ), cudaMemcpyDeviceToHost);
 #endif
     return rtn;
 }
