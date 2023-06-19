@@ -156,8 +156,8 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
 #elif HAVE_CBLAS
 
         if (NDArray_NUMELEMENTS(a) == NDArray_NUMELEMENTS(b)) {
-            memcpy(resultData, NDArray_DDATA(b), NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
-            cblas_daxpy(NDArray_NUMELEMENTS(a), 1.0, NDArray_DDATA(a), 1, resultData,
+            memcpy(resultData, NDArray_FDATA(b), NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
+            cblas_saxpy(NDArray_NUMELEMENTS(a), 1.0F, NDArray_FDATA(a), 1, resultData,
                         1);
         } else {
             for (int i = 0; i < numElements; i++) {

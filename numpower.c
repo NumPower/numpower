@@ -1552,6 +1552,48 @@ PHP_METHOD(NDArray, __toString)
     ZEND_PARSE_PARAMETERS_END();
 }
 
+static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
+{
+    NDArray *nda = ZVAL_TO_NDARRAY(op1);
+    NDArray *ndb = ZVAL_TO_NDARRAY(op2);
+    NDArray *rtn = NULL;
+    switch(opcode) {
+        case ZEND_ADD:
+            rtn = NDArray_Add_Float(nda, ndb);
+            break;
+        case ZEND_SUB:
+            rtn = NDArray_Subtract_Float(nda, ndb);
+            break;
+        case ZEND_MUL:
+            rtn = NDArray_Multiply_Float(nda, ndb);
+            break;
+        case ZEND_DIV:
+            rtn = NDArray_Divide_Float(nda, ndb);
+            break;
+        case ZEND_POW:
+            rtn = NDArray_Pow_Float(nda, ndb);
+            break;
+        case ZEND_MOD:
+            rtn = NDArray_Mod_Float(nda, ndb);
+            break;
+        default:
+            return FAILURE;
+    }
+    RETURN_NDARRAY(rtn, result);
+    if (rtn != NULL) {
+        return SUCCESS;
+    }
+    return FAILURE;
+}
+
+static
+int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
+{
+    int retval;
+    retval = ndarray_do_operation_ex(opcode, result, op1, op2);
+    return retval;
+}
+
 static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, __destruct, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
@@ -1646,6 +1688,7 @@ static void ndarray_objects_init(zend_class_entry *class_type)
     ndarray_object_handlers.clone_obj = NULL;
     ndarray_object_handlers.cast_object = NULL;
     ndarray_object_handlers.compare = ndarray_objects_compare;
+    ndarray_object_handlers.do_operation = ndarray_do_operation;
     //ndarray_object_handlers.compare = ndarray_objects_compare;
 }
 
