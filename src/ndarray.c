@@ -454,6 +454,23 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
 }
 
 /**
+ * @param array
+ */
+NDArray*
+NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float val2) {
+    NDArray *rtn;
+    int i;
+    int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
+    memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
+    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32);
+
+    for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
+        NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i], val1, val2);
+    }
+    return rtn;
+}
+
+/**
  * Return minimum value of NDArray
  *
  * @param target

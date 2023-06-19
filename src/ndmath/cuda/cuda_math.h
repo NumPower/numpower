@@ -9,6 +9,7 @@ extern "C" {
 #endif
 
     typedef void (*ElementWiseFloatGPUOperation)(int, float *);
+    typedef void (*ElementWiseFloatGPUOperation2F)(int, float *, float, float);
     NDArray* NDArrayMathGPU_ElementWise(NDArray *ndarray, ElementWiseFloatGPUOperation op);
     void cuda_float_abs(int nblocks, float *d_array);
     void cuda_float_expm1(int nblocks, float *d_array);
@@ -55,6 +56,10 @@ extern "C" {
     void cuda_float_trunc(int nblocks, float *d_array);
     void cuda_float_negate(int nblocks, float *d_array);
     void cuda_float_sign(int nblocks, float *d_array);
+    void cuda_float_clip(int nblocks, float *d_array, float minVal, float maxVal);
+
+
+    NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 #ifdef __cplusplus
 }
 #endif

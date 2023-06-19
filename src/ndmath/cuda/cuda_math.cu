@@ -5,6 +5,8 @@
 #include "../../debug.h"
 #include <float.h>
 #include <cusolverDn.h>
+#include <cuda.h>
+
 
 #define CHECK_CUDA(func) do { \
   cudaError_t status = (func); \
@@ -32,6 +34,17 @@
     return EXIT_FAILURE; \
   } \
 } while (0)
+
+__device__ float clipFloatValue(float value, float minVal, float maxVal) {
+    return fminf(fmaxf(value, minVal), maxVal);
+}
+
+__global__ void clipFloatKernel(float* array, float minVal, float maxVal, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        array[index] = clipFloatValue(array[index], minVal, maxVal);
+    }
+}
 
 __global__
 void signFloatKernel(float* d_array, int size) {
@@ -1010,10 +1023,25 @@ extern "C" {
         cudaDeviceSynchronize();
     }
 
+    void
+    cuda_float_clip(int nblocks, float *d_array, float minVal, float maxVal) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        clipFloatKernel<<<numBlocks, blockSize>>>(d_array, minVal, maxVal, nblocks);
+        cudaDeviceSynchronize();
+    }
+
     NDArray*
     NDArrayMathGPU_ElementWise(NDArray* ndarray, ElementWiseFloatGPUOperation op) {
         NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
         op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn));
+        return rtn;
+    }
+
+    NDArray*
+    NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2) {
+        NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
+        op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn), val1, val2);
         return rtn;
     }
 

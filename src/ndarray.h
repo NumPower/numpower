@@ -150,7 +150,9 @@ int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
 #endif
 
 typedef float (*ElementWiseDoubleOperation)(float);
+typedef float (*ElementWiseFloatOperation2F)(float, float, float);
 NDArray* NDArray_Map(NDArray *array, ElementWiseDoubleOperation op);
+NDArray* NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float val2);
 
 
 #endif //PHPSCI_NDARRAY_NDARRAY_H

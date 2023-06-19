@@ -223,3 +223,7 @@ float float_negate(float val) {
 float float_sign(float val) {
     return (val > 0) - (val < 0);
 }
+
+float float_clip(float val, float min, float max) {
+    return fminf(fmaxf(val, min), max);
+}
