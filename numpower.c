@@ -292,6 +292,7 @@ PHP_METHOD(NDArray, reshape)
     NDArray* shape = ZVAL_TO_NDARRAY(shape_zval);
 
     new_shape = NDArray_ToIntVector(shape);
+
     rtn = NDArray_Reshape(target, new_shape, NDArray_NUMELEMENTS(shape));
 
     if (rtn == NULL) {
@@ -303,7 +304,7 @@ PHP_METHOD(NDArray, reshape)
     if (Z_TYPE_P(shape_zval) == IS_ARRAY) {
         NDArray_FREE(shape);
     }
-    RETURN_ZVAL(current, 0, 0);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 PHP_FUNCTION(print_r_)
