@@ -33,12 +33,194 @@
   } \
 } while (0)
 
+__device__
+float sinc(float number) {
+    if (number == 0.0) {
+        return 1.0;
+    } else {
+        return sinf(M_PI * number) / (M_PI * number);
+    }
+}
+
+__global__
+void sincFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+
+        d_array[index] = sinc(d_array[index]);
+    }
+}
+
+__global__
+void truncFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = truncf(d_array[index]);
+    }
+}
+
+__device__
+int roundFloatToNearestInt(float number) {
+    float rounded = rintf(number);
+    int floorInt = (int)floorf(number);
+
+    // Check if the rounded value is halfway between two integers
+    if (rounded - floorInt == 0.5 && ((int)rounded % 2 != 0)) {
+        rounded -= 1.0;
+    }
+
+    return (int)rounded;
+}
+
+__global__
+void rintFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = roundFloatToNearestInt(d_array[index]);
+    }
+}
+
+__global__
+void fixFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = truncf(d_array[index]);
+    }
+}
+
+__global__
+void ceilFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = ceilf(d_array[index]);
+    }
+}
+
+__global__
+void floorFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = floorf(d_array[index]);
+    }
+}
+
+__global__
+void arcsinhFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = asinhf(d_array[index]);
+    }
+}
+
+__global__
+void arccoshFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = acoshf(d_array[index]);
+    }
+}
+
+__global__
+void arctanhFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = atanhf(d_array[index]);
+    }
+}
+
+__global__
+void sinhFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = sinhf(d_array[index]);
+    }
+}
+
+__global__
+void coshFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = coshf(d_array[index]);
+    }
+}
+
+__global__
+void tanhFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = tanhf(d_array[index]);
+    }
+}
+
+__global__
+void degreesFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = d_array[index] * (180.0 / 3.1415926535);
+    }
+}
+
+__global__
+void radiansFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = d_array[index] * (3.1415926535 / 180.0);
+    }
+}
+
+__global__
+void arcsinFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = asinf(d_array[index]);
+    }
+}
+
+__global__
+void arccosFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = acosf(d_array[index]);
+    }
+}
+
+__global__
+void arctanFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = atanf(d_array[index]);
+    }
+}
 
 __global__
 void absFloatKernel(float* d_array, int size) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index < size) {
         d_array[index] = fabsf(d_array[index]);
+    }
+}
+
+__global__
+void sinFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = sinf(d_array[index]);
+    }
+}
+
+__global__
+void cosFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = cosf(d_array[index]);
+    }
+}
+
+__global__
+void tanFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = tanf(d_array[index]);
     }
 }
 
@@ -631,6 +813,166 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         expm1FloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_sin(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        sinFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_cos(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        cosFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_tan(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        tanFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arcsin(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arcsinFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arctan(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arctanFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arccos(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arccosFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_radians(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        radiansFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_degrees(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        degreesFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_sinh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        sinhFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_cosh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        coshFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_tanh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        tanhFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arcsinh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arcsinhFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arccosh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arccoshFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_arctanh(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arctanhFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_rint(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        rintFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_fix(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        fixFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_ceil(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        ceilFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_floor(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        floorFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_trunc(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        truncFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_sinc(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        sincFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
         cudaDeviceSynchronize();
     }
 

@@ -561,33 +561,6 @@ NDArray_ToPHPArray(NDArray *target) {
 }
 
 /**
- * Reshape NDArray
- *
- * @param target
- * @param new_shape
- * @return
- */
-NDArray*
-NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
-{
-    int i;
-    target->ndim = ndim;
-    if (NDArray_NDIM(target) < ndim) {
-        efree(target->dimensions);
-        target->dimensions = emalloc(sizeof(int) * ndim);
-        memcpy(target->dimensions, new_shape, sizeof(int) * ndim);
-    }
-
-    efree(target->strides);
-    target->strides = Generate_Strides(new_shape, ndim, sizeof(double));
-
-    efree(target->dimensions);
-    target->dimensions = new_shape;
-    NDArray_Dump(target);
-    return target;
-}
-
-/**
  * @param nda
  * @return
  */

@@ -133,8 +133,6 @@ float NDArray_Max(NDArray *target);
 
 zval NDArray_ToPHPArray(NDArray *target);
 
-NDArray *NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
-
 int *NDArray_ToIntVector(NDArray *nda);
 
 NDArray *NDArray_ToGPU(NDArray *target);

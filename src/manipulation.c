@@ -37,3 +37,40 @@ NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
     transposeMatrix(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
     return ret;
 }
+
+/**
+ * Reshape NDArray
+ *
+ * @param target
+ * @param new_shape
+ * @return
+ */
+NDArray*
+NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
+{
+    int total_new_elements = 1;
+    int i;
+    target->ndim = ndim;
+
+    for (i = 0; i < ndim; i++) {
+        total_new_elements = total_new_elements * new_shape[i];
+    }
+
+    if (total_new_elements != NDArray_NUMELEMENTS(target)) {
+        zend_throw_error(NULL, "NDArray Reshape: Incompatible shape");
+        return NULL;
+    }
+
+    if (NDArray_NDIM(target) < ndim) {
+        efree(target->dimensions);
+        target->dimensions = emalloc(sizeof(int) * ndim);
+        memcpy(target->dimensions, new_shape, sizeof(int) * ndim);
+    }
+
+    efree(target->strides);
+    target->strides = Generate_Strides(new_shape, ndim, sizeof(float));
+
+    efree(target->dimensions);
+    target->dimensions = new_shape;
+    return target;
+}
