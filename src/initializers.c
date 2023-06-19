@@ -640,7 +640,26 @@ NDArray_Copy(NDArray *a, int device) {
 
         return rtn;
 #else
-
+        return NULL;
 #endif
+    } else {
+        rtn = emalloc(sizeof(NDArray));
+        rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
+        rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
+        rtn->device = NDARRAY_DEVICE_GPU;
+        rtn->refcount = 1;
+        rtn->flags = 0;
+        rtn->ndim = NDArray_NDIM(a);
+        rtn->data = emalloc(NDArray_NUMELEMENTS(a) * sizeof(float));
+        memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float));
+        rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
+        rtn->descriptor->numElements = NDArray_NUMELEMENTS(a);
+        rtn->descriptor->elsize = NDArray_ELSIZE(a);
+        rtn->descriptor->type = NDArray_TYPE(a);
+        NDArrayIterator_INIT(rtn);
+        return rtn;
     }
+    return NULL;
 }
