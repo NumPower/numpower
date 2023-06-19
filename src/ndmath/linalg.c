@@ -260,7 +260,7 @@ NDArray_Det(NDArray *a) {
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         rtn->device = NDARRAY_DEVICE_GPU;
-        cudaMalloc(&rtn->data, sizeof(float));
+        cudaMalloc((void **)&rtn->data, sizeof(float));
         cuda_det_float(NDArray_FDATA(a), NDArray_FDATA(rtn), NDArray_SHAPE(a)[0]);
 #endif
     } else {
