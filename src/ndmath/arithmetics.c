@@ -46,7 +46,7 @@ NDArray_Sum_Double(NDArray* a) {
 }
 
 /**
- * Add elements of a and b element-wise
+ * Add elements of a element-wise
  *
  * @param a
  * @param b
@@ -70,6 +70,39 @@ NDArray_Sum_Float(NDArray* a) {
         for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
             value += NDArray_FDATA(a)[i];
         }
+#endif
+    }
+    return value;
+}
+
+/**
+ * Add elements of a element-wise
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+float
+NDArray_Mean_Float(NDArray* a) {
+    float value = 0;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        //cublasHandle_t handle;
+        //cublasCreate(&handle);
+        //cublasSasum(handle, NDArray_NUMELEMENTS(a), NDArray_FDATA(a), 1, &value);
+        cuda_sum_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), &value, NDArray_NUMELEMENTS(a));
+        value = value / NDArray_NUMELEMENTS(a);
+#endif
+    } else {
+
+#ifdef HAVE_CBLAS
+        value = cblas_sasum(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), 1);
+        value = value / NDArray_NUMELEMENTS(a);
+#else
+        for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+            value += NDArray_FDATA(a)[i];
+        }
+        value = value / NDArray_NUMELEMENTS(a);
 #endif
     }
     return value;

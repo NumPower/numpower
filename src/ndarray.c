@@ -92,13 +92,16 @@ void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, 
 void
 _single_reduce_axis(int axis, NDArray* target, NDArray* rtn, float (*operation)(NDArray*)) {
     int i = 0;
+    NDArray *slice;
     NDArrayAxisIterator *iterator = NDArrayAxisIterator_INIT(target, axis);
     NDArrayAxisIterator_REWIND(iterator);
 
     while(!NDArrayAxisIterator_ISDONE(iterator)) {
-        NDArray_FDATA(rtn)[i] = operation(NDArrayAxisIterator_GET(iterator));
+        slice = NDArrayAxisIterator_GET(iterator);
+        NDArray_FDATA(rtn)[i] = operation(slice);
         NDArrayAxisIterator_NEXT(iterator);
         i++;
+        NDArray_FREE(slice);
     }
 }
 
