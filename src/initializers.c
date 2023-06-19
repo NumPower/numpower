@@ -648,7 +648,7 @@ NDArray_Copy(NDArray *a, int device) {
         memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
         rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
         memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
-        rtn->device = NDARRAY_DEVICE_GPU;
+        rtn->device = NDARRAY_DEVICE_CPU;
         rtn->refcount = 1;
         rtn->flags = 0;
         rtn->ndim = NDArray_NDIM(a);
