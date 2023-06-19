@@ -598,15 +598,15 @@ NDArray_CreateFromLongScalar(long scalar) {
     rtn->ndim = 0;
     rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
     rtn->descriptor->numElements = 1;
-    rtn->descriptor->elsize = sizeof(double);
-    rtn->descriptor->type = NDARRAY_TYPE_DOUBLE64;
-    rtn->data = emalloc(sizeof(double));
+    rtn->descriptor->elsize = sizeof(float);
+    rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
+    rtn->data = emalloc(sizeof(float));
     rtn->device = NDARRAY_DEVICE_CPU;
     rtn->strides = NULL;
     rtn->dimensions = NULL;
     rtn->iterator = NULL;
     rtn->base = NULL;
-    ((double*)rtn->data)[0] = (double)scalar;
+    ((float*)rtn->data)[0] = (float)scalar;
 
     return rtn;
 }
