@@ -3,7 +3,7 @@
 ## Requirements
 - LAPACKE
 - OpenBLAS
-- **Optional (GPU)**: CUBLAS, CUDA
+- **Optional (GPU)**: CUBLAS, CUDA Build Toolkit
 
 ## GPU Support
 

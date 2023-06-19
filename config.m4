@@ -55,7 +55,7 @@ PHP_CHECK_LIBRARY(cblas,cblas_sdot,
     AC_DEFINE(HAVE_CBLAS,1,[ ])
     EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lopenblas -lpthread"
   ],[
-    AC_MSG_RESULT([wrong openblas/blas version or library not found.])
+    AC_MSG_ERROR([wrong openblas/blas version or library not found.])
   ],[
     -lopenblas
   ])
@@ -72,7 +72,7 @@ PHP_CHECK_LIBRARY(lapack,dgesvd_,
   AC_MSG_RESULT([LAPACKE detected ])
   CFLAGS+=" -llapack "
 ],[
-    AC_MSG_RESULT([wrong LAPACKE version or library not found.])
+    AC_MSG_ERROR([wrong LAPACKE version or library not found.])
 ])
 
 if test "$PHP_NDARRAY" != "no"; then

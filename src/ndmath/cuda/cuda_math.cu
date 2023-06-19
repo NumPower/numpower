@@ -269,7 +269,6 @@ extern "C" {
     cuda_det_float(float *a, float *result, int n) {
         int N = n;
         float *d_A = a;
-        float failed_value = 0.0f;
         cusolverDnHandle_t cusolverH = NULL;
         cudaStream_t stream = NULL;
         cublasHandle_t cublasH = NULL;
