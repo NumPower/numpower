@@ -219,3 +219,7 @@ float float_sinc(float val) {
 float float_negate(float val) {
     return -val;
 }
+
+float float_sign(float val) {
+    return (val > 0) - (val < 0);
+}

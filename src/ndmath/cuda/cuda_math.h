@@ -54,6 +54,7 @@ extern "C" {
     void cuda_float_sinc(int nblocks, float *d_array);
     void cuda_float_trunc(int nblocks, float *d_array);
     void cuda_float_negate(int nblocks, float *d_array);
+    void cuda_float_sign(int nblocks, float *d_array);
 #ifdef __cplusplus
 }
 #endif

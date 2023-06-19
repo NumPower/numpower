@@ -34,6 +34,15 @@
 } while (0)
 
 __global__
+void signFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        float value = d_array[index];
+        d_array[index] = (value > 0) - (value < 0);
+    }
+}
+
+__global__
 void negateFloatKernel(float* d_array, int size) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index < size) {
@@ -990,6 +999,14 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         negateFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_sign(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        signFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
         cudaDeviceSynchronize();
     }
 
