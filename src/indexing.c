@@ -1,6 +1,7 @@
-#include <Zend/zend_alloc.h>
 #include "indexing.h"
-#include "php.h"
+#include <php.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 
 /**
  * Slice a buffer of type float

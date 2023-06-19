@@ -1,5 +1,6 @@
 #include <php.h>
-#include <Zend/zend_alloc.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "debug.h"
 #include "../config.h"
 #include "ndarray.h"
@@ -285,7 +286,7 @@ NDArray_DumpDevices() {
 
     if (err != cudaSuccess) {
         printf("Failed to retrieve device count: %s\n", cudaGetErrorString(err));
-        return 1;
+        return;
     }
 
     printf("\n==============================================================================\n");

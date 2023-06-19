@@ -1,10 +1,11 @@
+#include <php.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "initializers.h"
 #include "ndarray.h"
 #include "types.h"
-#include "Zend/zend_alloc.h"
 #include "../config.h"
 #include "Zend/zend_hash.h"
-#include "php.h"
 #include "iterators.h"
 #include "debug.h"
 #include <math.h>
@@ -187,8 +188,8 @@ NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
     for (int i = 1; i < ndim; i++) {
         total_num_elements = total_num_elements * shape[i];
     }
-    NDArray* array = Create_NDArray(shape, ndim, NDARRAY_TYPE_DOUBLE64);
-    NDArray_CreateBuffer(array, total_num_elements, get_type_size(NDARRAY_TYPE_DOUBLE64));
+    NDArray* array = Create_NDArray(shape, ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray_CreateBuffer(array, total_num_elements, get_type_size(NDARRAY_TYPE_FLOAT32));
     NDArray_CopyFromZendArray(array, ht, &last_index);
     return array;
 }

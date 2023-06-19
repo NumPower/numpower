@@ -1,6 +1,7 @@
 #include <stdlib.h>
-#include <Zend/zend_alloc.h>
 #include <php.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "buffer.h"
 #include "string.h"
 #include "ndarray.h"

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <Zend/zend_alloc.h>
 #include "ndarray.h"
 #include "debug.h"
 #include "iterators.h"
@@ -9,7 +8,8 @@
 #include "logic.h"
 #include <php.h>
 #include "../config.h"
-#include <Zend/zend_API.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include <Zend/zend_types.h>
 
 #ifdef HAVE_AVX2
@@ -126,9 +126,9 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
 
     if (axis != NULL) {
         if (*axis >= NDArray_NDIM(array)) {
-            sprintf(exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
+            sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
                     NDArray_NDIM(array));
-            zend_throw_error(NULL, exception_buffer);
+            zend_throw_error(NULL, "%s", (const char *) exception_buffer);
             return NULL;
         }
     }
@@ -202,9 +202,9 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
 
     if (axis != NULL) {
         if (*axis >= NDArray_NDIM(array)) {
-            sprintf(exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
+            sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
                     NDArray_NDIM(array));
-            zend_throw_error(NULL, exception_buffer);
+            zend_throw_error(NULL, "%s", (const char *) exception_buffer);
             return NULL;
         }
     }

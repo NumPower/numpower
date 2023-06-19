@@ -11,6 +11,7 @@
 #include "numpower_arginfo.h"
 #include "src/initializers.h"
 #include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "src/buffer.h"
 #include "src/iterators.h"
 #include "php_numpower.h"
@@ -308,7 +309,7 @@ PHP_FUNCTION(print_r_)
             zend_class_entry* classEntry = Z_OBJCE_P(var);
             if (!strcmp(classEntry->name->val, "NDArray")) {
                 target = buffer_get(get_object_uuid(var));
-                RETURN_STR(NDArray_Print(target, 1));
+                RETURN_STRING(NDArray_Print(target, 1));
             }
         }
         RETURN_STR(zend_print_zval_r_to_str(var, 0));

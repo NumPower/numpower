@@ -1,10 +1,12 @@
+#include <php.h>
+#include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "linalg.h"
 #include "../../config.h"
 #include "../ndarray.h"
 #include "../initializers.h"
 #include "../types.h"
 #include "../debug.h"
-#include <Zend/zend_alloc.h>
 
 #ifdef HAVE_LAPACKE
 #include <lapacke.h>
