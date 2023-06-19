@@ -32,6 +32,7 @@ extern "C" {
     void cuda_sum_float(int nblocks, float *a, float *rtn, int nelements);
     void cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB);
     void cuda_fill_float(float *a, float value, int n);
+    int cuda_det_float(float *a, float *result, int n);
 #ifdef __cplusplus
 }
 #endif

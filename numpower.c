@@ -514,7 +514,7 @@ PHP_METHOD(NDArray, uniform)
     }
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
-        shape[i] = (int) NDArray_DDATA(nda)[i];
+        shape[i] = (int) NDArray_FDATA(nda)[i];
     }
     rtn = NDArray_Uniform(low, high, shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
@@ -1320,6 +1320,28 @@ PHP_METHOD(NDArray, svd)
 }
 
 /**
+ * NDArray::det
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_det, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, det)
+{
+    NDArray *rtn, *nda;
+    zval *a;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_Det(nda);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::sum
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sum, 0, 0, 1)
@@ -1623,6 +1645,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         // LINALG
         ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, svd, arginfo_ndarray_svd, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, det, arginfo_ndarray_det, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

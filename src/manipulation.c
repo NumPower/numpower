@@ -14,7 +14,7 @@
 #endif
 
 
-void transposeMatrix(const float* matrix, float* output, int rows, int cols) {
+void transposeMatrix(float* matrix, float* output, int rows, int cols) {
     int i, j;
     for ( i = 0; i < rows; i++) {
         for ( j = 0; j < cols; j++) {

@@ -41,9 +41,6 @@ PHP_CHECK_LIBRARY(cublas,cublasDgemm,
     )
 ])
 
-
-
-
 PHP_CHECK_LIBRARY(cblas,cblas_sdot,
 [
   AC_DEFINE(HAVE_CBLAS,1,[ ])

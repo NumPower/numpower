@@ -6,9 +6,12 @@
 #include "../debug.h"
 #include <Zend/zend_alloc.h>
 
+#ifdef HAVE_LAPACKE
+#include <lapacke.h>
+#endif
+
 #ifdef HAVE_CBLAS
 #include <cblas.h>
-#include <lapacke.h>
 #endif
 
 #ifdef HAVE_CUBLAS
@@ -242,4 +245,62 @@ NDArray_SVD(NDArray *target) {
 NDArray*
 NDArray_Matmul(NDArray *a, NDArray *b) {
     return NDArray_FMatmul(a, b);
+}
+
+/**
+ * NDArray determinant
+ *
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_Det(NDArray *a) {
+    int *new_shape = emalloc(sizeof(int));
+    NDArray *rtn = Create_NDArray(new_shape, 0, NDARRAY_TYPE_FLOAT32);
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        rtn->device = NDARRAY_DEVICE_GPU;
+        cudaMalloc(&rtn->data, sizeof(float));
+        cuda_det_float(NDArray_FDATA(a), NDArray_FDATA(rtn), NDArray_SHAPE(a)[0]);
+#endif
+    } else {
+        int info;
+        int N = NDArray_SHAPE(a)[0];
+        int* ipiv = (int*) emalloc(N * sizeof(int));
+        float *matrix = emalloc(sizeof(float) * NDArray_NUMELEMENTS(a));
+        rtn->data = emalloc(sizeof(float));
+        memcpy(matrix, NDArray_FDATA(a), sizeof(float) * NDArray_NUMELEMENTS(a));
+        // LU Decomposition using LAPACKE interface
+        sgetrf_(&N, &N, matrix, &N, ipiv, &info);
+
+        if (info != 0) {
+            if (info > 0) {
+                NDArray_FDATA(rtn)[0] = 0.f;
+                efree(ipiv);
+                efree(matrix);
+                return rtn;
+            }
+            printf("Error in LU decomposition. Code: %d\n", info);
+            efree(ipiv);
+            exit(1);
+        }
+
+        // Calculate determinant as product of diagonal elements
+        float det = 1;
+        for (int i = 0; i < N; i++) {
+            det *= matrix[i* N + i];
+        }
+
+        // Account for the parity of the permutation
+        int num_perm = 0;
+        for (int i = 0; i < N; i++) {
+            if (i + 1 != ipiv[i]) num_perm++;
+        }
+        if (num_perm % 2 != 0) det = -det;
+
+        efree(ipiv);
+        efree(matrix);
+        NDArray_FDATA(rtn)[0] = det;
+    }
+    return rtn;
 }

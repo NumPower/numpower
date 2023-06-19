@@ -3,6 +3,7 @@
 #include "../../ndarray.h"
 #include "../../initializers.h"
 #include "../../debug.h"
+#include <float.h>
 #include <cusolverDn.h>
 
 #define CHECK_CUDA(func) do { \
@@ -18,6 +19,15 @@
   cusolverStatus_t status = (func); \
   if (status != CUSOLVER_STATUS_SUCCESS) { \
     printf("cuSOLVER API failed at line %d with error: %d\n", \
+           __LINE__, status); \
+    return EXIT_FAILURE; \
+  } \
+} while (0)
+
+#define CHECK_CUBLAS(func) do { \
+  cusolverStatus_t status = (func); \
+  if (status != CUSOLVER_STATUS_SUCCESS) { \
+    printf("cuBLAS API failed at line %d with error: %d\n", \
            __LINE__, status); \
     return EXIT_FAILURE; \
   } \
@@ -254,6 +264,80 @@ void fill_float_kernel(float* array, int n, float value) {
 }
 
 extern "C" {
+
+    int
+    cuda_det_float(float *a, float *result, int n) {
+        int N = n;
+        float *d_A = a;
+        float failed_value = 0.0f;
+        cusolverDnHandle_t cusolverH = NULL;
+        cudaStream_t stream = NULL;
+        cublasHandle_t cublasH = NULL;
+        cusolverStatus_t cusolver_status = CUSOLVER_STATUS_SUCCESS;
+
+        CHECK_CUSOLVER(cusolverDnCreate(&cusolverH));
+        CHECK_CUDA(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking));
+        CHECK_CUSOLVER(cusolverDnSetStream(cusolverH, stream));
+        cublasCreate(&cublasH);
+        cublasSetStream(cublasH, stream);
+
+        int* d_Ipiv; // pivot array
+        int* d_info;  // info on success or failure
+        float* d_U; // U matrix of LU decomposition
+
+        CHECK_CUDA(cudaMalloc(&d_Ipiv, N*sizeof(int)));
+        CHECK_CUDA(cudaMalloc(&d_info, sizeof(int)));
+        CHECK_CUDA(cudaMalloc(&d_U, N*N*sizeof(float)));
+
+        // copy A to U as cusolverDnSgetrf works in place
+        CHECK_CUDA(cudaMemcpy(d_U, d_A, N*N*sizeof(float), cudaMemcpyDeviceToDevice));
+
+        // LU decompose
+        cusolver_status = cusolverDnSgetrf(cusolverH, N, N, d_U, N, NULL, d_Ipiv, d_info);
+        if (cusolver_status != CUSOLVER_STATUS_SUCCESS) {
+            // handle error
+            printf("LU decomposition failed\n");
+            exit(1);
+        }
+
+        // Find determinant by product of diagonal elements
+        float det = 1.0f;
+        for (int i = 0; i < N; i++) {
+            float elem;
+            CHECK_CUDA(cudaMemcpy(&elem, d_U + i * N + i, sizeof(float), cudaMemcpyDeviceToHost));
+            // Check for potential overflow
+            if (fabsf(elem) > FLT_MAX / fabsf(det)) {
+                // Handle overflow here, e.g., return a special value or throw an error
+                printf("Overflow detected in det\n");
+                exit(1);
+            }
+            if (!isnan(elem) && !isinf(elem)) {
+                det *= elem;
+            }
+        }
+
+        // Analyze pivot array to calculate number of permutations
+        int* h_Ipiv = new int[N];
+        CHECK_CUDA(cudaMemcpy(h_Ipiv, d_Ipiv, N*sizeof(int), cudaMemcpyDeviceToHost));
+
+        int numPermutations = 0;
+        for(int i = 0; i < N; i++) {
+            if(i+1 != h_Ipiv[i]) numPermutations++;
+        }
+
+        if(numPermutations % 2 != 0) det = -det;
+
+        // Cleanup
+        if (d_U) cudaFree(d_U);
+        if (d_Ipiv) cudaFree(d_Ipiv);
+        if (d_info) cudaFree(d_info);
+        if (cublasH) cublasDestroy(cublasH);
+        if (cusolverH) cusolverDnDestroy(cusolverH);
+        if (stream) cudaStreamDestroy(stream);
+
+        CHECK_CUDA(cudaMemcpy(result, &det, sizeof(float), cudaMemcpyHostToDevice));
+        return 1;
+    }
 
     void
     cuda_fill_float(float *a, float value, int n) {
