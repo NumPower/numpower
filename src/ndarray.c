@@ -50,7 +50,7 @@ void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray
         }
         if (rtn_init == 0) {
             rtn_init = 1;
-            memcpy(rtn->data, slice->data, rtn->descriptor->numElements * sizeof(double));
+            memcpy(rtn->data, slice->data, rtn->descriptor->numElements * sizeof(float));
             NDArrayIterator_NEXT(target);
             NDArray_FREE(slice);
             continue;

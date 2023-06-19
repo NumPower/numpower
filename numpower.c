@@ -660,6 +660,10 @@ PHP_METHOD(NDArray, all)
     if (ZEND_NUM_ARGS() == 1) {
         RETURN_LONG(NDArray_All(nda));
     } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         zend_throw_error(NULL, "Not implemented");
         return;
         rtn = single_reduce(nda, &axis_i, &NDArray_All);
@@ -683,7 +687,7 @@ PHP_METHOD(NDArray, transpose)
     zval *array;
     long axis;
     int axis_i;
-    ZEND_PARSE_PARAMETERS_START(1, 2)
+    ZEND_PARSE_PARAMETERS_START(1, 1)
             Z_PARAM_ZVAL(array)
             Z_PARAM_OPTIONAL
             Z_PARAM_LONG(axis)
@@ -698,6 +702,10 @@ PHP_METHOD(NDArray, transpose)
         add_to_buffer(rtn, sizeof(NDArray));
         RETURN_NDARRAY(rtn, return_value);
     } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         zend_throw_error(NULL, "Not implemented");
         return;
     }
@@ -2143,6 +2151,10 @@ PHP_METHOD(NDArray, sum)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         rtn = reduce(nda, &axis_i, NDArray_Add_Float);
     } else {
         double value = NDArray_Sum_Float(nda);
@@ -2178,6 +2190,10 @@ PHP_METHOD(NDArray, min)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         axis_i = (int)axis;
         rtn = single_reduce(nda, &axis_i, NDArray_Min);
     } else {
@@ -2214,6 +2230,10 @@ PHP_METHOD(NDArray, max)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         axis_i = (int)axis;
         rtn = single_reduce(nda, &axis_i, NDArray_Min);
     } else {
@@ -2247,6 +2267,10 @@ PHP_METHOD(NDArray, prod)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
         rtn = reduce(nda, &axis_i, NDArray_Multiply_Float);
     } else {
         rtn = NDArray_Float_Prod(nda);
