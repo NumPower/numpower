@@ -465,13 +465,11 @@ NDArray*
 NDArray_Uniform(double low, double high, int* shape, int ndim) {
     NDArray *rtn;
     rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
-
     // Set the seed for random number generation
     srand(time(NULL));
-
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        float u = (float)(rand() / RAND_MAX);
+        float u = (float)rand() / RAND_MAX;
         NDArray_FDATA(rtn)[i] = (float)low + u * ((float)high - (float)low);
     }
     return rtn;
