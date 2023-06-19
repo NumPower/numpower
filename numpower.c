@@ -223,12 +223,17 @@ PHP_METHOD(NDArray, gpu)
     zval *obj_zval = getThis();
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
+#ifdef HAVE_CUBLAS
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
     if (array == NULL) {
         return;
     }
     rtn = NDArray_ToGPU(array);
     RETURN_NDARRAY(rtn, return_value);
+#else
+    zend_throw_error(NULL, "No GPU device available or CUDA not enabled");
+    RETURN_NULL();
+#endif
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_cpu, 0)
