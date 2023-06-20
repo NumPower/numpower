@@ -305,7 +305,6 @@ NDArray_Inner(NDArray *nda, NDArray *ndb) {
             NDArray_SHAPE(rtn)[i] = 1;
             NDArray_STRIDES(rtn)[i] = NDArray_ELSIZE(rtn);
         }
-        NDArray_Dump(rtn);
     }
     return rtn;
 }
