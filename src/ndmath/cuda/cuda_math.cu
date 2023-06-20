@@ -26,6 +26,18 @@
   } \
 } while (0)
 
+__global__ void matrixVectorMultiplyFloatKernel(float* a, float* b, float* result, int rows, int cols) {
+    int row = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < rows) {
+        float sum = 0.0f;
+        for (int col = 0; col < cols; col++) {
+            sum += a[row * cols + col] * b[col];
+        }
+        result[row] = sum;
+    }
+}
+
 __global__ void transposeFloatMatrixKernel(const float* input, float* output, int rows, int cols) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1030,6 +1042,14 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         clipFloatKernel<<<numBlocks, blockSize>>>(d_array, minVal, maxVal, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_multiply_matrix_vector(int nblocks, float *a_array, float *b_array, float *result, int rows, int cols) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        matrixVectorMultiplyFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, rows, cols);
         cudaDeviceSynchronize();
     }
 

@@ -9,6 +9,8 @@
 #include "../iterators.h"
 #include "../types.h"
 #include "../debug.h"
+#include "linalg.h"
+#include "../manipulation.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -654,4 +656,60 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
         }
     }
     return result;
+}
+
+NDArray*
+NDArray_Inner(NDArray *nda, NDArray *ndb) {
+
+}
+
+/**
+ * NDArray dot product
+ *
+ * @param nda
+ * @param ndb
+ * @return
+ */
+NDArray*
+NDArray_Dot(NDArray *nda, NDArray *ndb) {
+    if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
+        zend_throw_error(NULL, "Device mismatch");
+        return NULL;
+    }
+
+    if (NDArray_NDIM(nda) == 1 && NDArray_NDIM(ndb) == 1) {
+        return NDArray_Inner(nda, ndb);
+    } else if (NDArray_NDIM(nda) == 2 && NDArray_NDIM(ndb) == 2) {
+        return NDArray_Matmul(nda, ndb);
+    }
+    else if (NDArray_NDIM(nda) == 0 || NDArray_NDIM(ndb) == 0) {
+        return NDArray_Multiply_Float(nda, ndb);
+    }
+    else if (NDArray_NDIM(nda) > 0 && NDArray_NDIM(ndb) == 1) {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+            int *rtn_shape = emalloc(sizeof(int) * (NDArray_NDIM(nda) - 1));
+            copy(NDArray_SHAPE(nda), rtn_shape, NDArray_NDIM(nda) -1);
+            NDArray *rtn = NDArray_Empty(rtn_shape, NDArray_NDIM(nda) - 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
+            cuda_float_multiply_matrix_vector(NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 1], NDArray_FDATA(nda), NDArray_FDATA(ndb),
+                                              NDArray_FDATA(rtn), NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 2], NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 1]);
+            return rtn;
+#endif
+        } else {
+#ifdef HAVE_CBLAS
+            int *rtn_shape = emalloc(sizeof(int) * (NDArray_NDIM(nda) - 1));
+            copy(NDArray_SHAPE(nda), rtn_shape, NDArray_NDIM(nda) -1);
+            NDArray *rtn = NDArray_Empty(rtn_shape, NDArray_NDIM(nda) - 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+            cblas_sgemv(CblasRowMajor, CblasNoTrans, NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 2], NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 1], 1.0f, NDArray_FDATA(nda), NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 1],
+                        NDArray_FDATA(ndb), 1, 0.0f, NDArray_FDATA(rtn), 1);
+            return rtn;
+#endif
+        }
+    }
+    else if (NDArray_NDIM(nda) > 0 && NDArray_NDIM(ndb) >= 2) {
+        // @todo Implement missing conditional
+        zend_throw_error(NULL, "Not implemented");
+        return NULL;
+    }
+    return NULL;
 }
