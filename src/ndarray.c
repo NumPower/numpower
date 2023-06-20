@@ -654,8 +654,7 @@ NDArray_ToCPU(NDArray *target)
     int n_ndim = NDArray_NDIM(target);
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
-        // #todo This must be a copy
-        return target;
+        return NDArray_Copy(target, NDARRAY_DEVICE_CPU);
     }
 
     new_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
