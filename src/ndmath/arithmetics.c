@@ -112,6 +112,10 @@ NDArray_Mean_Float(NDArray* a) {
 
 NDArray*
 NDArray_Add_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -218,6 +222,10 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
  * @return
  */
 NDArray* NDArray_Multiply_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -315,6 +323,10 @@ NDArray* NDArray_Multiply_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Subtract_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -412,6 +424,10 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Divide_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -507,6 +523,10 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Mod_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -587,6 +607,10 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Pow_Float(NDArray* a, NDArray* b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
     // Check if the dimensions of the input arrays match
     if (a->ndim != b->ndim) {
         // Dimensions mismatch, return an error or handle it accordingly
@@ -660,7 +684,10 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
 
 NDArray*
 NDArray_Inner(NDArray *nda, NDArray *ndb) {
-
+    if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
 }
 
 /**
@@ -673,7 +700,7 @@ NDArray_Inner(NDArray *nda, NDArray *ndb) {
 NDArray*
 NDArray_Dot(NDArray *nda, NDArray *ndb) {
     if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
-        zend_throw_error(NULL, "Device mismatch");
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
     }
 
