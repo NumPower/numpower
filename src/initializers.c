@@ -395,6 +395,12 @@ NDArray_Identity(int size) {
         return NULL;
     }
 
+    if (size == 0) {
+        shape = emalloc(sizeof(int) * 1);
+        shape[0] = 0;
+        return NDArray_Empty(shape, 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    }
+
     shape = emalloc(sizeof(int) * 2);
     shape[0] = size;
     shape[1] = size;
