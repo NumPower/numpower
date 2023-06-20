@@ -2632,7 +2632,7 @@ PHP_METHOD(NDArray, inner)
         CHECK_INPUT_AND_FREE(a, nda);
         return;
     }
-    rtn = NDArray_Matmul(nda, ndb);
+    rtn = NDArray_Inner(nda, ndb);
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);

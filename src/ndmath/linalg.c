@@ -33,44 +33,6 @@
  * @return
  */
 NDArray*
-NDArray_DMatmul(NDArray *a, NDArray *b) {
-    int *output_shape = emalloc(sizeof(int) * 2);
-
-    output_shape[0] = NDArray_SHAPE(a)[0];
-    output_shape[1] = NDArray_SHAPE(b)[1];
-
-    NDArray *result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_DOUBLE64);
-
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        cublasHandle_t handle;
-        cublasCreate(&handle);
-
-        double alpha = 1.0, beta = 0.0;
-
-        cublasDgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-                    NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
-                    &alpha, NDArray_DDATA(b), NDArray_SHAPE(b)[1], NDArray_DDATA(a), NDArray_SHAPE(a)[1], &beta,
-                    NDArray_DDATA(result), NDArray_SHAPE(b)[1]);
-        cublasDestroy(handle);
-        return result;
-#endif
-    }
-    cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1],
-                1.0, NDArray_DDATA(a), NDArray_SHAPE(a)[1], NDArray_DDATA(b), NDArray_SHAPE(b)[1],
-                0.0, NDArray_DDATA(result), NDArray_SHAPE(b)[1]);
-    return result;
-}
-
-/**
- * Double type (float64) matmul
- *
- * @param a
- * @param b
- * @return
- */
-NDArray*
 NDArray_FMatmul(NDArray *a, NDArray *b) {
     int *output_shape = emalloc(sizeof(int) * 2);
 
@@ -317,12 +279,35 @@ NDArray_Det(NDArray *a) {
  */
 NDArray*
 NDArray_Inner(NDArray *nda, NDArray *ndb) {
+    NDArray *rtn = NULL;
+    int i;
+    int last_dim_a, last_dim_b;
     if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
     }
 
+    last_dim_a = NDArray_SHAPE(nda)[NDArray_NDIM(nda) - 1];
+    last_dim_b = NDArray_SHAPE(ndb)[NDArray_NDIM(ndb) - 1];
+    if (last_dim_a != last_dim_b) {
+        zend_throw_error(NULL, "Shape is not aligned to perform the inner product.");
+        return NULL;
+    }
 
+    NDArray *mul = NDArray_Multiply_Float(nda, ndb);
+    rtn = NDArray_CreateFromFloatScalar(NDArray_Sum_Float(mul));
+    NDArray_FREE(mul);
+    if (NDArray_NDIM(nda) > 1) {
+        rtn->ndim = NDArray_NDIM(nda);
+        rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(nda));
+        rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(nda));
+        for (i = 0; i < NDArray_NDIM(rtn); i++) {
+            NDArray_SHAPE(rtn)[i] = 1;
+            NDArray_STRIDES(rtn)[i] = NDArray_ELSIZE(rtn);
+        }
+        NDArray_Dump(rtn);
+    }
+    return rtn;
 }
 
 
