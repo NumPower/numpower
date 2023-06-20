@@ -638,6 +638,7 @@ NDArray_ToGPU(NDArray *target)
 #else
     // @todo this must be a copy
     zend_throw_error(NULL, "Unable to detect a compatible device.");
+    return NULL;
 #endif
 }
 
