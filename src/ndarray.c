@@ -616,7 +616,7 @@ NDArray_ToGPU(NDArray *target)
     int n_ndim = NDArray_NDIM(target);
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-        return target;
+        return NDArray_Copy(target, NDARRAY_DEVICE_GPU);
     }
 
     new_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
@@ -637,7 +637,7 @@ NDArray_ToGPU(NDArray *target)
     return rtn;
 #else
     // @todo this must be a copy
-    return target;
+    zend_throw_error(NULL, "Unable to detect a compatible device.");
 #endif
 }
 
