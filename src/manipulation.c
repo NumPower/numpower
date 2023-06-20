@@ -45,7 +45,7 @@ NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
     NDArray *ret = NULL;
 
-    if (NDArray_NDIM(a) == 1) {
+    if (NDArray_NDIM(a) < 2) {
         int ndim = NDArray_NDIM(a);
         return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
     }
