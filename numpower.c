@@ -660,6 +660,9 @@ PHP_METHOD(NDArray, all)
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         RETURN_LONG(NDArray_All(nda));
+        if (Z_TYPE_P(array) == IS_ARRAY) {
+            NDArray_FREE(nda);
+        }
     } else {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
             zend_throw_error(NULL, "Axis not supported for GPU operation");
@@ -701,6 +704,9 @@ PHP_METHOD(NDArray, transpose)
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
         add_to_buffer(rtn, sizeof(NDArray));
+        if (Z_TYPE_P(array) == IS_ARRAY) {
+            NDArray_FREE(nda);
+        }
         RETURN_NDARRAY(rtn, return_value);
     } else {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
