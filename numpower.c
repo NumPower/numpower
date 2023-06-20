@@ -23,11 +23,11 @@
 #include "src/ndmath/linalg.h"
 #include "config.h"
 #include "src/types.h"
-#include "src/ndmath/cuda/cuda_math.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
+#include "src/ndmath/cuda/cuda_math.h"
 #endif
 
 /* For compatibility with older PHP versions */
@@ -683,6 +683,246 @@ ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_transpose, 0, 0, 1)
     ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, transpose)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::copy
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_copy, 0, 0, 1)
+                ZEND_ARG_INFO(0, array)
+                ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, copy)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::atleast_1d
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_atleast_1d, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, atleast_1d)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::atleast_2d
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_atleast_2d, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, atleast_2d)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::atleast_3d
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_atleast_3d, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, atleast_3d)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::shape
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_shape, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, shape)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+    axis_i = (int)axis;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Transpose(nda, NULL);
+        add_to_buffer(rtn, sizeof(NDArray));
+        RETURN_NDARRAY(rtn, return_value);
+    } else {
+        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+            zend_throw_error(NULL, "Axis not supported for GPU operation");
+            return;
+        }
+        zend_throw_error(NULL, "Not implemented");
+        return;
+    }
+}
+
+/**
+ * NDArray::flat
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_flat, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, flat)
 {
     NDArray *rtn = NULL;
     zval *array;
@@ -1519,6 +1759,182 @@ PHP_METHOD(NDArray, mean)
 }
 
 /**
+ * NDArray::median
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_median, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, median)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int i_axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    i_axis = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+    } else {
+#ifdef HAVE_CUBLAS
+        if (ZEND_NUM_ARGS() == 1) {
+            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        } else {
+            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
+        }
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::std
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_std, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, std)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int i_axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    i_axis = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+    } else {
+#ifdef HAVE_CUBLAS
+        if (ZEND_NUM_ARGS() == 1) {
+            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        } else {
+            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
+        }
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::std
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_average, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, average)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int i_axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    i_axis = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+    } else {
+#ifdef HAVE_CUBLAS
+        if (ZEND_NUM_ARGS() == 1) {
+            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        } else {
+            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
+        }
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::variance
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_variance, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, variance)
+{
+    NDArray *rtn = NULL;
+    zval *array;
+    long axis;
+    int i_axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    i_axis = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+    } else {
+#ifdef HAVE_CUBLAS
+        if (ZEND_NUM_ARGS() == 1) {
+            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        } else {
+            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
+        }
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::ceil
  *
  * @param execute_data
@@ -2195,6 +2611,358 @@ PHP_METHOD(NDArray, matmul)
 }
 
 /**
+ * NDArray::inner
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_inner, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, inner)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
+    rtn = NDArray_Matmul(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::outer
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_outer, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, outer)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
+    rtn = NDArray_Matmul(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::dot
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_dot, 0)
+        ZEND_ARG_INFO(0, a)
+        ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, dot)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
+    rtn = NDArray_Matmul(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::trace
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_trace, 0)
+        ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, trace)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::eig
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_eig, 0)
+        ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, eig)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::cholesky
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_cholesky, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, cholesky)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::solve
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_solve, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, solve)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::lstsq
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_lstsq, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, lstsq)
+{
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
+    rtn = NDArray_Matmul(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::qr
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_qr, 0)
+                ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, qr)
+{
+    NDArray **rtns;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtns = NDArray_SVD(nda);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
+}
+
+/**
+ * NDArray::lu
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_lu, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, lu)
+{
+    NDArray **rtns;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtns = NDArray_SVD(nda);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
+}
+
+/**
+ * NDArray::norm
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_norm, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, norm)
+{
+    NDArray **rtns;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtns = NDArray_SVD(nda);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
+}
+
+/**
+ * NDArray::cond
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_cond, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, cond)
+{
+    NDArray **rtns;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtns = NDArray_SVD(nda);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
+}
+
+/**
+ * NDArray::inv
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_inv, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, inv)
+{
+    NDArray **rtns;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(a)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtns = NDArray_SVD(nda);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    efree(rtns);
+}
+
+/**
  * NDArray::svd
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_svd, 0)
@@ -2536,8 +3304,6 @@ int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) 
 static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, __destruct, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump_devices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
@@ -2545,6 +3311,17 @@ static const zend_function_entry class_NDArray_methods[] = {
 
         ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
+        // MANIPULATION
+        ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, copy, arginfo_ndarray_copy, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, shape, arginfo_ndarray_shape, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, flat, arginfo_ndarray_flat, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, atleast_1d, arginfo_ndarray_atleast_1d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // INITIALIZERS
         ZEND_ME(NDArray, zeros, arginfo_ndarray_zeros, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -2563,12 +3340,22 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, svd, arginfo_ndarray_svd, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, det, arginfo_ndarray_det, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, dot, arginfo_ndarray_dot, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, inner, arginfo_ndarray_inner, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, outer, arginfo_ndarray_outer, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, cholesky, arginfo_ndarray_cholesky, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, qr, arginfo_ndarray_qr, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, eig, arginfo_ndarray_eig, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, cond, arginfo_ndarray_cond, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, norm, arginfo_ndarray_norm, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, trace, arginfo_ndarray_trace, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, solve, arginfo_ndarray_solve, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, inv, arginfo_ndarray_inv, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, lstsq, arginfo_ndarray_lstsq, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, lu, arginfo_ndarray_lu, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-
-        // MANIPULATION
-        ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // MATH
         ZEND_ME(NDArray, abs, arginfo_ndarray_abs, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -2608,6 +3395,10 @@ static const zend_function_entry class_NDArray_methods[] = {
 
         // STATISTICS
         ZEND_ME(NDArray, mean, arginfo_ndarray_mean, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, median, arginfo_ndarray_median, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, variance, arginfo_ndarray_variance, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, average, arginfo_ndarray_average, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, std, arginfo_ndarray_std, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // ARITHMETICS
         ZEND_ME(NDArray, add, arginfo_ndarray_add, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

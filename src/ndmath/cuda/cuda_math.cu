@@ -26,14 +26,16 @@
   } \
 } while (0)
 
-#define CHECK_CUBLAS(func) do { \
-  cusolverStatus_t status = (func); \
-  if (status != CUSOLVER_STATUS_SUCCESS) { \
-    printf("cuBLAS API failed at line %d with error: %d\n", \
-           __LINE__, status); \
-    return EXIT_FAILURE; \
-  } \
-} while (0)
+__global__ void transposeFloatMatrixKernel(const float* input, float* output, int rows, int cols) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < rows && col < cols) {
+        int input_index = row * cols + col;
+        int output_index = col * rows + row;
+        output[output_index] = input[input_index];
+    }
+}
 
 __device__ float clipFloatValue(float value, float minVal, float maxVal) {
     return fminf(fmaxf(value, minVal), maxVal);
@@ -1043,6 +1045,14 @@ extern "C" {
         NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
         op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn), val1, val2);
         return rtn;
+    }
+
+    void
+    cuda_float_transpose(float *target, float *rtn, int rows, int cols) {
+        dim3 blockSize(32, 32);
+        dim3 gridSize((cols + blockSize.x - 1) / blockSize.x, (rows + blockSize.y - 1) / blockSize.y);
+        // Launch the kernel
+        transposeFloatMatrixKernel<<<gridSize, blockSize>>>(target, rtn, rows, cols);
     }
 
 }

@@ -1,10 +1,10 @@
 --TEST--
-Check if phpsci_ndarray is loaded
+Check if ndarray is loaded
 --EXTENSIONS--
-phpsci_ndarray
+ndarray
 --FILE--
 <?php
-echo 'The extension "phpsci_ndarray" is available';
+echo 'The extension "ndarray" is available';
 ?>
 --EXPECT--
-The extension "phpsci_ndarray" is available
+The extension "ndarray" is available

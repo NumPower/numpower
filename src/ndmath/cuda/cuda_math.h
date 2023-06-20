@@ -57,8 +57,7 @@ extern "C" {
     void cuda_float_negate(int nblocks, float *d_array);
     void cuda_float_sign(int nblocks, float *d_array);
     void cuda_float_clip(int nblocks, float *d_array, float minVal, float maxVal);
-
-
+    void cuda_float_transpose(float *target, float *rtn, int rows, int cols);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 #ifdef __cplusplus
 }

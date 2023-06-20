@@ -294,11 +294,34 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
     rtn->base = target;
     rtn->ndim = out_ndim;
     rtn->device = NDArray_DEVICE(target);
-    rtn->descriptor = Create_Descriptor(total_num_elements, sizeof(double), NDARRAY_TYPE_DOUBLE64);
+    rtn->descriptor = Create_Descriptor(total_num_elements, sizeof(float), NDARRAY_TYPE_FLOAT32);
     NDArray_ADDREF(target);
     return rtn;
 }
 
+/**
+ * Initialize NDArray with empty values
+ *
+ * @param shape
+ * @param ndim
+ * @return
+ */
+NDArray*
+NDArray_Empty(int *shape, int ndim, const char *type, int device) {
+    NDArray* rtn = Create_NDArray(shape, ndim, type);
+    if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
+        if (device == NDARRAY_DEVICE_CPU) {
+            rtn->device = NDARRAY_DEVICE_CPU;
+            rtn->data = emalloc(rtn->descriptor->numElements * sizeof(float));
+        } else {
+#ifdef HAVE_CUBLAS
+            rtn->device = NDARRAY_DEVICE_GPU;
+            cudaMalloc((void**)&rtn->data, rtn->descriptor->numElements * sizeof(float));
+#endif
+        }
+    }
+    return rtn;
+}
 
 /**
  * Initialize NDArray with zeros

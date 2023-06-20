@@ -46,14 +46,14 @@ PHP_CHECK_LIBRARY(cblas,cblas_sdot,
   AC_DEFINE(HAVE_CBLAS,1,[ ])
   PHP_ADD_LIBRARY(cblas,,NDARRAY_SHARED_LIBADD)
   AC_MSG_RESULT([CBlas detected ])
-  EXTRA_LDFLAGS = "$EXTRA_LDFLAGS -lcblas"
+  CFLAGS+=" -lcblas "
 ],[
   PHP_CHECK_LIBRARY(openblas,cblas_sdot,
   [
     PHP_ADD_LIBRARY(openblas,,NDARRAY_SHARED_LIBADD)
     AC_MSG_RESULT([OpenBLAS detected ])
     AC_DEFINE(HAVE_CBLAS,1,[ ])
-    EXTRA_LDFLAGS="$EXTRA_LDFLAGS -lopenblas -lpthread"
+    CFLAGS+=" -lopenblas -lpthread "
   ],[
     AC_MSG_ERROR([wrong openblas/blas version or library not found.])
   ],[
@@ -146,7 +146,6 @@ if test "$PHP_NDARRAY" != "no"; then
 
   dnl In case of no dependencies
   AC_DEFINE(HAVE_NDARRAY, 1, [ Have ndarray support ])
-
   PHP_NEW_EXTENSION(ndarray,
       numpower.c \
       src/initializers.c \

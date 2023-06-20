@@ -9,12 +9,19 @@
 #include "types.h"
 #include <cblas.h>
 
+#ifdef HAVE_CUBLAS
+#include <cuda_runtime.h>
+#include <cublas_v2.h>
+#include "ndmath/cuda/cuda_math.h"
+#endif
+
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
 
 
-void transposeMatrix(float* matrix, float* output, int rows, int cols) {
+void
+transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
     int i, j;
     for ( i = 0; i < rows; i++) {
         for ( j = 0; j < cols; j++) {
@@ -23,18 +30,42 @@ void transposeMatrix(float* matrix, float* output, int rows, int cols) {
     }
 }
 
+void reverse_copy(const int* src, int* dest, int size) {
+    for (int i = size - 1; i >= 0; i--) {
+        dest[i] = src[size - i - 1];
+    }
+}
+
+/**
+ * @param a
+ * @param permute
+ * @return
+ */
 NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
     NDArray *ret = NULL;
+
+    if (NDArray_NDIM(a) == 1) {
+        int ndim = NDArray_NDIM(a);
+        return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
+    }
+
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    memcpy(new_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
-    ret = NDArray_Zeros(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32);
+    reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
+    ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+
     // @todo Implement N-dimensinal permutation
     if (NDArray_NDIM(a) != 2) {
         zend_throw_error(NULL, "must be a 2-d array");
         return NULL;
     }
-    transposeMatrix(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cuda_float_transpose(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+#endif
+    } else {
+        transposeMatrixFloat(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+    }
     return ret;
 }
 
