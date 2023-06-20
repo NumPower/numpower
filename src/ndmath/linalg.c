@@ -8,6 +8,7 @@
 #include "../types.h"
 #include "../debug.h"
 #include "../manipulation.h"
+#include "arithmetics.h"
 
 #ifdef HAVE_LAPACKE
 #include <lapacke.h>
@@ -21,8 +22,6 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "cuda/cuda_math.h"
-#include "arithmetics.h"
-
 #endif
 
 /**
@@ -46,16 +45,6 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
         NDArray_FREE(result);
         cuda_matmul_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(result_gpu),
                           NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[0]);
-        //cublasHandle_t handle;
-        //cublasCreate(&handle);
-
-        //float alpha = 1.0, beta = 0.0;
-
-        //cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N,
-        //            NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
-        //            &alpha, NDArray_FDATA(b), NDArray_SHAPE(b)[1], NDArray_FDATA(a), NDArray_SHAPE(a)[1], &beta,
-        //            NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
-        //cublasDestroy(handle);
         return result_gpu;
 #endif
     } else {
@@ -280,10 +269,15 @@ NDArray_Det(NDArray *a) {
 NDArray*
 NDArray_Inner(NDArray *nda, NDArray *ndb) {
     NDArray *rtn = NULL;
+
+    if (NDArray_NDIM(nda) == 0 && NDArray_NDIM(ndb) == 0) {
+        return NDArray_Multiply_Float(nda, ndb);
+    }
+
     int i;
     int last_dim_a, last_dim_b;
     if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
-        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        zend_throw_error(NULL, "Device mismatch, both NDArray must be in the same device.");
         return NULL;
     }
 

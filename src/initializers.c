@@ -580,6 +580,7 @@ NDArray_CreateFromDoubleScalar(double scalar) {
     rtn->dimensions = NULL;
     rtn->iterator = NULL;
     rtn->base = NULL;
+    rtn->refcount = 1;
     ((float*)rtn->data)[0] = (float)scalar;
 
     return rtn;
@@ -604,6 +605,7 @@ NDArray_CreateFromFloatScalar(float scalar) {
     rtn->dimensions = NULL;
     rtn->iterator = NULL;
     rtn->base = NULL;
+    rtn->refcount = 1;
     ((float *)rtn->data)[0] = scalar;
 
     return rtn;
@@ -628,6 +630,7 @@ NDArray_CreateFromLongScalar(long scalar) {
     rtn->dimensions = NULL;
     rtn->iterator = NULL;
     rtn->base = NULL;
+    rtn->refcount = 1;
     ((float*)rtn->data)[0] = (float)scalar;
 
     return rtn;

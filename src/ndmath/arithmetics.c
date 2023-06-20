@@ -221,7 +221,8 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
  * @param b
  * @return
  */
-NDArray* NDArray_Multiply_Float(NDArray* a, NDArray* b) {
+NDArray*
+NDArray_Multiply_Float(NDArray* a, NDArray* b) {
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
@@ -234,13 +235,15 @@ NDArray* NDArray_Multiply_Float(NDArray* a, NDArray* b) {
 
     if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) == 0) {
         if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
             int *shape = ecalloc(1, sizeof(int));
             NDArray *rtn = NDArray_Empty(shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
             cuda_multiply_float(1, NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(rtn), 1);
             return rtn;
+#endif
         } else {
             int *shape = ecalloc(1, sizeof(int));
-            NDArray *rtn = NDArray_Zeros(shape, 0, NDARRAY_TYPE_FLOAT32);
+            NDArray *rtn = NDArray_Empty(shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
             NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] * NDArray_FDATA(b)[0];
             return rtn;
         }
