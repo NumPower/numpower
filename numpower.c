@@ -1,5 +1,3 @@
-/* phpsci_ndarray extension for PHP */
-
 #ifdef HAVE_CONFIG_H
 # include "config.h"
 #endif
@@ -71,13 +69,6 @@ NDArray* ZVALUUID_TO_NDARRAY(zval* obj) {
         return buffer_get(get_object_uuid(obj));
     }
     return NULL;
-}
-
-zval* NDARRAY_TO_ZVAL(NDArray* ndarray) {
-    zval* a = emalloc(sizeof(zval));
-    object_init_ex(a, phpsci_ce_NDArray);
-    ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(a), 0), NDArray_UUID(ndarray));
-    return a;
 }
 
 void CHECK_INPUT_AND_FREE(zval *a, NDArray *nda) {
@@ -269,7 +260,7 @@ PHP_METHOD(NDArray, dump)
 
 ZEND_BEGIN_ARG_INFO(arginfo_dump_devices, 0)
 ZEND_END_ARG_INFO();
-PHP_METHOD(NDArray, dump_devices)
+PHP_METHOD(NDArray, dumpDevices)
 {
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
@@ -2706,7 +2697,6 @@ PHP_METHOD(NDArray, dot)
         return;
     }
     rtn = NDArray_Dot(nda, ndb);
-
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
@@ -3311,7 +3301,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, __destruct, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, dump_devices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, dumpDevices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, cpu, arginfo_cpu, ZEND_ACC_PUBLIC)
 
