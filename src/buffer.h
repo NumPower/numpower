@@ -10,6 +10,7 @@ struct MemoryStack {
     int bufferSize;     // Current size of the buffer
     int numElements;
     int lastFreed;
+    int totalGPUAllocated;
 };
 
 extern struct MemoryStack MAIN_MEM_STACK;

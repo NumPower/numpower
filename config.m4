@@ -154,6 +154,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/debug.c \
       src/buffer.c \
       src/logic.c \
+      src/gpu_alloc.c \
       src/ndmath/linalg.c \
       src/manipulation.c \
       src/iterators.c \

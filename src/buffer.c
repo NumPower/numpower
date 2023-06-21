@@ -37,6 +37,7 @@ void buffer_init(int size) {
     MAIN_MEM_STACK.bufferSize = size;
     MAIN_MEM_STACK.numElements = 0;
     MAIN_MEM_STACK.lastFreed = -1;
+    MAIN_MEM_STACK.totalGPUAllocated = 0;
 }
 
 /**

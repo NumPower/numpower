@@ -22,6 +22,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "cuda/cuda_math.h"
+#include "../gpu_alloc.h"
 #endif
 
 /**
@@ -125,9 +126,9 @@ NDArray_SVD(NDArray *target) {
     }
     if(NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        cudaMalloc((void**)&Sf, sizeof(float) * smallest_dim);
-        cudaMalloc((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
-        cudaMalloc((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
+        NDArray_VMALLOC((void**)&Sf, sizeof(float) * smallest_dim);
+        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
+        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
         cudaDeviceSynchronize();
         output_data = NDArray_FDATA(target);
  #else
@@ -216,7 +217,7 @@ NDArray_Det(NDArray *a) {
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         rtn->device = NDARRAY_DEVICE_GPU;
-        cudaMalloc((void **)&rtn->data, sizeof(float));
+        NDArray_VMALLOC((void **)&rtn->data, sizeof(float));
         cuda_det_float(NDArray_FDATA(a), NDArray_FDATA(rtn), NDArray_SHAPE(a)[0]);
 #endif
     } else {

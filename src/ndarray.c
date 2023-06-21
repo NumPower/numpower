@@ -20,6 +20,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
+#include "gpu_alloc.h"
 #endif
 
 void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArray*, NDArray*)) {
@@ -297,7 +298,7 @@ NDArray_FREE(NDArray* array) {
                 efree(array->data);
             } else {
 #ifdef HAVE_CUBLAS
-                cudaFree(array->data);
+                NDArray_VFREE(array->data);
 #endif
             }
         }
@@ -311,6 +312,7 @@ NDArray_FREE(NDArray* array) {
         }
 
         efree(array);
+        array = NULL;
     }
 }
 
@@ -625,7 +627,7 @@ NDArray_ToGPU(NDArray *target)
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32);
     rtn->device = NDARRAY_DEVICE_GPU;
 
-    cudaMalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
+    NDArray_VMALLOC((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
     cudaMemcpy(tmp_gpu, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyHostToDevice);
     cudaError_t err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
@@ -720,21 +722,4 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
 
     // If we've passed all checks, arrays are broadcastable
     return 1;
-}
-
-/**
- * Broadcast NDArray *a to NDArray *b shape and strides
- *
- * @param a
- * @param b
- * @return
- */
-NDArray*
-NDArray_Broadcast(NDArray *a, NDArray *b) {
-    if (!NDArray_IsBroadcastable(a, b)) {
-        zend_throw_error(NULL, "Can´t broadcast array.");
-        return NULL;
-    }
-
-
 }

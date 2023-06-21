@@ -15,6 +15,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
+#include "gpu_alloc.h"
 #endif
 
 #ifdef HAVE_AVX2
@@ -312,11 +313,11 @@ NDArray_Empty(int *shape, int ndim, const char *type, int device) {
     if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
         if (device == NDARRAY_DEVICE_CPU) {
             rtn->device = NDARRAY_DEVICE_CPU;
-            rtn->data = emalloc(rtn->descriptor->numElements * sizeof(float));
+            rtn->data = emalloc(NDArray_NUMELEMENTS(rtn) * sizeof(float));
         } else {
 #ifdef HAVE_CUBLAS
             rtn->device = NDARRAY_DEVICE_GPU;
-            cudaMalloc((void**)&rtn->data, rtn->descriptor->numElements * sizeof(float));
+            NDArray_VMALLOC((void **) &rtn->data, NDArray_NUMELEMENTS(rtn) * sizeof(float));
 #endif
         }
     }
@@ -574,8 +575,8 @@ NDArray_CreateFromDoubleScalar(double scalar) {
     rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
     rtn->data = emalloc(sizeof(float));
     rtn->device = NDARRAY_DEVICE_CPU;
-    rtn->strides = NULL;
-    rtn->dimensions = NULL;
+    rtn->strides = emalloc(sizeof(int));
+    rtn->dimensions = emalloc(sizeof(int));
     rtn->iterator = NULL;
     rtn->base = NULL;
     rtn->refcount = 1;
@@ -599,8 +600,8 @@ NDArray_CreateFromFloatScalar(float scalar) {
     rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
     rtn->data = emalloc(sizeof(float));
     rtn->device = NDARRAY_DEVICE_CPU;
-    rtn->strides = NULL;
-    rtn->dimensions = NULL;
+    rtn->strides = emalloc(sizeof(int));
+    rtn->dimensions = emalloc(sizeof(int));
     rtn->iterator = NULL;
     rtn->base = NULL;
     rtn->refcount = 1;
@@ -624,8 +625,8 @@ NDArray_CreateFromLongScalar(long scalar) {
     rtn->descriptor->type = NDARRAY_TYPE_FLOAT32;
     rtn->data = emalloc(sizeof(float));
     rtn->device = NDARRAY_DEVICE_CPU;
-    rtn->strides = NULL;
-    rtn->dimensions = NULL;
+    rtn->strides = emalloc(sizeof(int));
+    rtn->dimensions = emalloc(sizeof(int));
     rtn->iterator = NULL;
     rtn->base = NULL;
     rtn->refcount = 1;
@@ -652,8 +653,9 @@ NDArray_Copy(NDArray *a, int device) {
         rtn->device = NDARRAY_DEVICE_GPU;
         rtn->refcount = 1;
         rtn->flags = 0;
+        rtn->base = NULL;
         rtn->ndim = NDArray_NDIM(a);
-        cudaMalloc((void **) &rtn->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &rtn->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaMemcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float), cudaMemcpyDeviceToDevice);
         rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
         rtn->descriptor->numElements = NDArray_NUMELEMENTS(a);
@@ -667,14 +669,20 @@ NDArray_Copy(NDArray *a, int device) {
 #endif
     } else {
         rtn = emalloc(sizeof(NDArray));
-        rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(a));
-        memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
-        rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
-        memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
+        if (NDArray_NDIM(a) > 0) {
+            rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(a));
+            memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
+            rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+            memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
+        } else {
+            rtn->dimensions = emalloc(sizeof(int));
+            rtn->strides = emalloc(sizeof(int));
+        }
         rtn->device = NDARRAY_DEVICE_CPU;
         rtn->refcount = 1;
         rtn->flags = 0;
         rtn->ndim = NDArray_NDIM(a);
+        rtn->base = NULL;
         rtn->data = emalloc(NDArray_NUMELEMENTS(a) * sizeof(float));
         memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float));
         rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
@@ -684,5 +692,4 @@ NDArray_Copy(NDArray *a, int device) {
         NDArrayIterator_INIT(rtn);
         return rtn;
     }
-    return NULL;
 }

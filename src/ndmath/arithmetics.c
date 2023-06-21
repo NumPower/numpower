@@ -16,6 +16,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "cuda/cuda_math.h"
+#include "../gpu_alloc.h"
 #endif
 
 #ifdef HAVE_CBLAS
@@ -151,7 +152,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
     result->ndim = a->ndim;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
 #endif
     } else {
@@ -271,7 +272,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
     result->device = NDArray_DEVICE(a);
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -371,7 +372,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
     result->ndim = a->ndim;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -473,7 +474,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     result->ndim = a->ndim;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -571,7 +572,7 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
     result->ndim = a->ndim;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -655,7 +656,7 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
     result->ndim = a->ndim;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        cudaMalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif

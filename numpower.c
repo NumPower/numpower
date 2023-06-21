@@ -26,6 +26,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "src/ndmath/cuda/cuda_math.h"
+#include "src/gpu_alloc.h"
 #endif
 
 /* For compatibility with older PHP versions */
@@ -938,43 +939,28 @@ PHP_METHOD(NDArray, shape)
 }
 
 /**
- * NDArray::flat
+ * NDArray::flatten
  *
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_flat, 0, 0, 1)
-    ZEND_ARG_INFO(0, array)
-    ZEND_ARG_INFO(0, axis)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_flat, 0, 0, 0)
+    ZEND_ARG_INFO(0, a)
 ZEND_END_ARG_INFO()
-PHP_METHOD(NDArray, flat)
+PHP_METHOD(NDArray, flatten)
 {
     NDArray *rtn = NULL;
-    zval *array;
-    long axis;
-    int axis_i;
+    zval *a;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(array)
-            Z_PARAM_OPTIONAL
-            Z_PARAM_LONG(axis)
+        Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
-        return;
-    }
+    rtn = NDArray_Flatten(nda);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**
@@ -3341,7 +3327,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, copy, arginfo_ndarray_copy, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, shape, arginfo_ndarray_shape, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, flat, arginfo_ndarray_flat, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, flatten, arginfo_ndarray_flat, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, atleast_1d, arginfo_ndarray_atleast_1d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3532,6 +3518,9 @@ PHP_MINFO_FUNCTION(ndarray)
 
 PHP_RSHUTDOWN_FUNCTION(ndarray)
 {
+#ifdef HAVE_CUBLAS
+    NDArray_VCHECK();
+#endif
     buffer_free();
     return SUCCESS;
 }

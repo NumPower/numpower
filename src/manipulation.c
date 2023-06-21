@@ -106,3 +106,22 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
     NDArray_ADDREF(target);
     return rtn;
 }
+
+/**
+ * @param target
+ * @return
+ */
+NDArray*
+NDArray_Flatten(NDArray *target)
+{
+    NDArray *rtn = NDArray_Copy(target, NDArray_DEVICE(target));
+    rtn->ndim = 1;
+    if (NDArray_NDIM(target) == 0) {
+        rtn->dimensions[0] = 1;
+        rtn->strides[0] = NDArray_ELSIZE(target);
+        return rtn;
+    }
+    if (NDArray_NDIM(target) == 1) {
+        return rtn;
+    }
+}

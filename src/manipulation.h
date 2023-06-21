@@ -5,6 +5,7 @@
 
 NDArray* NDArray_Transpose(NDArray *a, NDArray_Dims *permute);
 NDArray* NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
+NDArray* NDArray_Flatten(NDArray *target);
 void reverse_copy(const int* src, int* dest, int size);
 void copy(const int* src, int* dest, int size);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H
