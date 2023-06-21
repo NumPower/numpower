@@ -3421,12 +3421,12 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, prod, arginfo_ndarray_prod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, mod, arginfo_ndarray_mod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
-        ZEND_ME(NDArray, count, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, current, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, key, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, next, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, rewind, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, valid, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, count, arginfo_count, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, current, arginfo_current, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, key, arginfo_key, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, next, arginfo_next, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, rewind, arginfo_rewind, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, valid, arginfo_valid, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, __toString, arginfo_ndarray_prod___toString, ZEND_ACC_PUBLIC)
         ZEND_FE_END
 };
