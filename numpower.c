@@ -984,15 +984,8 @@ PHP_METHOD(NDArray, abs)
         return;
     }
 
-    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        rtn = NDArray_Map(nda, float_abs);
-    } else {
-#ifdef HAVE_CUBLAS
-        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_abs);
-#else
-        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
-#endif
-    }
+    rtn = NDArray_Abs(nda);
+
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
@@ -2897,27 +2890,29 @@ PHP_METHOD(NDArray, lu)
 /**
  * NDArray::norm
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_norm, 0)
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_norm, 1)
     ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, order)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, norm)
 {
-    NDArray **rtns;
-    zval *a, *b;
-    long axis;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    NDArray *rtn;
+    zval *a;
+    long order = INT_MAX;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_ZVAL(a)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_LONG(order)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
 
-    rtns = NDArray_SVD(nda);
+    rtn = NDArray_Norm(nda, (int)order);
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
-    efree(rtns);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**

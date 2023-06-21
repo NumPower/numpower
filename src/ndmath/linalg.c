@@ -9,6 +9,7 @@
 #include "../debug.h"
 #include "../manipulation.h"
 #include "arithmetics.h"
+#include "../iterators.h"
 
 #ifdef HAVE_LAPACKE
 #include <lapacke.h>
@@ -352,6 +353,72 @@ NDArray_Dot(NDArray *nda, NDArray *ndb) {
         // @todo Implement missing conditional
         zend_throw_error(NULL, "Not implemented");
         return NULL;
+    }
+    return NULL;
+}
+
+/**
+ * L2 NORM
+ *
+ * @param target
+ * @return
+ */
+NDArray*
+NDArray_L2Norm(NDArray* target) {
+    NDArray *rtn = NULL;
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        int *rtn_shape = emalloc(sizeof(int));
+        rtn = NDArray_Empty(rtn_shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
+        cuda_matrix_float_l2norm(NDArray_FDATA(target), NDArray_FDATA(rtn), NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
+#endif
+    } else {
+
+    }
+    return rtn;
+}
+
+/**
+ * L1 NORM
+ *
+ * @param target
+ * @return
+ */
+NDArray*
+NDArray_L1Norm(NDArray* target) {
+    NDArray *rtn = NULL;
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        int *rtn_shape = emalloc(sizeof(int));
+        rtn = NDArray_Empty(rtn_shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
+        cuda_matrix_float_l1norm(NDArray_FDATA(target), NDArray_FDATA(rtn), NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
+#endif
+    } else {
+
+    }
+    return rtn;
+}
+
+/**
+ * Matrix or vector norm
+ *
+ * Types
+ *  INT_MAX - Frobenius norm
+ *  0 - sum(x!=0) Only Vectors
+ *  1 - max(sum(abs(x), axis=0))
+ * -1 - min(sum(abs(x), axis=0))
+ *  2 - 2-norm
+ * -2 - smallest singular value
+ * @param target
+ * @return
+ */
+NDArray*
+NDArray_Norm(NDArray* target, int type) {
+    if (type == 1) {
+        return NDArray_L1Norm(target);
+    }
+    if (type == 2) {
+        return NDArray_L2Norm(target);
     }
     return NULL;
 }

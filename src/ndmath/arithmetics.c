@@ -11,12 +11,14 @@
 #include "../debug.h"
 #include "linalg.h"
 #include "../manipulation.h"
+#include "double_math.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "cuda/cuda_math.h"
 #include "../gpu_alloc.h"
+
 #endif
 
 #ifdef HAVE_CBLAS
@@ -691,5 +693,26 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
         }
     }
     return result;
+}
+
+/**
+ * NDArray::abs
+ *
+ * @param nda
+ * @return
+ */
+NDArray*
+NDArray_Abs(NDArray *nda) {
+    NDArray *rtn = NULL;
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_abs);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_abs);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    return rtn;
 }
 

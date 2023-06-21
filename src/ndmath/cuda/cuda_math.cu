@@ -26,6 +26,49 @@
   } \
 } while (0)
 
+__global__ void l2NormFloatKernel(const float* input, const int size, float* result)
+{
+    __shared__ float sdata[1024];  // Shared memory for intermediate results
+    const int tid = threadIdx.x;
+    const int idx = blockIdx.x * blockDim.x + tid;
+
+    // Each thread loads one element from global memory to shared memory
+    if (idx < size)
+        sdata[tid] = input[idx];
+    else
+        sdata[tid] = 0.0f;
+
+    __syncthreads();
+
+    // Perform parallel reduction in shared memory
+    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
+    {
+        if (tid < s)
+        {
+            sdata[tid] += sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    // Store the final result in global memory
+    if (tid == 0)
+    {
+        atomicAdd(result, sdata[0] * sdata[0]);
+    }
+}
+
+__global__ void matrixL1NormFloatKernel(const float* matrix, float* result, int rows, int cols) {
+    int idx = threadIdx.x + blockIdx.x * blockDim.x;
+    float sum = 0.0f;
+
+    while (idx < rows * cols) {
+        sum += fabsf(matrix[idx]);
+        idx += blockDim.x * gridDim.x;
+    }
+
+    atomicAdd(result, sum);
+}
+
 __global__ void matrixVectorMultiplyFloatKernel(float* a, float* b, float* result, int rows, int cols) {
     int row = blockIdx.x * blockDim.x + threadIdx.x;
 
@@ -1088,6 +1131,45 @@ extern "C" {
         dim3 gridSize((cols + blockSize.x - 1) / blockSize.x, (rows + blockSize.y - 1) / blockSize.y);
         // Launch the kernel
         transposeFloatMatrixKernel<<<gridSize, blockSize>>>(target, rtn, rows, cols);
+    }
+
+    void
+    cuda_matrix_float_l1norm(float *target, float *rtn, int rows, int cols) {
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (rows * cols + threadsPerBlock - 1) / threadsPerBlock;
+
+        matrixL1NormFloatKernel<<<blocksPerGrid, threadsPerBlock>>>(target, rtn, rows, cols);
+    }
+
+    int
+    cuda_matrix_float_l2norm(float *target, float *rtn, int rows, int cols) {
+        cusolverDnHandle_t handle;
+        CHECK_CUSOLVER(cusolverDnCreate(&handle));
+
+        // Calculate workspace size for SVD
+        int work_size;
+        CHECK_CUSOLVER(cusolverDnSgesvd_bufferSize(handle, rows, cols, &work_size));
+
+        // Allocate workspace
+        float* d_work;
+        CHECK_CUDA(cudaMalloc((void**)&d_work, work_size));
+
+        // Allocate singular values
+        float* d_singular_values;
+        CHECK_CUDA(cudaMalloc((void**)&d_singular_values, cols * sizeof(float)));
+
+        // Perform SVD
+        CHECK_CUSOLVER(cusolverDnSgesvd(handle, 'N', 'N', rows, cols, target, rows, d_singular_values, NULL, rows, NULL, cols, d_work, work_size, NULL, NULL));
+
+        // Copy singular values back to host
+        float singular_values[cols];
+        CHECK_CUDA(cudaMemcpy(rtn, d_singular_values, sizeof(float), cudaMemcpyDeviceToDevice));
+
+        // Cleanup
+        CHECK_CUDA(cudaFree(d_work));
+        CHECK_CUDA(cudaFree(d_singular_values));
+        CHECK_CUSOLVER(cusolverDnDestroy(handle));
+        return 0;
     }
 
 }
