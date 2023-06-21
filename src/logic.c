@@ -103,7 +103,7 @@ NDArray_Equal(NDArray* nda, NDArray* ndb) {
             __m256 cmp = _mm256_cmp_ps(vec1, vec2, _CMP_EQ_OQ);
 
             // Convert comparison results to float (1.0 for true, 0.0 for false)
-            __m256 resultVec = _mm256_cvtepi32_ps(_mm256_castps_si256(cmp));
+            __m256 resultVec = _mm256_and_ps(cmp, _mm256_set1_ps(1.0f));
 
             // Store the results
             _mm256_storeu_ps(&NDArray_FDATA(result)[i], resultVec);
@@ -111,16 +111,16 @@ NDArray_Equal(NDArray* nda, NDArray* ndb) {
 
         // Process remaining elements using scalar operations
         for (; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = (NDArray_FDATA(nda)[i] == NDArray_FDATA(ndb)[i]) ? 1.0f : 0.0f;
+            NDArray_FDATA(result)[i] = (fabsf(NDArray_FDATA(nda)[i] - NDArray_FDATA(ndb)[i]) <= 0.0000001f) ? 1.0f : 0.0f;
         }
         return result;
 #else
         for (i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = (fabs(NDArray_FDATA(nda)[i] - NDArray_FDATA(ndb)[i]) <= 0.0000001f) ? 1.0f : 0.0f;
+            NDArray_FDATA(result)[i] = (fabsf(NDArray_FDATA(nda)[i] - NDArray_FDATA(ndb)[i]) <= 0.0000001f) ? 1.0f : 0.0f;
         }
+#endif
     }
     return result;
-#endif
 }
 
 /**
