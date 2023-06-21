@@ -2,6 +2,8 @@
 #include "ndarray.h"
 #include "iterators.h"
 #include "../config.h"
+#include "initializers.h"
+#include <Zend/zend.h>
 
 
 #ifdef HAVE_CUBLAS
@@ -53,6 +55,71 @@ NDArray_All(NDArray *a) {
         }
     }
     return 1;
+#endif
+}
+
+/**
+ * Return if NDArray is equal element-wise
+ *
+ * @param nda
+ * @param ndb
+ * @return
+ */
+NDArray*
+NDArray_Equal(NDArray* nda, NDArray* ndb) {
+    if (NDArray_DEVICE(nda) != NDArray_DEVICE(ndb)) {
+        zend_throw_error(NULL, "Devices mismatch in `equal` function");
+        return NULL;
+    }
+
+    int i;
+    int *rtn_shape = emalloc(sizeof(int) * NDArray_NDIM(nda));
+
+    for (i = 0; i < NDArray_NDIM(nda); i++) {
+        rtn_shape[i] = NDArray_SHAPE(nda)[i];
+    }
+
+    NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(nda), NDArray_TYPE(nda), NDArray_DEVICE(nda));
+    if (NDArray_NUMELEMENTS(nda) != NDArray_NUMELEMENTS(ndb)) {
+        zend_throw_error(NULL, "Incompatible shapes in `equal` function");
+        return NULL;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cuda_float_compare_equal(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
+                                 NDArray_NUMELEMENTS(nda));
+#endif
+    } else {
+#if HAVE_AVX2
+        // Process 8 elements at a time using AVX2
+        i = 0;
+        for (; i < NDArray_NUMELEMENTS(nda) - 7; i += 8) {
+            // Load 8 elements from each array
+            __m256 vec1 = _mm256_loadu_ps(&NDArray_FDATA(nda)[i]);
+            __m256 vec2 = _mm256_loadu_ps(&NDArray_FDATA(ndb)[i]);
+
+            // Compare elements for equality
+            __m256 cmp = _mm256_cmp_ps(vec1, vec2, _CMP_EQ_OQ);
+
+            // Convert comparison results to float (1.0 for true, 0.0 for false)
+            __m256 resultVec = _mm256_cvtepi32_ps(_mm256_castps_si256(cmp));
+
+            // Store the results
+            _mm256_storeu_ps(&NDArray_FDATA(result)[i], resultVec);
+        }
+
+        // Process remaining elements using scalar operations
+        for (; i < NDArray_NUMELEMENTS(nda); i++) {
+            NDArray_FDATA(result)[i] = (NDArray_FDATA(nda)[i] == NDArray_FDATA(ndb)[i]) ? 1.0f : 0.0f;
+        }
+        return result;
+#else
+        for (i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
+            NDArray_FDATA(result)[i] = (fabs(NDArray_FDATA(nda)[i] - NDArray_FDATA(ndb)[i]) <= 0.0000001f) ? 1.0f : 0.0f;
+        }
+    }
+    return result;
 #endif
 }
 

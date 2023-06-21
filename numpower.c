@@ -370,6 +370,40 @@ PHP_METHOD(NDArray, zeros)
 }
 
 /**
+ * NDArray::equal
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_equal, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, equal)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_Equal(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+
+/**
  * NDArray::identity
  *
  * @param execute_data
@@ -414,9 +448,7 @@ PHP_METHOD(NDArray, normal)
             Z_PARAM_DOUBLE(scale)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
-    if (nda == NULL) {
-        return;
-    }
+    if (nda == NULL) return;
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -445,9 +477,7 @@ PHP_METHOD(NDArray, standard_normal)
             Z_PARAM_ZVAL(size)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(size);
-    if (nda == NULL) {
-        return;
-    }
+    if (nda == NULL) return;
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_DDATA(nda)[i];
@@ -544,9 +574,7 @@ PHP_METHOD(NDArray, diag)
             Z_PARAM_ZVAL(target)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(target);
-    if (nda == NULL) {
-        return;
-    }
+    if (nda == NULL)  return;
     rtn = NDArray_Diag(nda);
     if (Z_TYPE_P(target) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -3352,6 +3380,7 @@ static const zend_function_entry class_NDArray_methods[] = {
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, equal, arginfo_ndarray_equal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // MATH
         ZEND_ME(NDArray, abs, arginfo_ndarray_abs, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3485,6 +3514,7 @@ PHP_MINIT_FUNCTION(ndarray)
 
 PHP_RINIT_FUNCTION(ndarray)
 {
+    srand(time(NULL));
     bypass_printr();
     buffer_init(2);
 #if defined(ZTS) && defined(COMPILE_DL_NDARRAY)

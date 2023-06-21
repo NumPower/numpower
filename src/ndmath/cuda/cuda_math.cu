@@ -38,6 +38,13 @@ __global__ void matrixVectorMultiplyFloatKernel(float* a, float* b, float* resul
     }
 }
 
+__global__ void compareArraysFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = (fabsf(array1[index] - array2[index]) <= 0.00000001) ? 1.0f : 0.0f;
+    }
+}
+
 __global__ void transposeFloatMatrixKernel(const float* input, float* output, int rows, int cols) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -1050,6 +1057,14 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         matrixVectorMultiplyFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, rows, cols);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_equal(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
         cudaDeviceSynchronize();
     }
 

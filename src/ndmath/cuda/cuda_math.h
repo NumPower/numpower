@@ -59,6 +59,7 @@ extern "C" {
     void cuda_float_clip(int nblocks, float *d_array, float minVal, float maxVal);
     void cuda_float_transpose(float *target, float *rtn, int rows, int cols);
     void cuda_float_multiply_matrix_vector(int nblocks, float *a_array, float *b_array, float *result, int rows, int cols);
+    void cuda_float_compare_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
 
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 #ifdef __cplusplus
