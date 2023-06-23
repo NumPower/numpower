@@ -70,7 +70,7 @@ PHP_CHECK_LIBRARY(lapack,dgesvd_,
   AC_DEFINE(HAVE_LAPACKE,1,[ ])
   PHP_ADD_LIBRARY(lapack,,NDARRAY_SHARED_LIBADD)
   AC_MSG_RESULT([LAPACKE detected ])
-  CFLAGS+=" -llapack "
+  CFLAGS+=" -llapack -llapacke "
 ],[
     AC_MSG_ERROR([wrong LAPACKE version or library not found.])
 ])

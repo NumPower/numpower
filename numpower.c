@@ -2888,6 +2888,41 @@ PHP_METHOD(NDArray, lu)
 }
 
 /**
+ * NDArray::lu
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_matrix_rank, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, matrix_rank)
+{
+    NDArray *rtn;
+    zval *a, *b;
+    long axis;
+    double tol = 1e-6;
+    float tol_p;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_DOUBLE(tol)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    tol_p = (float)tol;
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_MatrixRank(nda, NULL);
+    } else {
+        rtn = NDArray_MatrixRank(nda, &tol_p);
+    }
+
+
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::norm
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_norm, 1)
@@ -3358,6 +3393,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, inv, arginfo_ndarray_inv, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, lstsq, arginfo_ndarray_lstsq, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, lu, arginfo_ndarray_lu, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, matrix_rank, arginfo_ndarray_matrix_rank, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

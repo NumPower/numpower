@@ -13,4 +13,5 @@ NDArray* NDArray_L1Norm(NDArray* target);
 NDArray* NDArray_L2Norm(NDArray* target);
 NDArray* NDArray_Inverse(NDArray* target);
 NDArray** NDArray_LU(NDArray* target);
+NDArray* NDArray_MatrixRank(NDArray *target, float *tol);
 #endif //PHPSCI_NDARRAY_LINALG_H

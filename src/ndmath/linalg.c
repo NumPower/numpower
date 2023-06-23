@@ -66,38 +66,19 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
 
 void
 computeSVDFloat(float* A, int m, int n, float* U, float* S, float* V) {
-    int lda = m;
+    int lda = n;
     int ldu = m;
     int ldvt = n;
 
     int info;
 
-    // Compute workspace size
-    float work_size;
-    int lwork = -1;  // query the workspace size
-#ifdef LAPACK_FORTRAN_STRLEN_END
-    sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info, 0, 0);
-#else
-    sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, &work_size, &lwork, &info);
-#endif
-    // Allocate workspace
-    lwork = (int)work_size;
-    float* work = (float*)emalloc(sizeof(float) * lwork);
-
-    // Compute SVD
-#ifdef LAPACK_FORTRAN_STRLEN_END
-    sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info, 0, 0);
-#else
-    sgesvd_("A", "A", &m, &n, A, &lda, S, U, &ldu, V, &ldvt, work, &lwork, &info);
-#endif
+    info = LAPACKE_sgesdd(LAPACK_ROW_MAJOR, 'S', m, n, A, lda, S, U, ldu, V, ldvt);
 
     if (info > 0) {
         printf("SVD computation failed.\n");
         return;
     }
 
-    // Free allocated memory
-    efree(work);
 }
 
 #ifdef HAVE_CUBLAS
@@ -140,11 +121,12 @@ NDArray_SVD(NDArray *target) {
     }
     if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
+        target_ptr = NDArray_Transpose(target, NULL);
         NDArray_VMALLOC((void**)&Sf, sizeof(float) * smallest_dim);
-        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target_ptr)[0] * NDArray_SHAPE(target_ptr)[0]);
-        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target_ptr)[1] * NDArray_SHAPE(target_ptr)[1]);
+        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
+        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
         NDArray_VMALLOC((void**)&output_data, sizeof(float) * NDArray_NUMELEMENTS(target));
-        cudaMemcpy(output_data, NDArray_FDATA(target), sizeof(float) * NDArray_NUMELEMENTS(target), cudaMemcpyDeviceToDevice);
+        cudaMemcpy(output_data, NDArray_FDATA(target_ptr), sizeof(float) * NDArray_NUMELEMENTS(target), cudaMemcpyDeviceToDevice);
         cudaDeviceSynchronize();
  #else
         return NULL;
@@ -159,8 +141,7 @@ NDArray_SVD(NDArray *target) {
 
     if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-
-        computeSVDFloatGPU(output_data, NDArray_SHAPE(target_ptr)[0], NDArray_SHAPE(target_ptr)[1], Uf, Sf, Vf);
+        computeSVDFloatGPU(output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
 #else
         return NULL;
 #endif
@@ -205,6 +186,7 @@ NDArray_SVD(NDArray *target) {
         rtn_s->device = NDARRAY_DEVICE_GPU;
         rtn_v->device = NDARRAY_DEVICE_GPU;
         NDArray_VFREE(output_data);
+        NDArray_FREE(target_ptr);
     }
 
     return rtns;
@@ -649,4 +631,46 @@ NDArray_LU(NDArray* target) {
     return rtns;
 }
 
+/**
+ * NDArray matrix rank
+ *
+ * @param target
+ * @param tol
+ * @return
+ */
+NDArray*
+NDArray_MatrixRank(NDArray *target, float *tol)
+{
+    float mtol;
+    int rank = 0;
+    NDArray *rtn;
+    NDArray **svd = NDArray_SVD(target);
+    float *singular_values = NDArray_FDATA(svd[1]);
+    int minMN = (NDArray_SHAPE(target)[NDArray_NDIM(target) - 2] < (NDArray_SHAPE(target)[NDArray_NDIM(target) - 1])) ? (NDArray_SHAPE(target)[NDArray_NDIM(target) - 2]) : (NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
 
+    // Set the tolerance if not provided
+    if (tol == NULL) {
+        float maxSingularValue = singular_values[0];
+        for (int i = 1; i < minMN; i++) {
+            if (singular_values[i] > maxSingularValue) {
+                maxSingularValue = singular_values[i];
+            }
+        }
+        mtol = maxSingularValue * fmaxf((float)NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], (float)NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]) * FLT_EPSILON;
+    } else {
+        mtol = *tol;
+    }
+
+    for (int i = 0; i < minMN; i++) {
+        if (singular_values[i] > mtol) {
+            rank++;
+        }
+    }
+
+    NDArray_FREE(svd[0]);
+    NDArray_FREE(svd[1]);
+    NDArray_FREE(svd[2]);
+    efree(svd);
+    rtn = NDArray_CreateFromLongScalar((int)rank);
+    return rtn;
+}

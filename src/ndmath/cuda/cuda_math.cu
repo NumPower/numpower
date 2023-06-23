@@ -29,7 +29,7 @@
 
 // CUDA kernel for LU decomposition
 __global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, float *P, int size) {
-    int i, j, k, maxIndex;
+    int i, k, maxIndex;
     float maxVal, tempVal;
 
     int row = blockIdx.y * blockDim.y + threadIdx.y;
