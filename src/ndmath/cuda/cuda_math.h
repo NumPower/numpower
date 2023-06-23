@@ -62,6 +62,7 @@ extern "C" {
     void cuda_float_compare_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
     void cuda_matrix_float_l1norm(float *target, float *rtn, int rows, int cols);
     int cuda_matrix_float_l2norm(float *target, float *rtn, int rows, int cols);
+    void cuda_matrix_float_inverse(float* matrix, int n);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 #ifdef __cplusplus
 }

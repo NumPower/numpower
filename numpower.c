@@ -2949,22 +2949,21 @@ ZEND_BEGIN_ARG_INFO(arginfo_ndarray_inv, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, inv)
 {
-    NDArray **rtns;
+    NDArray *rtn;
     zval *a, *b;
     long axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
 
-    rtns = NDArray_SVD(nda);
+    rtn = NDArray_Inverse(nda);
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
-    efree(rtns);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**
@@ -2985,9 +2984,10 @@ PHP_METHOD(NDArray, svd)
     if (nda == NULL) {
         return;
     }
-
     rtns = NDArray_SVD(nda);
-
+    if (rtns == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
     efree(rtns);

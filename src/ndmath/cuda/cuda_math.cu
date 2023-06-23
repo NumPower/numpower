@@ -1,6 +1,7 @@
 #include "cuda_math.h"
 #include <cuda_runtime.h>
 #include "../../ndarray.h"
+#include "../../gpu_alloc.h"
 #include "../../initializers.h"
 #include "../../debug.h"
 #include <float.h>
@@ -1161,8 +1162,6 @@ extern "C" {
         // Perform SVD
         CHECK_CUSOLVER(cusolverDnSgesvd(handle, 'N', 'N', rows, cols, target, rows, d_singular_values, NULL, rows, NULL, cols, d_work, work_size, NULL, NULL));
 
-        // Copy singular values back to host
-        float singular_values[cols];
         CHECK_CUDA(cudaMemcpy(rtn, d_singular_values, sizeof(float), cudaMemcpyDeviceToDevice));
 
         // Cleanup
@@ -1170,6 +1169,45 @@ extern "C" {
         CHECK_CUDA(cudaFree(d_singular_values));
         CHECK_CUSOLVER(cusolverDnDestroy(handle));
         return 0;
+    }
+
+    void cuda_matrix_float_inverse(float* matrix, int n) {
+        cusolverDnHandle_t cusolverH;
+        cusolverDnCreate(&cusolverH);
+
+        float* d_matrix = matrix;
+
+        int* d_info;
+        NDArray_VMALLOC((void**)&d_info, sizeof(int));
+
+        int lwork;
+        cusolverDnSgetrf_bufferSize(cusolverH, n, n, d_matrix, n, &lwork);
+
+        float* d_work;
+        NDArray_VMALLOC((void**)&d_work, lwork * sizeof(float));
+
+        int* d_pivot;
+        NDArray_VMALLOC((void**)&d_pivot, n * sizeof(int));
+
+        cusolverDnSgetrf(cusolverH, n, n, d_matrix, n, d_work, d_pivot, d_info);
+
+        float* d_identity;
+        NDArray_VMALLOC((void**)&d_identity, n * n * sizeof(float));
+        cudaMemset(d_identity, 0, n * n * sizeof(float));
+        float onef = 1.0f;
+        for (int i = 0; i < n; ++i)
+            cudaMemcpy(d_identity + i * n + i, &onef, sizeof(float), cudaMemcpyHostToDevice);
+
+        cusolverDnSgetrs(cusolverH, CUBLAS_OP_N, n, n, d_matrix, n, d_pivot, d_identity, n, d_info);
+
+        cudaMemcpy(matrix, d_identity, n * n * sizeof(float), cudaMemcpyDeviceToHost);
+
+        NDArray_VFREE(d_info);
+        NDArray_VFREE(d_work);
+        NDArray_VFREE(d_pivot);
+        NDArray_VFREE(d_identity);
+
+        cusolverDnDestroy(cusolverH);
     }
 
 }

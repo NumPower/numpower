@@ -108,71 +108,80 @@ computeSVDFloatGPU(float* A, int m, int n, float* U, float* S, float* V) {
 NDArray**
 NDArray_SVD(NDArray *target) {
     NDArray **rtns;
+    NDArray *target_ptr = target;
     NDArray *rtn_s, *rtn_u, *rtn_v;
     double *U, *S, *V;
     float *output_data;
     float  *Uf, *Sf, *Vf;
     int *U_shape, *S_shape, *V_shape;
     int smallest_dim = -1;
+
+    if (NDArray_NDIM(target) == 1)
+    {
+        zend_throw_error(NULL, "Array must be at least two-dimensional");
+        return NULL;
+    }
+
     rtns = emalloc(sizeof(NDArray*) * 3);
 
-    for (int i = 0; i < NDArray_NDIM(target); i++) {
+    for (int i = 0; i < NDArray_NDIM(target_ptr); i++) {
         if (smallest_dim == -1) {
-            smallest_dim = NDArray_SHAPE(target)[i];
+            smallest_dim = NDArray_SHAPE(target_ptr)[i];
             continue;
         }
-        if (smallest_dim > NDArray_SHAPE(target)[i]) {
-            smallest_dim = NDArray_SHAPE(target)[i];
+        if (smallest_dim > NDArray_SHAPE(target_ptr)[i]) {
+            smallest_dim = NDArray_SHAPE(target_ptr)[i];
         }
     }
-    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+    if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         NDArray_VMALLOC((void**)&Sf, sizeof(float) * smallest_dim);
-        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
-        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
+        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target_ptr)[0] * NDArray_SHAPE(target_ptr)[0]);
+        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target_ptr)[1] * NDArray_SHAPE(target_ptr)[1]);
+        NDArray_VMALLOC((void**)&output_data, sizeof(float) * NDArray_NUMELEMENTS(target));
+        cudaMemcpy(output_data, NDArray_FDATA(target), sizeof(float) * NDArray_NUMELEMENTS(target), cudaMemcpyDeviceToDevice);
         cudaDeviceSynchronize();
-        output_data = NDArray_FDATA(target);
  #else
         return NULL;
 #endif
     } else {
         Sf = (float *) emalloc(sizeof(float) * smallest_dim);
-        Uf = (float *) emalloc(sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
-        Vf = (float *) emalloc(sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
-        output_data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(target));
-        memcpy(output_data, NDArray_FDATA(target), sizeof(float) * NDArray_NUMELEMENTS(target));
+        Uf = (float *) emalloc(sizeof(float) * NDArray_SHAPE(target_ptr)[0] * NDArray_SHAPE(target_ptr)[0]);
+        Vf = (float *) emalloc(sizeof(float) * NDArray_SHAPE(target_ptr)[1] * NDArray_SHAPE(target_ptr)[1]);
+        output_data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(target_ptr));
+        memcpy(output_data, NDArray_FDATA(target_ptr), sizeof(float) * NDArray_NUMELEMENTS(target_ptr));
     }
 
-    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+    if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
 
-        computeSVDFloatGPU(output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
+        computeSVDFloatGPU(output_data, NDArray_SHAPE(target_ptr)[0], NDArray_SHAPE(target_ptr)[1], Uf, Sf, Vf);
 #else
         return NULL;
 #endif
     } else {
-        computeSVDFloat((float *) output_data, NDArray_SHAPE(target)[0], NDArray_SHAPE(target)[1], Uf, Sf, Vf);
+        computeSVDFloat((float *) output_data, NDArray_SHAPE(target_ptr)[0], NDArray_SHAPE(target_ptr)[1], Uf, Sf, Vf);
     }
 
-    if(NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+    if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_CPU) {
         efree(output_data);
     }
-    U_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
-    V_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
+    U_shape = emalloc(sizeof(int) * NDArray_NDIM(target_ptr));
+    V_shape = emalloc(sizeof(int) * NDArray_NDIM(target_ptr));
     S_shape = emalloc(sizeof(int));
     S_shape[0] = smallest_dim;
 
-    memcpy(U_shape, NDArray_SHAPE(target), sizeof(int) * NDArray_NDIM(target));
-    U_shape[1] = NDArray_SHAPE(target)[0];
+    memcpy(U_shape, NDArray_SHAPE(target_ptr), sizeof(int) * NDArray_NDIM(target_ptr));
+    U_shape[1] = NDArray_SHAPE(target_ptr)[0];
 
-    memcpy(V_shape, NDArray_SHAPE(target), sizeof(int) * NDArray_NDIM(target));
-    V_shape[0] = NDArray_SHAPE(target)[1];
+    memcpy(V_shape, NDArray_SHAPE(target_ptr), sizeof(int) * NDArray_NDIM(target_ptr));
+    V_shape[0] = NDArray_SHAPE(target_ptr)[1];
 
-    rtn_u = Create_NDArray(U_shape, NDArray_NDIM(target), NDArray_TYPE(target));
-    rtn_s = Create_NDArray(S_shape, 1, NDArray_TYPE(target));
-    rtn_v = Create_NDArray(V_shape, NDArray_NDIM(target), NDArray_TYPE(target));
+    rtn_u = Create_NDArray(U_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr));
+    rtn_s = Create_NDArray(S_shape, 1, NDArray_TYPE(target_ptr));
+    rtn_v = Create_NDArray(V_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr));
 
-    if(is_type(NDArray_TYPE(target), NDARRAY_TYPE_DOUBLE64)) {
+    if(is_type(NDArray_TYPE(target_ptr), NDARRAY_TYPE_DOUBLE64)) {
         rtn_u->data = (char *) U;
         rtn_s->data = (char *) S;
         rtn_v->data = (char *) V;
@@ -186,10 +195,11 @@ NDArray_SVD(NDArray *target) {
     rtns[1] = rtn_s;
     rtns[2] = rtn_v;
 
-    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+    if (NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
         rtn_u->device = NDARRAY_DEVICE_GPU;
         rtn_s->device = NDARRAY_DEVICE_GPU;
         rtn_v->device = NDARRAY_DEVICE_GPU;
+        NDArray_VFREE(output_data);
     }
 
     return rtns;
@@ -366,15 +376,17 @@ NDArray_Dot(NDArray *nda, NDArray *ndb) {
 NDArray*
 NDArray_L2Norm(NDArray* target) {
     NDArray *rtn = NULL;
-    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        int *rtn_shape = emalloc(sizeof(int));
-        rtn = NDArray_Empty(rtn_shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
-        cuda_matrix_float_l2norm(NDArray_FDATA(target), NDArray_FDATA(rtn), NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
-#endif
-    } else {
-
+    NDArray **svd = NDArray_SVD(target);
+    if (svd == NULL) {
+        return NULL;
     }
+
+    float max_svd = NDArray_Max(svd[1]);
+    rtn = NDArray_CreateFromFloatScalar(max_svd);
+    NDArray_FREE(svd[0]);
+    NDArray_FREE(svd[1]);
+    NDArray_FREE(svd[2]);
+    efree(svd);
     return rtn;
 }
 
@@ -387,6 +399,7 @@ NDArray_L2Norm(NDArray* target) {
 NDArray*
 NDArray_L1Norm(NDArray* target) {
     NDArray *rtn = NULL;
+    float norm = 0.0f;
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         int *rtn_shape = emalloc(sizeof(int));
@@ -394,7 +407,26 @@ NDArray_L1Norm(NDArray* target) {
         cuda_matrix_float_l1norm(NDArray_FDATA(target), NDArray_FDATA(rtn), NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
 #endif
     } else {
+        int i, j;
+        // Iterate over each element in the array
+        // Iterate over each element in the array
+        for (i = 0; i < NDArray_NDIM(target); i++)
+        {
+            // Calculate the offset for the current dimension (in bytes)
+            int offset = 0;
+            for (j = 0; j < NDArray_NDIM(target); j++)
+            {
+                offset += NDArray_STRIDES(target)[j] * i;
+            }
 
+            // Calculate the norm for the current dimension
+            int num_elements = NDArray_STRIDES(target)[i] / sizeof(float);
+            for (j = 0; j < num_elements; j++)
+            {
+                norm += fabsf(NDArray_FDATA(target)[offset + j * NDArray_STRIDES(target)[i] / sizeof(float)]);
+            }
+        }
+        rtn = NDArray_CreateFromFloatScalar(norm);
     }
     return rtn;
 }
@@ -421,6 +453,78 @@ NDArray_Norm(NDArray* target, int type) {
         return NDArray_L2Norm(target);
     }
     return NULL;
+}
+
+/**
+ *
+ * @param matrix
+ * @param n
+ * @return 1 if succeeded, 0 if failed
+ */
+int
+matrixFloatInverse(float* matrix, int n) {
+    int* ipiv = (int*)emalloc(n * sizeof(int)); // Pivot indices
+    int info; // Status variable
+
+    // Perform LU factorization
+    sgetrf_(&n, &n, matrix, &n, ipiv, &info);
+    if (info != 0) {
+        zend_throw_error(NULL, "LU factorization failed. Unable to compute the matrix inverse.\n");
+        efree(ipiv);
+        return 0;
+    }
+
+    // Calculate the inverse
+    int lwork = n * n;
+    float work_query[lwork];
+    sgetri_(&n, matrix, &n, ipiv, work_query, &lwork, &info);
+    if (info != 0) {
+        zend_throw_error(NULL, "Matrix inversion failed.\n");
+        efree(ipiv);
+        return 0;
+    }
+
+    efree(ipiv);
+    return 1;
+}
+
+/**
+ * Calculate the inverse of a square NDArray
+ *
+ * @param target
+ * @return
+ */
+NDArray*
+NDArray_Inverse(NDArray* target) {
+    int info;
+    NDArray *rtn = NDArray_Copy(target, NDArray_DEVICE(target));
+    if (NDArray_NDIM(target) != 2) {
+        zend_throw_error(NULL, "Array must be at least two-dimensional");
+        NDArray_FREE(rtn);
+        return NULL;
+    }
+
+    if (NDArray_SHAPE(target)[0] != NDArray_SHAPE(target)[1]) {
+        zend_throw_error(NULL, "Array must be square");
+        NDArray_FREE(rtn);
+        return NULL;
+    }
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        // CPU INVERSE CALL
+        info = matrixFloatInverse(NDArray_FDATA(rtn), NDArray_SHAPE(rtn)[0]);
+        if (!info) {
+            NDArray_FREE(rtn);
+            return NULL;
+        }
+    } else {
+        // GPU INVERSE CALL
+#ifdef HAVE_CUBLAS
+        cuda_matrix_float_inverse(NDArray_FDATA(rtn), NDArray_SHAPE(rtn)[0]);
+#endif
+    }
+
+    return rtn;
 }
 
 
