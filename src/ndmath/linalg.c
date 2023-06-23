@@ -386,35 +386,26 @@ NDArray_L2Norm(NDArray* target) {
 NDArray*
 NDArray_L1Norm(NDArray* target) {
     NDArray *rtn = NULL;
-    float norm = 0.0f;
-    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        int *rtn_shape = emalloc(sizeof(int));
-        rtn = NDArray_Empty(rtn_shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
-        cuda_matrix_float_l1norm(NDArray_FDATA(target), NDArray_FDATA(rtn), NDArray_SHAPE(target)[NDArray_NDIM(target) - 2], NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
-#endif
-    } else {
-        int i, j;
-        // Iterate over each element in the array
-        // Iterate over each element in the array
-        for (i = 0; i < NDArray_NDIM(target); i++)
-        {
-            // Calculate the offset for the current dimension (in bytes)
-            int offset = 0;
-            for (j = 0; j < NDArray_NDIM(target); j++)
-            {
-                offset += NDArray_STRIDES(target)[j] * i;
-            }
-
-            // Calculate the norm for the current dimension
-            int num_elements = NDArray_STRIDES(target)[i] / sizeof(float);
-            for (j = 0; j < num_elements; j++)
-            {
-                norm += fabsf(NDArray_FDATA(target)[offset + j * NDArray_STRIDES(target)[i] / sizeof(float)]);
-            }
-        }
-        rtn = NDArray_CreateFromFloatScalar(norm);
+    float max_value = FLT_MIN;
+    float *results = emalloc(sizeof(float) * NDArray_SHAPE(target)[NDArray_NDIM(target) - 2]);
+    NDArray *transposed = NDArray_Transpose(target, NULL);
+    NDArray *ab = NDArray_Abs(transposed);
+    NDArray_FREE(transposed);
+    NDArray *slice;
+    while(!NDArrayIterator_ISDONE(ab)){
+        slice = NDArrayIterator_GET(ab);
+        results[ab->iterator->current_index] = NDArray_Sum_Float(slice);
+        NDArray_FREE(slice);
+        NDArrayIterator_NEXT(ab);
     }
+    for (int i = 0; i < NDArray_SHAPE(target)[NDArray_NDIM(target) - 2]; i++) {
+        if (max_value < results[i]) {
+            max_value = results[i];
+        }
+    }
+    efree(results);
+    NDArray_FREE(ab);
+    rtn = NDArray_CreateFromFloatScalar(max_value);
     return rtn;
 }
 
