@@ -27,6 +27,62 @@
   } \
 } while (0)
 
+// CUDA kernel for LU decomposition
+__global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, float *P, int size) {
+    int i, j, k, maxIndex;
+    float maxVal, tempVal;
+
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < size && col < size) {
+        // Initialize L, U, and P matrices
+        if (row == col) {
+            L[row * size + col] = 1.0f;
+            U[row * size + col] = matrix[row * size + col];
+        } else {
+            L[row * size + col] = 0.0f;
+            U[row * size + col] = matrix[row * size + col];
+        }
+        P[row * size + col] = (row == col) ? 1.0f : 0.0f;
+
+        // Perform LU decomposition with partial pivoting
+        for (k = 0; k < size - 1; k++) {
+            maxIndex = k;
+            maxVal = U[k * size + k];
+
+            // Find the row with the maximum value in the current column
+            for (i = k + 1; i < size; i++) {
+                if (U[i * size + k] > maxVal) {
+                    maxIndex = i;
+                    maxVal = U[i * size + k];
+                }
+            }
+
+            // Swap rows in U matrix
+            if (maxIndex != k) {
+                tempVal = U[k * size + col];
+                U[k * size + col] = U[maxIndex * size + col];
+                U[maxIndex * size + col] = tempVal;
+
+                tempVal = P[k * size + col];
+                P[k * size + col] = P[maxIndex * size + col];
+                P[maxIndex * size + col] = tempVal;
+            }
+
+            __syncthreads();
+
+            // Perform elimination in U matrix and store multipliers in L matrix
+            if (row > k && col >= k) {
+                L[row * size + k] = U[row * size + k] / U[k * size + k];
+                U[row * size + col] -= L[row * size + k] * U[k * size + col];
+            }
+
+            __syncthreads();
+        }
+    }
+}
+
 __global__ void l2NormFloatKernel(const float* input, const int size, float* result)
 {
     __shared__ float sdata[1024];  // Shared memory for intermediate results
@@ -1135,6 +1191,15 @@ extern "C" {
     }
 
     void
+    cuda_float_lu(float *matrix, float *L, float *U, float *P, int size) {
+        int BLOCK_SIZE = 16;
+        dim3 gridSize((size + BLOCK_SIZE - 1) / BLOCK_SIZE, (size + BLOCK_SIZE - 1) / BLOCK_SIZE);
+        dim3 blockSize(BLOCK_SIZE, BLOCK_SIZE);
+
+        luFloatDecompositionKernel<<<gridSize, blockSize>>>(matrix, L, U, P, size);
+    }
+
+    void
     cuda_matrix_float_l1norm(float *target, float *rtn, int rows, int cols) {
         int threadsPerBlock = 256;
         int blocksPerGrid = (rows * cols + threadsPerBlock - 1) / threadsPerBlock;
@@ -1209,5 +1274,4 @@ extern "C" {
 
         cusolverDnDestroy(cusolverH);
     }
-
 }

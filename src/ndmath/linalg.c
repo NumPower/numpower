@@ -10,6 +10,7 @@
 #include "../manipulation.h"
 #include "arithmetics.h"
 #include "../iterators.h"
+#include "../gpu_alloc.h"
 
 #ifdef HAVE_LAPACKE
 #include <lapacke.h>
@@ -24,6 +25,10 @@
 #include <cublas_v2.h>
 #include "cuda/cuda_math.h"
 #include "../gpu_alloc.h"
+#endif
+
+#ifdef HAVE_AVX2
+#include <immintrin.h>
 #endif
 
 /**
@@ -489,6 +494,67 @@ matrixFloatInverse(float* matrix, int n) {
 }
 
 /**
+ *
+ * @param matrix
+ * @param n
+ * @return 1 if succeeded, 0 if failed
+ */
+int
+matrixFloatLU(float* matrix, int n, float *p, float *l, float *u) {
+    int i, j, k, maxIndex, tempIndex;
+    float maxVal, tempVal;
+
+    // Initialize L, U, and P matrices
+    for (i = 0; i < n; i++) {
+        for (j = 0; j < n; j++) {
+            if (i == j) {
+                l[i * n + j] = 1.0f;
+                u[i * n + j] = matrix[i * n + j];
+            } else {
+                l[i * n + j] = 0.0f;
+                u[i * n + j] = matrix[i * n + j];
+            }
+            p[i * n + j] = (i == j) ? 1.0f : 0.0f;
+        }
+    }
+
+    // Perform LU decomposition with partial pivoting
+    for (k = 0; k < n - 1; k++) {
+        maxIndex = k;
+        maxVal = u[k * n + k];
+
+        // Find the row with the maximum value in the current column
+        for (i = k + 1; i < n; i++) {
+            if (u[i * n + k] > maxVal) {
+                maxIndex = i;
+                maxVal = u[i * n + k];
+            }
+        }
+
+        // Swap rows in U matrix
+        if (maxIndex != k) {
+            for (j = 0; j < n; j++) {
+                tempVal = u[k * n + j];
+                u[k * n + j] = u[maxIndex * n + j];
+                u[maxIndex * n + j] = tempVal;
+
+                tempVal = p[k * n + j];
+                p[k * n + j] = p[maxIndex * n + j];
+                p[maxIndex * n + j] = tempVal;
+            }
+        }
+
+        // Perform elimination in U matrix and store multipliers in L matrix
+        for (i = k + 1; i < n; i++) {
+            l[i * n + k] = u[i * n + k] / u[k * n + k];
+            for (j = k; j < n; j++) {
+                u[i * n + j] -= l[i * n + k] * u[k * n + j];
+            }
+        }
+    }
+}
+
+/**
  * Calculate the inverse of a square NDArray
  *
  * @param target
@@ -525,6 +591,62 @@ NDArray_Inverse(NDArray* target) {
     }
 
     return rtn;
+}
+
+/**
+ * Calculate the inverse of a square NDArray
+ *
+ * @param target
+ * @return
+ */
+NDArray**
+NDArray_LU(NDArray* target) {
+    NDArray **rtns = emalloc(sizeof(NDArray*) * 3);
+    int info;
+    int *new_shape_p = emalloc(sizeof(int) * NDArray_NDIM(target));
+    int *new_shape_l = emalloc(sizeof(int) * NDArray_NDIM(target));
+    int *new_shape_u = emalloc(sizeof(int) * NDArray_NDIM(target));
+    copy(NDArray_SHAPE(target), new_shape_p, sizeof(int) * NDArray_NDIM(target));
+    copy(NDArray_SHAPE(target), new_shape_l, sizeof(int) * NDArray_NDIM(target));
+    copy(NDArray_SHAPE(target), new_shape_u, sizeof(int) * NDArray_NDIM(target));
+    NDArray *copied = NDArray_Copy(target, NDArray_DEVICE(target));
+    NDArray *p = NDArray_Empty(new_shape_p, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
+    NDArray *l = NDArray_Empty(new_shape_l, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
+    NDArray *u = NDArray_Empty(new_shape_u, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
+    if (NDArray_NDIM(target) != 2) {
+        zend_throw_error(NULL, "Array must be at least two-dimensional");
+        NDArray_FREE(copied);
+        return NULL;
+    }
+
+    if (NDArray_SHAPE(target)[0] != NDArray_SHAPE(target)[1]) {
+        zend_throw_error(NULL, "Array must be square");
+        NDArray_FREE(copied);
+        return NULL;
+    }
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        // CPU INVERSE CALL
+        info = matrixFloatLU(NDArray_FDATA(copied),
+                             NDArray_SHAPE(copied)[0],
+                             NDArray_FDATA(p),
+                             NDArray_FDATA(l),
+                             NDArray_FDATA(u));
+        if (!info) {
+            NDArray_FREE(copied);
+            return NULL;
+        }
+    } else {
+        // GPU INVERSE CALL
+#ifdef HAVE_CUBLAS
+        cuda_float_lu(NDArray_FDATA(copied), NDArray_FDATA(l), NDArray_FDATA(u), NDArray_FDATA(p), NDArray_SHAPE(copied)[0]);
+#endif
+    }
+    NDArray_FREE(copied);
+    rtns[0] = p;
+    rtns[1] = l;
+    rtns[2] = u;
+    return rtns;
 }
 
 

@@ -2880,7 +2880,7 @@ PHP_METHOD(NDArray, lu)
         return;
     }
 
-    rtns = NDArray_SVD(nda);
+    rtns = NDArray_LU(nda);
 
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
