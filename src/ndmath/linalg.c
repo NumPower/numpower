@@ -199,6 +199,26 @@ NDArray_SVD(NDArray *target) {
  */
 NDArray*
 NDArray_Matmul(NDArray *a, NDArray *b) {
+    if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
+        zend_throw_error(NULL, "Arrays must have the same shape. Broadcasting not implemented.");
+        return NULL;
+    }
+
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) == 0) {
+        return NDArray_Multiply_Float(a, b);
+    }
+    if (NDArray_NDIM(a) == 1 && NDArray_NDIM(b) == 1) {
+        return NDArray_Dot(a, b);
+    }
+
+    if (NDArray_SHAPE(a)[NDArray_NDIM(a) - 1] != NDArray_SHAPE(b)[NDArray_NDIM(b) - 2]) {
+        zend_throw_error(NULL, "Shape mismatch for matmul. cols(a) != rows(b)");
+    }
+
+    if (NDArray_NDIM(a) > 2 && NDArray_NDIM(b) > 2) {
+        zend_throw_error(NULL, "Stack of matrices not allowed");
+        return NULL;
+    }
     return NDArray_FMatmul(a, b);
 }
 
