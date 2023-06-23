@@ -642,16 +642,26 @@ NDArray*
 NDArray_MatrixRank(NDArray *target, float *tol)
 {
     float mtol;
-    int rank = 0;
+    int rank = 0, i;
     NDArray *rtn;
     NDArray **svd = NDArray_SVD(target);
-    float *singular_values = NDArray_FDATA(svd[1]);
+    int smallest_dim = -1;
+    float *singular_values;
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        singular_values = NDArray_FDATA(svd[1]);
+    } else {
+#ifdef HAVE_CUBLAS
+      singular_values = emalloc(sizeof(float) * NDArray_NUMELEMENTS(target));
+      cudaMemcpy(singular_values, NDArray_FDATA(svd[1]), sizeof(float) * NDArray_NUMELEMENTS(svd[1]), cudaMemcpyDeviceToHost);
+#endif
+    }
     int minMN = (NDArray_SHAPE(target)[NDArray_NDIM(target) - 2] < (NDArray_SHAPE(target)[NDArray_NDIM(target) - 1])) ? (NDArray_SHAPE(target)[NDArray_NDIM(target) - 2]) : (NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]);
 
     // Set the tolerance if not provided
     if (tol == NULL) {
         float maxSingularValue = singular_values[0];
-        for (int i = 1; i < minMN; i++) {
+        for (i = 1; i < minMN; i++) {
             if (singular_values[i] > maxSingularValue) {
                 maxSingularValue = singular_values[i];
             }
@@ -661,7 +671,7 @@ NDArray_MatrixRank(NDArray *target, float *tol)
         mtol = *tol;
     }
 
-    for (int i = 0; i < minMN; i++) {
+    for (i = 0; i < minMN; i++) {
         if (singular_values[i] > mtol) {
             rank++;
         }
@@ -672,5 +682,10 @@ NDArray_MatrixRank(NDArray *target, float *tol)
     NDArray_FREE(svd[2]);
     efree(svd);
     rtn = NDArray_CreateFromLongScalar((int)rank);
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+        efree(singular_values);
+    }
+
     return rtn;
 }
