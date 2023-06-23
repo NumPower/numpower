@@ -65,6 +65,7 @@ typedef struct NDArray {
     int flags;           // Describes NDArray memory approach (Memory related flags)
     NDArrayDescriptor* descriptor;    // NDArray data descriptor
     NDArrayIterator* iterator;
+    NDArrayIterator* php_iterator;
     int refcount;
     int device; // NDArray Device   0 = CPU     1 = GPU
 } NDArray;

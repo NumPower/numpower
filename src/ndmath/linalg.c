@@ -576,6 +576,14 @@ NDArray_Inverse(NDArray* target) {
  */
 NDArray**
 NDArray_LU(NDArray* target) {
+    if (NDArray_NDIM(target) != 2) {
+        zend_throw_error(NULL, "Array must be at least two-dimensional");
+        return NULL;
+    }
+    if (NDArray_SHAPE(target)[0] != NDArray_SHAPE(target)[1]) {
+        zend_throw_error(NULL, "Array must be square");
+        return NULL;
+    }
     NDArray **rtns = emalloc(sizeof(NDArray*) * 3);
     int info;
     int *new_shape_p = emalloc(sizeof(int) * NDArray_NDIM(target));
@@ -588,17 +596,6 @@ NDArray_LU(NDArray* target) {
     NDArray *p = NDArray_Empty(new_shape_p, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     NDArray *l = NDArray_Empty(new_shape_l, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     NDArray *u = NDArray_Empty(new_shape_u, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
-    if (NDArray_NDIM(target) != 2) {
-        zend_throw_error(NULL, "Array must be at least two-dimensional");
-        NDArray_FREE(copied);
-        return NULL;
-    }
-
-    if (NDArray_SHAPE(target)[0] != NDArray_SHAPE(target)[1]) {
-        zend_throw_error(NULL, "Array must be square");
-        NDArray_FREE(copied);
-        return NULL;
-    }
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
         // CPU INVERSE CALL

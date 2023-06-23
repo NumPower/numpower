@@ -294,8 +294,10 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
     rtn->data = target->data + buffer_offset;
     rtn->base = target;
     rtn->ndim = out_ndim;
+    rtn->refcount = 1;
     rtn->device = NDArray_DEVICE(target);
     rtn->descriptor = Create_Descriptor(total_num_elements, sizeof(float), NDARRAY_TYPE_FLOAT32);
+    NDArrayIterator_INIT(rtn);
     NDArray_ADDREF(target);
     return rtn;
 }

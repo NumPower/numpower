@@ -132,7 +132,6 @@ NDArray_Flatten(NDArray *target)
     if (NDArray_NDIM(target) == 1) {
         return rtn;
     }
-
     rtn->dimensions[0] = multiply_int_vector(NDArray_SHAPE(target), NDArray_NDIM(target));
     rtn->strides[0] = NDArray_ELSIZE(target);
     return rtn;

@@ -16,6 +16,11 @@ int NDArrayIterator_ISDONE(NDArray* array);
 void NDArrayIterator_NEXT(NDArray* array);
 void NDArrayIterator_FREE(NDArray* array);
 
+NDArray* NDArrayIteratorPHP_GET(NDArray* array);
+void NDArrayIteratorPHP_REWIND(NDArray* array);
+int NDArrayIteratorPHP_ISDONE(NDArray* array);
+void NDArrayIteratorPHP_NEXT(NDArray* array);
+
 
 NDArray* NDArrayAxisIterator_GET(NDArrayAxisIterator *it);
 void NDArrayAxisIterator_NEXT(NDArrayAxisIterator *it);

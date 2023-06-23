@@ -21,6 +21,7 @@
 #include "src/ndmath/linalg.h"
 #include "config.h"
 #include "src/types.h"
+#include "src/indexing.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -202,6 +203,12 @@ PHP_METHOD(NDArray, toArray)
         zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a PHP array.");
         return;
     }
+    if (NDArray_NDIM(array) == 0) {
+        RETURN_DOUBLE(NDArray_FDATA(array)[0]);
+        NDArray_FREE(array);
+        return;
+    }
+
     rtn = NDArray_ToPHPArray(array);
     NDArray_FREE(array);
     RETURN_ZVAL(&rtn, 0, 0);
@@ -589,6 +596,31 @@ PHP_METHOD(NDArray, diag)
  * @param execute_data
  * @param return_value
  */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_diagonal, 0, 0, 1)
+                ZEND_ARG_INFO(0, target)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, diagonal)
+{
+    NDArray *rtn = NULL;
+    zval* target;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(target)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(target);
+    if (nda == NULL)  return;
+    rtn = NDArray_Diagonal(nda, 0);
+    if (Z_TYPE_P(target) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::full
+ *
+ * @param execute_data
+ * @param return_value
+ */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_full, 0, 0, 2)
     ZEND_ARG_INFO(0, shape)
     ZEND_ARG_INFO(0, fill_value)
@@ -724,9 +756,7 @@ PHP_METHOD(NDArray, transpose)
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
         add_to_buffer(rtn, sizeof(NDArray));
-        if (Z_TYPE_P(array) == IS_ARRAY) {
-            NDArray_FREE(nda);
-        }
+        CHECK_INPUT_AND_FREE(array, nda);
         RETURN_NDARRAY(rtn, return_value);
     } else {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
@@ -904,37 +934,19 @@ PHP_METHOD(NDArray, atleast_3d)
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_shape, 0, 0, 1)
-    ZEND_ARG_INFO(0, array)
-    ZEND_ARG_INFO(0, axis)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_shape, 0, 0, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, shape)
 {
     NDArray *rtn = NULL;
-    zval *array;
-    long axis;
-    int axis_i;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(array)
-            Z_PARAM_OPTIONAL
-            Z_PARAM_LONG(axis)
+    zval *array = getThis();
+    ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
-    if (nda == NULL) {
-        return;
-    }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
-        return;
+
+    array_init_size(return_value, NDArray_NDIM(nda));
+    for (int i = 0; i < NDArray_NDIM(nda); i++) {
+        add_index_long(return_value, i, NDArray_SHAPE(nda)[i]);
     }
 }
 
@@ -2881,6 +2893,9 @@ PHP_METHOD(NDArray, lu)
     }
 
     rtns = NDArray_LU(nda);
+    if (rtns == NULL) {
+        return;
+    }
 
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
@@ -3233,7 +3248,9 @@ PHP_METHOD(NDArray, count)
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
-    ZVAL_LONG(OBJ_PROP_NUM(obj, 0), 1);
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    RETURN_LONG(NDArray_SHAPE(ndarray)[0]);
 }
 
 PHP_METHOD(NDArray, current)
@@ -3243,7 +3260,7 @@ PHP_METHOD(NDArray, current)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    NDArray* result  = NDArrayIterator_GET(ndarray);
+    NDArray* result  = NDArrayIteratorPHP_GET(ndarray);
     add_to_buffer(result, sizeof(NDArray));
     RETURN_NDARRAY(result, return_value);
 }
@@ -3262,7 +3279,7 @@ PHP_METHOD(NDArray, next)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    NDArrayIterator_NEXT(ndarray);
+    NDArrayIteratorPHP_NEXT(ndarray);
 }
 
 PHP_METHOD(NDArray, rewind)
@@ -3272,7 +3289,7 @@ PHP_METHOD(NDArray, rewind)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    NDArrayIterator_REWIND(ndarray);
+    NDArrayIteratorPHP_REWIND(ndarray);
 }
 
 PHP_METHOD(NDArray, valid)
@@ -3283,11 +3300,11 @@ PHP_METHOD(NDArray, valid)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    is_done = NDArrayIterator_ISDONE(ndarray);
+    is_done = NDArrayIteratorPHP_ISDONE(ndarray);
     if (is_done == 0) {
-        RETURN_LONG(1);
+        RETURN_BOOL(1);
     }
-    RETURN_LONG(0);
+    RETURN_BOOL(0);
 }
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_ndarray_prod___toString, 0, 0, IS_STRING, 0)
@@ -3362,6 +3379,9 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
+        // INDEXING
+        ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // INITIALIZERS
         ZEND_ME(NDArray, zeros, arginfo_ndarray_zeros, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

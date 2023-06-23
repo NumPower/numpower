@@ -19,29 +19,29 @@ void
 NDArray_Dump(NDArray* array)
 {
     int i;
-    php_printf("\n=================================================");
-    php_printf("\nNDArray.uuid\t\t\t%d", array->uuid);
-    php_printf("\nNDArray.dims\t\t\t[");
+    printf("\n=================================================");
+    printf("\nNDArray.uuid\t\t\t%d", array->uuid);
+    printf("\nNDArray.dims\t\t\t[");
     for(i = 0; i < array->ndim; i ++) {
-        php_printf(" %d", array->dimensions[i]);
+        printf(" %d", array->dimensions[i]);
     }
-    php_printf(" ]\n");
-    php_printf("NDArray.strides\t\t\t[");
+    printf(" ]\n");
+    printf("NDArray.strides\t\t\t[");
     for(i = 0; i < array->ndim; i ++) {
-        php_printf(" %d", array->strides[i]);
+        printf(" %d", array->strides[i]);
     }
-    php_printf(" ]\n");
-    php_printf("NDArray.ndim\t\t\t%d\n", array->ndim);
+    printf(" ]\n");
+    printf("NDArray.ndim\t\t\t%d\n", array->ndim);
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
-        php_printf("NDArray.device\t\t\t%s\n", "GPU");
+        printf("NDArray.device\t\t\t%s\n", "GPU");
     } else {
-        php_printf("NDArray.device\t\t\t%s\n", "CPU");
+        printf("NDArray.device\t\t\t%s\n", "CPU");
     }
-    php_printf("NDArray.refcount\t\t%d\n", array->refcount);
-    php_printf("NDArray.descriptor.elsize\t%d\n", array->descriptor->elsize);
-    php_printf("NDArray.descriptor.numElements\t%d\n", array->descriptor->numElements);
-    php_printf("NDArray.descriptor.type\t\t%s", array->descriptor->type);
-    php_printf("\n=================================================\n");
+    printf("NDArray.refcount\t\t%d\n", array->refcount);
+    printf("NDArray.descriptor.elsize\t%d\n", array->descriptor->elsize);
+    printf("NDArray.descriptor.numElements\t%d\n", array->descriptor->numElements);
+    printf("NDArray.descriptor.type\t\t%s", array->descriptor->type);
+    printf("\n=================================================\n");
 }
 
 /**
