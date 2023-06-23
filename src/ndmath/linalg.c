@@ -430,6 +430,8 @@ NDArray_Norm(NDArray* target, int type) {
     if (type == 2) {
         return NDArray_L2Norm(target);
     }
+
+    zend_throw_error(NULL, "NDArray_Norm: The provided norm `%d` is invalid", type);
     return NULL;
 }
 
