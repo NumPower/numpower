@@ -25,7 +25,13 @@
 
 void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArray*, NDArray*)) {
     NDArray* temp = operation(result, target);
-    memcpy(result->data, temp->data, result->descriptor->numElements * sizeof(double));
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        memcpy(result->data, temp->data, result->descriptor->numElements * sizeof(float));
+    } else {
+#ifdef HAVE_CUBLAS
+        NDArray_VMEMCPY_D2D(NDArray_DATA(temp), NDArray_DATA(result), result->descriptor->numElements * sizeof(float ));
+#endif
+    }
     NDArray_FREE(temp);
 }
 
@@ -51,7 +57,14 @@ void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray
         }
         if (rtn_init == 0) {
             rtn_init = 1;
-            memcpy(rtn->data, slice->data, rtn->descriptor->numElements * sizeof(float));
+            if (NDArray_DEVICE(rtn) == NDARRAY_DEVICE_CPU) {
+                memcpy(rtn->data, slice->data, rtn->descriptor->numElements * sizeof(float));
+            }
+#ifdef HAVE_CUBLAS
+            if (NDArray_DEVICE(rtn) == NDARRAY_DEVICE_GPU) {
+                NDArray_VMEMCPY_D2D(NDArray_DATA(slice), NDArray_DATA(rtn), rtn->descriptor->numElements * sizeof(float));
+            }
+#endif
             NDArrayIterator_NEXT(target);
             NDArray_FREE(slice);
             continue;
@@ -66,6 +79,7 @@ void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, 
     NDArray* slice;
     NDArray* rtn_slice;
     NDArrayIterator_REWIND(target);
+
     while(!NDArrayIterator_ISDONE(target)) {
         slice = NDArrayIterator_GET(target);
         if (axis != NULL && current_axis < *axis) {
@@ -96,7 +110,6 @@ _single_reduce_axis(int axis, NDArray* target, NDArray* rtn, float (*operation)(
     NDArray *slice;
     NDArrayAxisIterator *iterator = NDArrayAxisIterator_INIT(target, axis);
     NDArrayAxisIterator_REWIND(iterator);
-
     while(!NDArrayAxisIterator_ISDONE(iterator)) {
         slice = NDArrayAxisIterator_GET(iterator);
         NDArray_FDATA(rtn)[i] = operation(slice);
@@ -173,7 +186,7 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
     }
 
     // Allocate memory for the reduced buffer
-    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
     //if (reduced_buffer == NULL) {
     //    fprintf(stderr, "Memory allocation failed.\n");
     //    return;
@@ -249,7 +262,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     }
 
     // Allocate memory for the reduced buffer
-    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
 
     //if (reduced_buffer == NULL) {
     //    fprintf(stderr, "Memory allocation failed.\n");
@@ -364,7 +377,7 @@ NDArray_Compare(NDArray *a, NDArray *b) {
     int i;
     int *rtn_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
     memcpy(rtn_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
-    NDArray *rtn = NDArray_Zeros(rtn_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32);
+    NDArray *rtn = NDArray_Zeros(rtn_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
 
     // Check if arrays have the same dimension
     if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
@@ -447,7 +460,7 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
     int i;
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
     memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
-    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
 
     for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
         NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i]);
@@ -464,7 +477,7 @@ NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float 
     int i;
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
     memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
-    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
 
     for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
         NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i], val1, val2);
@@ -624,7 +637,7 @@ NDArray_ToGPU(NDArray *target)
     new_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     memcpy(new_shape, NDArray_SHAPE(target), sizeof(int) * NDArray_NDIM(target));
 
-    NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     rtn->device = NDARRAY_DEVICE_GPU;
 
     NDArray_VMALLOC((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
@@ -662,7 +675,7 @@ NDArray_ToCPU(NDArray *target)
     new_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     memcpy(new_shape, NDArray_SHAPE(target), sizeof(int) * NDArray_NDIM(target));
 
-    NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     rtn->device = NDARRAY_DEVICE_CPU;
 #ifdef HAVE_CUBLAS
     cudaMemcpy(rtn->data, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float ), cudaMemcpyDeviceToHost);
@@ -702,24 +715,97 @@ NDArray_ShapeCompare(NDArray *a, NDArray *b)
  */
 int
 NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
-    // If either array has 0 dimensions, they're not broadcastable
-    if (array1->ndim == 0 || array2->ndim == 0) {
-        return 0;
+    // Determine the maximum number of dimensions
+    int maxDims = (NDArray_NDIM(array1) > NDArray_NDIM(array2)) ? NDArray_NDIM(array1) : NDArray_NDIM(array2);
+
+    // Pad the shape arrays with 1s if necessary
+    int paddedShape1[maxDims];
+    int paddedShape2[maxDims];
+
+    for (int i = 0; i < maxDims; i++) {
+        paddedShape1[i] = (i < NDArray_NDIM(array1)) ? NDArray_SHAPE(array1)[i] : 1;
+        paddedShape2[i] = (i < NDArray_NDIM(array2)) ? NDArray_SHAPE(array2)[i] : 1;
     }
 
-    // Start from trailing dimensions and move forward
-    int i = array1->ndim - 1;
-    int j = array2->ndim - 1;
-
-    while (i >= 0 && j >= 0) {
-        // If dimensions are not equal and neither is 1, arrays are not broadcastable
-        if (array1->dimensions[i] != array2->dimensions[j] && array1->dimensions[i] != 1 && array2->dimensions[j] != 1) {
+    // Check if the modified arrays are broadcastable
+    for (int i = 0; i < maxDims; i++) {
+        if (paddedShape1[i] != paddedShape2[i] && paddedShape1[i] != 1 && paddedShape2[i] != 1) {
             return 0;
         }
-        i--;
-        j--;
     }
 
-    // If we've passed all checks, arrays are broadcastable
+    // Arrays are broadcastable
     return 1;
+}
+
+float*
+broadcastToFloat(float* a, float* b, int* a_shape, int* b_shape, int *a_strides, int *b_strides, int a_ndim, int b_ndim, int numelements) {
+    float *result;
+    int i, j;
+    int result_index, a_index;
+    if (a_ndim < b_ndim) {
+        // Expand rows
+
+    }
+
+    int b_last_dim1 = b_ndim - 2;
+    int b_last_dim = b_ndim - 1;
+    result = emalloc(numelements * sizeof(float));
+    if (a_ndim == b_ndim) {
+        // Expand columns
+        for (i = 0; i < b_shape[b_ndim - 2]; i++) {
+            for (j = 0; j < b_shape[b_ndim - 1]; j++) {
+                result_index = (i * (b_strides[b_last_dim1]));
+                result_index = (result_index + ((j * b_strides[b_last_dim]) * a_shape[b_last_dim])) / sizeof(float);
+                a_index = (i * a_strides[b_last_dim1]) / sizeof(float);
+                memcpy(&result[result_index], &a[a_index], sizeof(float) * a_shape[b_last_dim]);
+            }
+        }
+    }
+
+    return result;
+}
+
+/**
+ * Broadcast NDArrays
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Broadcast(NDArray *a, NDArray *b) {
+    int i = 0;
+    NDArray *src, *dst, *rtn;
+    src = a;
+    dst = b;
+    float *tmp_out;
+
+    if (NDArray_NDIM(a) == NDArray_NDIM(b)) {
+        int all_equal = 1;
+        for (i = 0; i < NDArray_NDIM(a); i++) {
+            if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
+                all_equal = 0;
+            }
+        }
+        if (all_equal == 1) {
+            return src;
+        }
+    }
+
+    if (!NDArray_IsBroadcastable(src, dst)) {
+        zend_throw_error(NULL, "Broadcast shape mismatch.");
+        return NULL;
+    }
+
+    rtn = NDArray_Copy(dst, NDArray_DEVICE(dst));
+
+    tmp_out = broadcastToFloat(NDArray_FDATA(src), NDArray_FDATA(dst), NDArray_SHAPE(src), NDArray_SHAPE(dst),
+                               NDArray_STRIDES(src), NDArray_STRIDES(dst), NDArray_NDIM(src), NDArray_NDIM(dst),
+                               NDArray_NUMELEMENTS(dst));
+
+    memcpy(NDArray_FDATA(rtn), tmp_out, NDArray_ELSIZE(dst) * NDArray_NUMELEMENTS(dst));
+    NDArray_Print(rtn, 0);
+    efree(tmp_out);
+    return rtn;
 }

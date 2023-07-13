@@ -40,7 +40,8 @@ NDArray_Dump(NDArray* array)
     printf("NDArray.refcount\t\t%d\n", array->refcount);
     printf("NDArray.descriptor.elsize\t%d\n", array->descriptor->elsize);
     printf("NDArray.descriptor.numElements\t%d\n", array->descriptor->numElements);
-    printf("NDArray.descriptor.type\t\t%s", array->descriptor->type);
+    printf("NDArray.descriptor.type\t\t%s\n", array->descriptor->type);
+    printf("NDArray.iterator.current_index\t\t%d", array->iterator->current_index);
     printf("\n=================================================\n");
 }
 

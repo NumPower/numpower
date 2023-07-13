@@ -45,7 +45,7 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
     output_shape[0] = NDArray_SHAPE(a)[0];
     output_shape[1] = NDArray_SHAPE(b)[1];
 
-    NDArray *result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32);
+    NDArray *result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         NDArray *result_gpu = NDArray_ToGPU(result);
@@ -163,9 +163,9 @@ NDArray_SVD(NDArray *target) {
     memcpy(V_shape, NDArray_SHAPE(target_ptr), sizeof(int) * NDArray_NDIM(target_ptr));
     V_shape[0] = NDArray_SHAPE(target_ptr)[1];
 
-    rtn_u = Create_NDArray(U_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr));
-    rtn_s = Create_NDArray(S_shape, 1, NDArray_TYPE(target_ptr));
-    rtn_v = Create_NDArray(V_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr));
+    rtn_u = Create_NDArray(U_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr), NDArray_DEVICE(target_ptr));
+    rtn_s = Create_NDArray(S_shape, 1, NDArray_TYPE(target_ptr), NDArray_DEVICE(target_ptr));
+    rtn_v = Create_NDArray(V_shape, NDArray_NDIM(target_ptr), NDArray_TYPE(target_ptr), NDArray_DEVICE(target_ptr));
 
     if(is_type(NDArray_TYPE(target_ptr), NDARRAY_TYPE_DOUBLE64)) {
         rtn_u->data = (char *) U;
@@ -231,7 +231,7 @@ NDArray_Matmul(NDArray *a, NDArray *b) {
 NDArray*
 NDArray_Det(NDArray *a) {
     int *new_shape = emalloc(sizeof(int));
-    NDArray *rtn = Create_NDArray(new_shape, 0, NDARRAY_TYPE_FLOAT32);
+    NDArray *rtn = Create_NDArray(new_shape, 0, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         rtn->device = NDARRAY_DEVICE_GPU;

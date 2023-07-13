@@ -189,7 +189,7 @@ NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
     for (int i = 1; i < ndim; i++) {
         total_num_elements = total_num_elements * shape[i];
     }
-    NDArray* array = Create_NDArray(shape, ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray* array = Create_NDArray(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     NDArray_CreateBuffer(array, total_num_elements, get_type_size(NDARRAY_TYPE_FLOAT32));
     NDArray_CopyFromZendArray(array, ht, &last_index);
     return array;
@@ -218,7 +218,7 @@ NDArray* Create_NDArray_FromZval(zval* php_object)
  * @return
  */
 NDArray*
-Create_NDArray(int* shape, int ndim, const char* type)
+Create_NDArray(int* shape, int ndim, const char* type, const int device)
 {
     char* new_buffer;
     NDArray* rtn;
@@ -246,7 +246,7 @@ Create_NDArray(int* shape, int ndim, const char* type)
     rtn->dimensions = shape;
     rtn->refcount = 1;
     rtn->base = NULL;
-    rtn->device = NDARRAY_DEVICE_CPU;
+    rtn->device = device;
     rtn->strides = Generate_Strides(shape, ndim, type_size);
     NDArrayIterator_INIT(rtn);
     return rtn;
@@ -311,7 +311,7 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
  */
 NDArray*
 NDArray_Empty(int *shape, int ndim, const char *type, int device) {
-    NDArray* rtn = Create_NDArray(shape, ndim, type);
+    NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
     if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
         if (device == NDARRAY_DEVICE_CPU) {
             rtn->device = NDARRAY_DEVICE_CPU;
@@ -334,14 +334,28 @@ NDArray_Empty(int *shape, int ndim, const char *type, int device) {
  * @return
  */
 NDArray*
-NDArray_Zeros(int *shape, int ndim, const char *type) {
-    NDArray* rtn = Create_NDArray(shape, ndim, type);
-    if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
-        rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(double));
+NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
+    NDArray* rtn = Create_NDArray(shape, ndim, type, device);
+    if (device == NDARRAY_DEVICE_CPU) {
+        if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
+            rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(double));
+        }
+        if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
+            rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(float));
+        }
     }
-    if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
-        rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(float));
+#ifdef HAVE_CUBLAS
+    if (device == NDARRAY_DEVICE_GPU) {
+        if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
+            NDArray_VMALLOC((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(double));
+            cudaMemset(rtn->data, 0, rtn->descriptor->numElements * sizeof(double));
+        }
+        if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
+            NDArray_VMALLOC((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(float));
+            cudaMemset(rtn->data, 0, rtn->descriptor->numElements * sizeof(float));
+        }
     }
+#endif
     return rtn;
 }
 
@@ -354,7 +368,7 @@ NDArray_Zeros(int *shape, int ndim, const char *type) {
  */
 NDArray*
 NDArray_Ones(int *shape, int ndim, const char *type) {
-    NDArray* rtn = Create_NDArray(shape, ndim, type);
+    NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
     int i;
 #ifdef HAVE_AVX2
     if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
@@ -407,7 +421,7 @@ NDArray_Identity(int size) {
     shape = emalloc(sizeof(int) * 2);
     shape[0] = size;
     shape[1] = size;
-    rtn = NDArray_Zeros(shape, 2, NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(shape, 2, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
     buffer_ptr = NDArray_FDATA(rtn);
     // Set the diagonal elements to one with the specified stride
@@ -427,7 +441,7 @@ NDArray_Identity(int size) {
 NDArray*
 NDArray_Normal(double loc, double scale, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
@@ -463,7 +477,7 @@ NDArray_StandardNormal(int* shape, int ndim) {
 NDArray*
 NDArray_Poisson(double lam, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
@@ -491,7 +505,7 @@ NDArray_Poisson(double lam, int* shape, int ndim) {
 NDArray*
 NDArray_Uniform(double low, double high, int* shape, int ndim) {
     NDArray *rtn;
-    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         float u = (float)rand() / RAND_MAX;
@@ -517,7 +531,7 @@ NDArray_Diag(NDArray *a) {
     int *rtn_shape = emalloc(sizeof(int) * 2);
     rtn_shape[0] = NDArray_NUMELEMENTS(a);
     rtn_shape[1] = NDArray_NUMELEMENTS(a);
-    rtn = NDArray_Zeros(rtn_shape, 2, NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(rtn_shape, 2, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
     for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         index = ((i * NDArray_STRIDES(rtn)[0]) + (i * NDArray_STRIDES(rtn)[1])) / NDArray_ELSIZE(rtn);
@@ -558,7 +572,7 @@ NDArray*
 NDArray_Full(int *shape, int ndim,  double fill_value) {
     int *new_shape = emalloc(sizeof(int) * ndim);
     memcpy(new_shape, shape, sizeof(int) * ndim);
-    NDArray *rtn = NDArray_Zeros(new_shape, ndim, NDARRAY_TYPE_FLOAT32);
+    NDArray *rtn = NDArray_Zeros(new_shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     return NDArray_Fill(rtn, (float)fill_value);
 }
 

@@ -72,7 +72,7 @@ NDArrayIteratorPHP_GET(NDArray* array)
     int output_ndim = array->ndim - 1;
     int* output_shape = emalloc(sizeof(int) * output_ndim);
     memcpy(output_shape, NDArray_SHAPE(array) + 1, sizeof(int) * output_ndim);
-    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array));
+    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array), NDArray_DEVICE(array));
     rtn->device = NDArray_DEVICE(array);
     rtn->data = array->data + (array->php_iterator->current_index * NDArray_STRIDES(array)[0]);
     rtn->base = array;
@@ -102,7 +102,7 @@ NDArrayIterator_GET(NDArray* array)
     int output_ndim = array->ndim - 1;
     int* output_shape = emalloc(sizeof(int) * output_ndim);
     memcpy(output_shape, NDArray_SHAPE(array) + 1, sizeof(int) * output_ndim);
-    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array));
+    NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array), NDArray_DEVICE(array));
     rtn->device = NDArray_DEVICE(array);
     rtn->data = array->data + (array->iterator->current_index * NDArray_STRIDES(array)[0]);
     rtn->base = array;

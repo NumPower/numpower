@@ -11,6 +11,8 @@ void NDArray_VFREE(void *target);
 
 void NDArray_VCHECK();
 
+void NDArray_VMEMCPY_D2D(char* target, char* dst, unsigned int size);
+
 #ifdef __cplusplus
 }
 #endif

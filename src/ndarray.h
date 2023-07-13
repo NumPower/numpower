@@ -142,7 +142,7 @@ NDArray *NDArray_ToCPU(NDArray *target);
 
 int NDArray_ShapeCompare(NDArray *a, NDArray *b);
 
-NDArray *NDArray_Broadcast(NDArray *a, NDArray *b);
+NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
 
 int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
 

@@ -33,7 +33,7 @@ NDArray_Slice(NDArray* target, int start, int stop, int step)
     out = Create_NDArray(
             new_shape,
             *new_ndims,
-            NDArray_TYPE(target)
-            );
+            NDArray_TYPE(target),
+            NDArray_DEVICE(target));
     return out;
 }

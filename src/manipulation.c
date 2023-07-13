@@ -105,8 +105,7 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
         zend_throw_error(NULL, "NDArray Reshape: Incompatible shape");
         return NULL;
     }
-    NDArray *rtn = NDArray_Zeros(new_shape, ndim, NDARRAY_TYPE_FLOAT32);
-    efree(rtn->data);
+    NDArray *rtn = NDArray_Empty(new_shape, ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     rtn->ndim = ndim;
     rtn->device = NDArray_DEVICE(target);
     rtn->data = target->data;

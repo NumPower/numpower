@@ -372,7 +372,7 @@ PHP_METHOD(NDArray, zeros)
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
         shape[i] = (int) NDArray_FDATA(nda)[i];
     }
-    rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32);
+    rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -3089,10 +3089,6 @@ PHP_METHOD(NDArray, sum)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
         rtn = reduce(nda, &axis_i, NDArray_Add_Float);
     } else {
         double value = NDArray_Sum_Float(nda);
@@ -3205,16 +3201,10 @@ PHP_METHOD(NDArray, prod)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
         rtn = reduce(nda, &axis_i, NDArray_Multiply_Float);
     } else {
         rtn = NDArray_Float_Prod(nda);
-        add_to_buffer(rtn, sizeof(NDArray));
     }
-
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
