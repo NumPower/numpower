@@ -51,6 +51,28 @@ NDArray_Sum_Double(NDArray* a) {
 }
 
 /**
+ * Product of array element-wise
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+float
+NDArray_Float_Prod(NDArray* a) {
+    float value = 1;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cuda_prod_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), &value, NDArray_NUMELEMENTS(a));
+#endif
+    } else {
+        for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+            value *= NDArray_FDATA(a)[i];
+        }
+    }
+    return value;
+}
+
+/**
  * Add elements of a element-wise
  *
  * @param a

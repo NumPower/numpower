@@ -10,7 +10,7 @@ NDArray* NDArray_Divide_Float(NDArray* a, NDArray* b);
 NDArray* NDArray_Pow_Float(NDArray* a, NDArray* b);
 NDArray* NDArray_Mod_Float(NDArray* a, NDArray* b);
 float NDArray_Sum_Float(NDArray* a);
-NDArray* NDArray_Float_Prod(NDArray* a);
+float NDArray_Float_Prod(NDArray* a);
 float NDArray_Mean_Float(NDArray* a);
 NDArray* NDArray_Abs(NDArray *nda);
 

@@ -470,7 +470,7 @@ PHP_METHOD(NDArray, normal)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_standard_normal, 0, 0, 1)
-                ZEND_ARG_INFO(0, size)
+    ZEND_ARG_INFO(0, size)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, standard_normal)
 {
@@ -533,9 +533,9 @@ PHP_METHOD(NDArray, poisson)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_uniform, 0, 0, 1)
-                ZEND_ARG_INFO(0, size)
-                ZEND_ARG_INFO(0, low)
-                ZEND_ARG_INFO(0, high)
+    ZEND_ARG_INFO(0, size)
+    ZEND_ARG_INFO(0, low)
+    ZEND_ARG_INFO(0, high)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, uniform)
 {
@@ -594,7 +594,7 @@ PHP_METHOD(NDArray, diag)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_diagonal, 0, 0, 1)
-                ZEND_ARG_INFO(0, target)
+    ZEND_ARG_INFO(0, target)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, diagonal)
 {
@@ -772,8 +772,8 @@ PHP_METHOD(NDArray, transpose)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_copy, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
-                ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, copy)
 {
@@ -1008,7 +1008,7 @@ PHP_METHOD(NDArray, abs)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sin, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, sin)
 {
@@ -1044,7 +1044,7 @@ PHP_METHOD(NDArray, sin)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_cos, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, cos)
 {
@@ -1116,7 +1116,7 @@ PHP_METHOD(NDArray, tan)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arcsin, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, arcsin)
 {
@@ -1188,7 +1188,7 @@ PHP_METHOD(NDArray, arccos)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arctan, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, arctan)
 {
@@ -1260,7 +1260,7 @@ PHP_METHOD(NDArray, degrees)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sinh, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, sinh)
 {
@@ -1296,7 +1296,7 @@ PHP_METHOD(NDArray, sinh)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_cosh, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, cosh)
 {
@@ -1368,7 +1368,7 @@ PHP_METHOD(NDArray, tanh)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arcsinh, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, arcsinh)
 {
@@ -1440,7 +1440,7 @@ PHP_METHOD(NDArray, arccosh)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arctanh, 0, 0, 1)
-        ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, arctanh)
 {
@@ -1584,7 +1584,7 @@ PHP_METHOD(NDArray, trunc)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sinc, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, sinc)
 {
@@ -1656,7 +1656,7 @@ PHP_METHOD(NDArray, negative)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sign, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, sign)
 {
@@ -2159,7 +2159,7 @@ PHP_METHOD(NDArray, exp)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_exp2, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, exp2)
 {
@@ -2222,7 +2222,7 @@ PHP_METHOD(NDArray, expm1)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_log, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, log)
 {
@@ -2257,7 +2257,7 @@ PHP_METHOD(NDArray, log)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_logb, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, logb)
 {
@@ -2290,7 +2290,7 @@ PHP_METHOD(NDArray, logb)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_log10, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, log10)
 {
@@ -3187,6 +3187,7 @@ PHP_METHOD(NDArray, prod)
     zval *a;
     long axis;
     int axis_i;
+    float value;
     ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_ZVAL(a)
             Z_PARAM_OPTIONAL
@@ -3200,7 +3201,9 @@ PHP_METHOD(NDArray, prod)
     if (ZEND_NUM_ARGS() == 2) {
         rtn = reduce(nda, &axis_i, NDArray_Multiply_Float);
     } else {
-        rtn = NDArray_Float_Prod(nda);
+        value = NDArray_Float_Prod(nda);
+        RETURN_DOUBLE(value);
+        return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);

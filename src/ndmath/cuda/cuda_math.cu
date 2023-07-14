@@ -549,6 +549,32 @@ void array_equals_float(float *a, float *b, int *result, int n) {
 }
 
 __global__
+void array_prod_float(float *a, float *result, int n) {
+    extern __shared__ float sdata[];
+
+    // each thread loads one element from global to shared mem
+    unsigned int tid = threadIdx.x;
+    unsigned int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+
+    float x = 1;
+    if (i < n) x *= a[i];
+    if (i + blockDim.x < n) x *= a[i + blockDim.x];
+    sdata[tid] = x;
+    __syncthreads();
+
+    // do reduction in shared mem
+    for (unsigned int s=blockDim.x/2; s>0; s>>=1) {
+        if (tid < s) {
+            sdata[tid] *= sdata[tid + s];
+        }
+        __syncthreads();
+    }
+
+    // write result for this block to global mem
+    if (tid == 0) atomicAdd(result, sdata[0]);
+}
+
+__global__
 void array_sum_float(float *a, float *result, int n) {
     extern __shared__ float sdata[];
 
@@ -700,6 +726,19 @@ extern "C" {
         cudaMemcpy(d_sum, rtn, sizeof(float), cudaMemcpyHostToDevice);
         array_sum_float<<<numBlocks, blockSize, blockSize * sizeof(float)>>>(a, d_sum, nelements);
         cudaMemcpy(rtn, d_sum, sizeof(float), cudaMemcpyDeviceToHost);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_prod_float(int nblocks, float *a, float *rtn, int nelements) {
+        float *d_prod;
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize * 2 - 1) / (blockSize * 2);  // Number of blocks in the grid.
+        cudaMalloc((void **) &d_prod, sizeof(float));
+
+        cudaMemcpy(d_prod, rtn, sizeof(float), cudaMemcpyHostToDevice);
+        array_prod_float<<<numBlocks, blockSize, blockSize * sizeof(float)>>>(a, d_prod, nelements);
+        cudaMemcpy(rtn, d_prod, sizeof(float), cudaMemcpyDeviceToHost);
         cudaDeviceSynchronize();
     }
 
