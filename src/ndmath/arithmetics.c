@@ -68,14 +68,9 @@ NDArray_Sum_Float(NDArray* a) {
         cuda_sum_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), &value, NDArray_NUMELEMENTS(a));
 #endif
     } else {
-
-#ifdef HAVE_CBLAS
-        value = cblas_sasum(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), 1);
-#else
         for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
             value += NDArray_FDATA(a)[i];
         }
-#endif
     }
     return value;
 }
