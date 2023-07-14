@@ -273,7 +273,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
 #endif
         } else {
             int *shape = ecalloc(1, sizeof(int));
-            NDArray *rtn = NDArray_Empty(shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
+            NDArray *rtn = NDArray_Empty(shape, 0, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
             NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] * NDArray_FDATA(b)[0];
             return rtn;
         }
