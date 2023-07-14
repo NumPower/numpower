@@ -2779,13 +2779,13 @@ PHP_METHOD(NDArray, cholesky)
     zval *a, *b;
     long axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
-
+    rtn = NDArray_Copy(nda, NDArray_DEVICE(nda));
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -3260,6 +3260,9 @@ PHP_METHOD(NDArray, key)
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    RETURN_LONG(ndarray->iterator->current_index);
 }
 
 PHP_METHOD(NDArray, next)
@@ -3280,6 +3283,82 @@ PHP_METHOD(NDArray, rewind)
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
     NDArrayIteratorPHP_REWIND(ndarray);
+}
+
+PHP_METHOD(NDArray, offsetExists)
+{
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    long offset;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(offset)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    if (offset < 0) {
+        RETURN_BOOL(0);
+        return;
+    }
+    if (offset > NDArray_SHAPE(ndarray)[0] - 1) {
+        RETURN_BOOL(0);
+        return;
+    }
+    RETURN_BOOL(1);
+}
+
+PHP_METHOD(NDArray, offsetGet)
+{
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    long offset;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(offset)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+
+    if (offset < 0) {
+        zend_throw_error(NULL, "Negative indexes are not implemented.");
+        return;
+    }
+
+    if (offset > NDArray_SHAPE(ndarray)[0] - 1) {
+        zend_throw_error(NULL, "Index out of bounds");
+        return;
+    }
+    ndarray->iterator->current_index = (int)offset;
+    NDArray *rtn = NDArrayIterator_GET(ndarray);
+    NDArrayIterator_REWIND(ndarray);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+PHP_METHOD(NDArray, offsetSet)
+{
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    long offset;
+    zval *value;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_LONG(offset)
+        Z_PARAM_ZVAL(value)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    NDArray* nd_value = ZVAL_TO_NDARRAY(value);
+    ndarray->iterator->current_index = (int)offset;
+    NDArray *rtn = NDArrayIterator_GET(ndarray);
+    NDArrayIterator_REWIND(ndarray);
+    NDArray_Overwrite(rtn, nd_value);
+    NDArray_FREE(rtn);
+    CHECK_INPUT_AND_FREE(value, nd_value);
+}
+
+PHP_METHOD(NDArray, offsetUnset)
+{
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    long offset;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(offset)
+    ZEND_PARSE_PARAMETERS_END();
+    zend_throw_error(NULL, "Cannot unset values of NDArrays");
+    return;
 }
 
 PHP_METHOD(NDArray, valid)
@@ -3469,6 +3548,10 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, rewind, arginfo_rewind, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, valid, arginfo_valid, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, __toString, arginfo_ndarray_prod___toString, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, offsetExists, arginfo_offsetexists, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, offsetGet, arginfo_offsetget, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, offsetSet, arginfo_offsetset, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, offsetUnset, arginfo_offsetunset, ZEND_ACC_PUBLIC)
         ZEND_FE_END
 };
 
@@ -3512,13 +3595,13 @@ static zend_object *ndarray_create_object(zend_class_entry *class_type) {
     return &intern->std;
 }
 
-static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_Iterator, zend_class_entry *class_entry_Countable) {
+static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_Iterator, zend_class_entry *class_entry_Countable, zend_class_entry *class_entry_ArrayAccess) {
     zend_class_entry ce, *class_entry;
     INIT_CLASS_ENTRY(ce, "NDArray", class_NDArray_methods);
     ndarray_objects_init(&ce);
     ce.create_object = ndarray_create_object;
     class_entry = zend_register_internal_class(&ce);
-    zend_class_implements(class_entry, 2, class_entry_Iterator, class_entry_Countable);
+    zend_class_implements(class_entry, 3, class_entry_Iterator, class_entry_Countable, class_entry_ArrayAccess);
 
     zval property_id_default_value;
     ZVAL_UNDEF(&property_id_default_value);
@@ -3534,7 +3617,7 @@ static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_It
  */
 PHP_MINIT_FUNCTION(ndarray)
 {
-    phpsci_ce_NDArray = register_class_NDArray(zend_ce_iterator, zend_ce_countable);
+    phpsci_ce_NDArray = register_class_NDArray(zend_ce_iterator, zend_ce_countable, zend_ce_arrayaccess);
     //memcpy(&phpsci_ce_NDArray, &std_object_handlers, sizeof(zend_object_handlers));
     return SUCCESS;
 }

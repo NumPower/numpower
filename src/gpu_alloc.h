@@ -13,6 +13,8 @@ void NDArray_VCHECK();
 
 void NDArray_VMEMCPY_D2D(char* target, char* dst, unsigned int size);
 
+float NDArray_VFLOAT(char *target);
+
 #ifdef __cplusplus
 }
 #endif

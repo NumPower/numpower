@@ -330,6 +330,24 @@ NDArray_FREE(NDArray* array) {
 }
 
 /**
+ * Free NDArray data buffer regardless of references
+ *
+ * @param target
+ */
+void
+NDArray_FREEDATA(NDArray *target) {
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        efree(target->data);
+    }
+#ifdef HAVE_CUBLAS
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+        NDArray_VFREE(target->data);
+    }
+#endif
+    target->data = NULL;
+}
+
+/**
  * Print NDArray or return the print string
  *
  * @param array
@@ -808,4 +826,58 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     NDArray_Print(rtn, 0);
     efree(tmp_out);
     return rtn;
+}
+
+/**
+ * Get the scalar value of a NDArray
+ *
+ * @param a
+ * @return
+ */
+float
+NDArray_GetFloatScalar(NDArray *a) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        return NDArray_FDATA(a)[0];
+    }
+#ifdef HAVE_CUBLAS
+    return NDArray_VFLOAT(NDArray_DATA(a));
+#endif
+}
+
+/**
+ * Overwrite the values of one NDArray with the values
+ * of another.
+ *
+ * @param target
+ * @param values
+ */
+int
+NDArray_Overwrite(NDArray *target, NDArray *values) {
+
+    if (NDArray_NDIM(values) == 0) {
+        NDArray_Fill(target, NDArray_GetFloatScalar(values));
+        return 1;
+    }
+
+    if (NDArray_DEVICE(target) != NDArray_DEVICE(values)) {
+        zend_throw_error(NULL, "Incompatible devices during NDArray overwrite.");
+        return 0;
+    }
+
+    if (NDArray_ShapeCompare(target, values) == 0) {
+        zend_throw_error(NULL, "Incompatible shapes during NDArray overwrite.");
+        return 0;
+    }
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        memcpy(NDArray_FDATA(target), NDArray_FDATA(values), sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
+        return 1;
+    }
+#ifdef HAVE_CUBLAS
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+        NDArray_VMEMCPY_D2D(values->data, target->data, sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
+        return 1;
+    }
+#endif
+    return 0;
 }

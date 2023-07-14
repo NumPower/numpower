@@ -146,6 +146,10 @@ NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
 
 int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
 
+float NDArray_GetFloatScalar(NDArray *a);
+void NDArray_FREEDATA(NDArray *target);
+int NDArray_Overwrite(NDArray *target, NDArray *values);
+
 #ifdef __cplusplus
 }
 #endif

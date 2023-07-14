@@ -33,4 +33,11 @@ NDArray_VCHECK() {
     }
 }
 
+float
+NDArray_VFLOAT(char *target) {
+    float value;
+    cudaMemcpy(&value, target, sizeof(float), cudaMemcpyDeviceToHost);
+    return value;
+}
+
 #endif
