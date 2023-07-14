@@ -215,7 +215,6 @@ PHP_METHOD(NDArray, toArray)
     }
 
     rtn = NDArray_ToPHPArray(array);
-    NDArray_FREE(array);
     RETURN_ZVAL(&rtn, 0, 0);
 }
 
@@ -343,13 +342,6 @@ PHP_FUNCTION(print_r_)
         zend_print_zval_r(var, 0);
         RETURN_TRUE;
     }
-}
-
-PHP_METHOD(NDArray, __destruct)
-{
-    zend_object *obj = Z_OBJ_P(ZEND_THIS);
-    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
-    buffer_ndarray_free(Z_LVAL_P(obj_uuid));
 }
 
 /**
@@ -3493,7 +3485,6 @@ int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) 
 
 static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
-        ZEND_ME(NDArray, __destruct, arginfo_ndarray_count, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dumpDevices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
@@ -3639,13 +3630,22 @@ typedef struct {
     int value;
 } NDArrayObject;
 
+static void ndarray_destructor(zend_object* object) {
+    NDArrayObject* my_object = (NDArrayObject*)object;
+
+    zval *obj_uuid = OBJ_PROP_NUM(object, 0);
+    buffer_ndarray_free(Z_LVAL_P(obj_uuid));
+    //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
+    // Call the default object destructor
+    zend_object_std_dtor(object);
+}
+
 static void ndarray_objects_init(zend_class_entry *class_type)
 {
     memcpy(&ndarray_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
-    ndarray_object_handlers.clone_obj = NULL;
-    ndarray_object_handlers.cast_object = NULL;
     ndarray_object_handlers.compare = ndarray_objects_compare;
     ndarray_object_handlers.do_operation = ndarray_do_operation;
+    ndarray_object_handlers.free_obj = ndarray_destructor;
     //ndarray_object_handlers.compare = ndarray_objects_compare;
 }
 

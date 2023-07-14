@@ -5,6 +5,7 @@
 #include "buffer.h"
 #include "string.h"
 #include "ndarray.h"
+#include "debug.h"
 
 /**
  * MEMORY STACK

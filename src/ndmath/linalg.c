@@ -609,9 +609,9 @@ NDArray_LU(NDArray* target) {
     int *new_shape_p = emalloc(sizeof(int) * NDArray_NDIM(target));
     int *new_shape_l = emalloc(sizeof(int) * NDArray_NDIM(target));
     int *new_shape_u = emalloc(sizeof(int) * NDArray_NDIM(target));
-    copy(NDArray_SHAPE(target), new_shape_p, sizeof(int) * NDArray_NDIM(target));
-    copy(NDArray_SHAPE(target), new_shape_l, sizeof(int) * NDArray_NDIM(target));
-    copy(NDArray_SHAPE(target), new_shape_u, sizeof(int) * NDArray_NDIM(target));
+    memcpy(new_shape_p, NDArray_SHAPE(target), sizeof(int) * (int)NDArray_NDIM(target));
+    memcpy(new_shape_l, NDArray_SHAPE(target), sizeof(int) * (int)NDArray_NDIM(target));
+    memcpy(new_shape_u, NDArray_SHAPE(target), sizeof(int) * (int)NDArray_NDIM(target));
     NDArray *copied = NDArray_Copy(target, NDArray_DEVICE(target));
     NDArray *p = NDArray_Empty(new_shape_p, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     NDArray *l = NDArray_Empty(new_shape_l, NDArray_NDIM(target), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));

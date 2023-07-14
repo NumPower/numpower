@@ -706,9 +706,9 @@ NDArray_Copy(NDArray *a, int device) {
     } else {
         rtn = emalloc(sizeof(NDArray));
         if (NDArray_NDIM(a) > 0) {
-            rtn->dimensions = emalloc(sizeof(int) * NDArray_NDIM(a));
+            rtn->dimensions = (int*)emalloc(sizeof(int) * NDArray_NDIM(a));
             memcpy(rtn->dimensions, NDArray_SHAPE(a), NDArray_NDIM(a) * sizeof(int));
-            rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+            rtn->strides = (int*)emalloc(sizeof(int) * NDArray_NDIM(a));
             memcpy(rtn->strides, NDArray_STRIDES(a), NDArray_NDIM(a) * sizeof(int));
         } else {
             rtn->dimensions = emalloc(sizeof(int));
