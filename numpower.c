@@ -3341,6 +3341,14 @@ PHP_METHOD(NDArray, offsetSet)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    if (offset < 0) {
+        zend_throw_error(NULL, "Negative indexes are not implemented.");
+        return;
+    }
+    if (offset > NDArray_SHAPE(ndarray)[0] - 1) {
+        zend_throw_error(NULL, "Index out of bounds");
+        return;
+    }
     NDArray* nd_value = ZVAL_TO_NDARRAY(value);
     ndarray->iterator->current_index = (int)offset;
     NDArray *rtn = NDArrayIterator_GET(ndarray);
