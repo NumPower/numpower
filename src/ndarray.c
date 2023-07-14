@@ -306,7 +306,7 @@ NDArray_FREE(NDArray* array) {
             efree(array->dimensions);
         }
 
-        if (array->data != NULL && array->base == NULL) {
+        if (array->data != NULL && array->base == NULL && array->descriptor->numElements > 0) {
             if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
                 efree(array->data);
             } else {

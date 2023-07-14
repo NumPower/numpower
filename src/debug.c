@@ -21,6 +21,7 @@ NDArray_Dump(NDArray* array)
     int i;
     printf("\n=================================================");
     printf("\nNDArray.uuid\t\t\t%d", array->uuid);
+    printf("\nNDArray.ndim\t\t\t%d\n", array->ndim);
     printf("\nNDArray.dims\t\t\t[");
     for(i = 0; i < array->ndim; i ++) {
         printf(" %d", array->dimensions[i]);
@@ -31,7 +32,6 @@ NDArray_Dump(NDArray* array)
         printf(" %d", array->strides[i]);
     }
     printf(" ]\n");
-    printf("NDArray.ndim\t\t\t%d\n", array->ndim);
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
         printf("NDArray.device\t\t\t%s\n", "GPU");
     } else {

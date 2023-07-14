@@ -84,9 +84,14 @@ void RETURN_NDARRAY(NDArray* array, zval* return_value) {
         RETURN_THROWS();
         return;
     }
-    add_to_buffer(array, sizeof(NDArray));
-    object_init_ex(return_value, phpsci_ce_NDArray);
-    ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
+    if (NDArray_NDIM(array) > 0) {
+        add_to_buffer(array, sizeof(NDArray));
+        object_init_ex(return_value, phpsci_ce_NDArray);
+        ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
+    } else {
+        ZVAL_DOUBLE(return_value, NDArray_GetFloatScalar(array));
+        NDArray_FREE(array);
+    }
 }
 
 void RETURN_NDARRAY_NOBUFFER(NDArray* array, zval* return_value) {
@@ -3227,6 +3232,53 @@ PHP_METHOD(NDArray, array)
     RETURN_NDARRAY(nda, return_value);
 }
 
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_slice, 0)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, slice)
+{
+    int j;
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    NDArray *rtn = NULL;
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    NDArray** indices_axis;
+
+    int num_args = ZEND_NUM_ARGS();
+
+    // Check if at least one argument is passed
+    if (num_args < 1) {
+        php_error_docref(NULL, E_ERROR, "At least one argument is required");
+        RETURN_NULL();
+    }
+
+    // Process the arguments
+    zval *arg;
+    int num_inputed_args = 0;
+    ZEND_PARSE_PARAMETERS_START(1, -1)
+        Z_PARAM_VARIADIC('+', arg, num_inputed_args)
+    ZEND_PARSE_PARAMETERS_END();
+
+    indices_axis = emalloc(sizeof(NDArray*) * num_inputed_args);
+    // Access individual arguments
+    for (j = 0; j < num_inputed_args; j++) {
+        zval *current_arg = &arg[j];
+        // Process each argument as needed
+        // ...
+        indices_axis[j] = ZVAL_TO_NDARRAY(current_arg);
+    }
+    rtn = NDArray_Slice(ndarray, indices_axis, num_inputed_args);
+
+    for (j = 0; j < num_inputed_args; j++) {
+        NDArray_FREE(indices_axis[j]);
+    }
+    efree(indices_axis);
+    if (rtn == NULL) {
+        return;
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+
  /**
   * @param execute_data
   * @param return_value
@@ -3262,7 +3314,7 @@ PHP_METHOD(NDArray, key)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    RETURN_LONG(ndarray->iterator->current_index);
+    RETURN_LONG(ndarray->php_iterator->current_index);
 }
 
 PHP_METHOD(NDArray, next)
@@ -3308,26 +3360,30 @@ PHP_METHOD(NDArray, offsetExists)
 PHP_METHOD(NDArray, offsetGet)
 {
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
-    long offset;
+    zval *offset;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-        Z_PARAM_LONG(offset)
+        Z_PARAM_ZVAL(offset)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    if (Z_TYPE_P(offset) == IS_LONG) {
+        if (Z_LVAL_P(offset) < 0) {
+            zend_throw_error(NULL, "Negative indexes are not implemented.");
+            return;
+        }
 
-    if (offset < 0) {
-        zend_throw_error(NULL, "Negative indexes are not implemented.");
+        if (Z_LVAL_P(offset) > NDArray_SHAPE(ndarray)[0] - 1) {
+            zend_throw_error(NULL, "Index out of bounds");
+            return;
+        }
+        ndarray->iterator->current_index = (int) Z_LVAL_P(offset);
+        NDArray *rtn = NDArrayIterator_GET(ndarray);
+        NDArrayIterator_REWIND(ndarray);
+        RETURN_NDARRAY(rtn, return_value);
         return;
     }
-
-    if (offset > NDArray_SHAPE(ndarray)[0] - 1) {
-        zend_throw_error(NULL, "Index out of bounds");
-        return;
-    }
-    ndarray->iterator->current_index = (int)offset;
-    NDArray *rtn = NDArrayIterator_GET(ndarray);
-    NDArrayIterator_REWIND(ndarray);
-    RETURN_NDARRAY(rtn, return_value);
+    zend_throw_error(NULL, "Invalid offset");
+    return;
 }
 
 PHP_METHOD(NDArray, offsetSet)
@@ -3456,6 +3512,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, slice, arginfo_ndarray_slice, ZEND_ACC_PUBLIC)
 
         // INDEXING
         ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

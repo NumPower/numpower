@@ -158,7 +158,6 @@ if test "$PHP_NDARRAY" != "no"; then
       src/ndmath/linalg.c \
       src/manipulation.c \
       src/iterators.c \
-      src/ndarray_ops.c \
       src/indexing.c \
       src/ndmath/arithmetics.c \
       src/types.c,

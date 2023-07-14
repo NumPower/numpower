@@ -31,6 +31,10 @@
 void get_zend_array_shape(zend_array* arr, int* shape, int ndim) {
     int i;
 
+    if (zend_array_count(arr) == 0) {
+        return;
+    }
+
     // Initialize shape array to zeros
     for (i = 0; i < ndim; i++) {
         shape[i] = 0;
@@ -69,6 +73,11 @@ int is_packed_zend_array(zend_array *arr) {
  */
 int get_num_dims_from_zval(zval *arr) {
     int num_dims = 0;
+
+    if (zend_array_count(Z_ARRVAL_P(arr)) == 0) {
+        return 0;
+    }
+
     zval *val = zend_hash_index_find(Z_ARRVAL_P(arr), 0);
     while (val && Z_TYPE_P(val) == IS_ARRAY) {
         num_dims++;
@@ -179,7 +188,12 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
 NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
 {
     int last_index = 0;
-    int* shape = emalloc(ndim * sizeof(int));
+    int *shape;
+    if (ndim != 0) {
+        shape = emalloc(ndim * sizeof(int));
+    } else {
+        shape = emalloc(1 * sizeof(int));
+    }
     if (!is_packed_zend_array(ht)) {
         return NULL;
     }
@@ -191,8 +205,13 @@ NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
         total_num_elements = total_num_elements * shape[i];
     }
     NDArray* array = Create_NDArray(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
-    NDArray_CreateBuffer(array, total_num_elements, get_type_size(NDARRAY_TYPE_FLOAT32));
-    NDArray_CopyFromZendArray(array, ht, &last_index);
+    if (ndim != 0) {
+        NDArray_CreateBuffer(array, total_num_elements, get_type_size(NDARRAY_TYPE_FLOAT32));
+        NDArray_CopyFromZendArray(array, ht, &last_index);
+    } else {
+        array->data = NULL;
+        array->descriptor->numElements = 0;
+    }
     return array;
 }
 
@@ -288,7 +307,7 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
 
     // Calculate number of elements
     for (int i = 0; i < out_ndim; i++) {
-        total_num_elements = total_num_elements * NDArray_SHAPE(target)[i];
+        total_num_elements = total_num_elements * NDArray_SHAPE(rtn)[i];
     }
 
     rtn->flags = 0;
@@ -701,11 +720,8 @@ NDArray_Copy(NDArray *a, int device) {
         rtn->ndim = NDArray_NDIM(a);
         rtn->base = NULL;
         rtn->data = emalloc(NDArray_NUMELEMENTS(a) * sizeof(float));
-        memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float));
-        rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
-        rtn->descriptor->numElements = NDArray_NUMELEMENTS(a);
-        rtn->descriptor->elsize = NDArray_ELSIZE(a);
-        rtn->descriptor->type = NDArray_TYPE(a);
+        memcpy(NDArray_DATA(rtn), NDArray_DATA(a), NDArray_NUMELEMENTS(a) * sizeof(float));
+        rtn->descriptor = Create_Descriptor(NDArray_NUMELEMENTS(a), NDArray_ELSIZE(a), NDArray_TYPE(a));
         NDArrayIterator_INIT(rtn);
         return rtn;
     }

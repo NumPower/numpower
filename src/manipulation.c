@@ -13,6 +13,7 @@
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
+#include "gpu_alloc.h"
 #endif
 
 #ifdef HAVE_AVX2
@@ -134,4 +135,140 @@ NDArray_Flatten(NDArray *target)
     rtn->dimensions[0] = multiply_int_vector(NDArray_SHAPE(target), NDArray_NDIM(target));
     rtn->strides[0] = NDArray_ELSIZE(target);
     return rtn;
+}
+
+void *
+linearize_FLOAT_matrix(float *dst_in,
+                       float *src_in,
+                       NDArray * a)
+{
+    float *src = (float *) src_in;
+    float *dst = (float *) dst_in;
+
+    if (dst) {
+        int i, j;
+        float* rv = dst;
+        int columns = (int)NDArray_SHAPE(a)[1];
+        int column_strides = NDArray_STRIDES(a)[1]/sizeof(float);
+        int one = 1;
+        for (i = 0; i < NDArray_SHAPE(a)[0]; i++) {
+            if (column_strides > 0) {
+                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+#ifdef HAVE_CBLAS
+                    cblas_scopy(columns,
+                                (float *) src, column_strides,
+                                (float *) dst, one);
+#endif
+                }
+                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+                    cublasHandle_t handle;
+                    cublasCreate(&handle);
+                    cublasScopy(handle, columns,
+                                (const float*)((const float*)src + (columns - 1) * column_strides),
+                                column_strides, dst, one);
+#endif
+                }
+            }
+            else if (column_strides < 0) {
+                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+#ifdef HAVE_CBLAS
+                    cblas_scopy(columns,
+                                (float *) ((float *) src + (columns - 1) * column_strides),
+                                column_strides,
+                                (float *) dst, one);
+#endif
+                }
+                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+                    cublasHandle_t handle;
+                    cublasCreate(&handle);
+                    cublasScopy(handle, columns, (const float*)((const char*)src + (columns - 1) * column_strides),
+                                column_strides / sizeof(float), dst, one);
+#endif
+                }
+            }
+            else {
+                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+                    /*
+                     * Zero stride has undefined behavior in some BLAS
+                     * implementations (e.g. OSX Accelerate), so do it
+                     * manually
+                     */
+                    for (j = 0; j < columns; ++j) {
+                        memcpy((float *) dst + j, (float *) src, sizeof(float));
+                    }
+                }
+            }
+
+            src += NDArray_STRIDES(a)[0]/sizeof(float);
+            dst += NDArray_SHAPE(a)[1];
+        }
+        return rv;
+    } else {
+        return src;
+    }
+}
+
+NDArray*
+NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
+    NDArray *slice, *rtn;
+    int slice_ndim = NDArray_NDIM(array);
+    int *slice_shape = emalloc(sizeof(int) * slice_ndim);
+    int *slice_strides = emalloc(sizeof(int) * slice_ndim);
+    int i, offset = 0;
+    int start = 0, stop = 0, step = 0;
+
+    if (num_indices > NDArray_NDIM(array)) {
+        zend_throw_error(NULL, "too many indices for array");
+        return NULL;
+    }
+
+    for (i = 0; i < num_indices; i++) {
+        if (NDArray_NUMELEMENTS(indexes[i]) >= 1) {
+            start = (int) NDArray_FDATA(indexes[i])[0];
+        } else {
+            start = 0;
+        }
+        if (NDArray_NUMELEMENTS(indexes[i]) >= 2) {
+            stop  = (int)NDArray_FDATA(indexes[i])[1];
+        } else {
+            stop = NDArray_SHAPE(array)[i];
+        }
+        if (NDArray_NUMELEMENTS(indexes[i]) == 3) {
+            step  = (int)NDArray_FDATA(indexes[i])[2];
+        } else {
+            step = 1;
+        }
+        if (NDArray_NUMELEMENTS(indexes[i]) > 3) {
+            zend_throw_error(NULL, "Too many arguments for slicing indexes");
+            return NULL;
+        }
+        slice_shape[i] = (int)floorf(((float)stop - (float)start) / (float)step);
+        offset += start * NDArray_STRIDES(array)[i];
+    }
+
+    for (; i < slice_ndim; i++) {
+        slice_shape[i] = NDArray_SHAPE(array)[i];
+    }
+    memcpy(slice_strides, NDArray_STRIDES(array), slice_ndim * sizeof(int));
+    slice = NDArray_FromNDArray(array, offset, slice_shape, slice_strides, &slice_ndim);
+
+    float *rtn_data;
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
+        rtn_data = emalloc(NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
+    }
+#ifdef HAVE_CUBLAS
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
+        NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
+    }
+#endif
+
+    linearize_FLOAT_matrix(rtn_data, NDArray_FDATA(slice), slice);
+    slice->data = (char*)rtn_data;
+    slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
+    slice->base = NULL;
+    NDArray_FREE(array);
+    efree(slice_strides);
+    return slice;
 }
