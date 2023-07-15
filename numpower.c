@@ -58,7 +58,11 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
         return NDArray_CreateFromDoubleScalar(Z_DVAL_P(obj));
     }
     if (Z_TYPE_P(obj) == IS_OBJECT) {
-        return buffer_get(get_object_uuid(obj));
+        zend_class_entry* ce = NULL;
+        ce = Z_OBJCE_P(obj);
+        if (ce == phpsci_ce_NDArray) {
+            return buffer_get(get_object_uuid(obj));
+        }
     }
     zend_throw_error(NULL, "Invalid object type");
     return NULL;

@@ -79,6 +79,7 @@ void buffer_ndarray_free(int uuid) {
  * @param uuid
  */
 NDArray* buffer_get(int uuid) {
+    assert(MAIN_MEM_STACK.buffer[uuid] != NULL);
     return MAIN_MEM_STACK.buffer[uuid];
 }
 
