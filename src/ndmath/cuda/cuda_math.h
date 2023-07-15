@@ -67,6 +67,7 @@ extern "C" {
     void cuda_float_lu(float *matrix, float *L, float *U, float *P, int size);
     void cuda_prod_float(int nblocks, float *a, float *rtn, int nelements);
     void cuda_float_round(int nblocks, float *d_array, float decimals);
+    void cuda_calculate_outer_product(int m, int n, float *a_array, float *b_array, float *r_array);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
     NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
 

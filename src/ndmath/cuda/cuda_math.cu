@@ -27,6 +27,15 @@
   } \
 } while (0)
 
+__global__ void calculateOuterProductFloat(float* a, float* b, int m, int n, float* result) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < m && col < n) {
+        result[row * n + col] = a[row] * b[col];
+    }
+}
+
 // CUDA kernel for LU decomposition
 __global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, float *P, int size) {
     int i, k, maxIndex;
@@ -1181,6 +1190,14 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         sincFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_calculate_outer_product(int m, int n, float *a_array, float *b_array, float *r_array) {
+        dim3 blockSize(16, 16);  // Number of threads per block. This is a typical choice.
+        dim3 gridSize((n + blockSize.x - 1) / blockSize.x, (m + blockSize.y - 1) / blockSize.y);
+        calculateOuterProductFloat<<<gridSize, blockSize>>>(a_array, b_array, m, n, r_array);
         cudaDeviceSynchronize();
     }
 

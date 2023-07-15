@@ -702,3 +702,39 @@ NDArray_MatrixRank(NDArray *target, float *tol)
 
     return rtn;
 }
+
+/**
+ * NDArray::outer
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Outer(NDArray *a, NDArray *b) {
+    if (NDArray_NDIM(a) != 1 || NDArray_NDIM(b) != 1) {
+        zend_throw_error(NULL, "Invalid operation: NDArray::outer() requires both arrays to be 1-dimensional vectors.");
+        return NULL;
+    }
+
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "NDArray::outer() requires both arrays to be on the same device (CPU or GPU).");
+        return NULL;
+    }
+    int *output_shape = emalloc(sizeof(int) * 2);
+    output_shape[0] = NDArray_NUMELEMENTS(a);
+    output_shape[1] = NDArray_NUMELEMENTS(b);
+    NDArray *rtn = NDArray_Zeros(output_shape, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+#ifdef HAVE_CBLAS
+        cblas_sger(CblasRowMajor, NDArray_NUMELEMENTS(a), NDArray_NUMELEMENTS(b), 1.0f, NDArray_FDATA(a), 1, NDArray_FDATA(b), 1,
+                   NDArray_FDATA(rtn), NDArray_NUMELEMENTS(b));
+#endif
+    } else {
+#ifdef HAVE_CUBLAS
+        cuda_calculate_outer_product(NDArray_NUMELEMENTS(a), NDArray_NUMELEMENTS(b), NDArray_FDATA(a), NDArray_FDATA(b),
+                                     NDArray_FDATA(rtn));
+#endif
+    }
+    return rtn;
+}
