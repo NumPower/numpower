@@ -10,6 +10,7 @@ extern "C" {
 
     typedef void (*ElementWiseFloatGPUOperation)(int, float *);
     typedef void (*ElementWiseFloatGPUOperation2F)(int, float *, float, float);
+    typedef void (*ElementWiseFloatGPUOperation1F)(int, float *, float);
     NDArray* NDArrayMathGPU_ElementWise(NDArray *ndarray, ElementWiseFloatGPUOperation op);
     void cuda_float_abs(int nblocks, float *d_array);
     void cuda_float_expm1(int nblocks, float *d_array);
@@ -65,7 +66,10 @@ extern "C" {
     void cuda_matrix_float_inverse(float* matrix, int n);
     void cuda_float_lu(float *matrix, float *L, float *U, float *P, int size);
     void cuda_prod_float(int nblocks, float *a, float *rtn, int nelements);
+    void cuda_float_round(int nblocks, float *d_array, float decimals);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
+    NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
+
 #ifdef __cplusplus
 }
 #endif

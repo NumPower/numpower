@@ -37,5 +37,6 @@ float float_sinc(float val);
 float float_negate(float val);
 float float_sign(float val);
 float float_clip(float val, float min, float max);
+float float_round(float number, float decimals);
 
 #endif //PHPSCI_NDARRAY_DOUBLE_MATH_H

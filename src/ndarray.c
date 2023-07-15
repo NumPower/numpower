@@ -488,6 +488,23 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
  * @param array
  */
 NDArray*
+NDArray_Map1F(NDArray *array, ElementWiseFloatOperation1F op, float val1) {
+    NDArray *rtn;
+    int i;
+    int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
+    memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
+    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
+
+    for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
+        NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i], val1);
+    }
+    return rtn;
+}
+
+/**
+ * @param array
+ */
+NDArray*
 NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float val2) {
     NDArray *rtn;
     int i;

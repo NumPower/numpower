@@ -227,3 +227,8 @@ float float_sign(float val) {
 float float_clip(float val, float min, float max) {
     return fminf(fmaxf(val, min), max);
 }
+
+float float_round(float number, float decimals) {
+    float factor = powf(10, decimals);
+    return roundf(number * factor) / factor;
+}

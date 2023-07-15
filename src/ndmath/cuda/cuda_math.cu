@@ -83,6 +83,15 @@ __global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, fl
     }
 }
 
+__global__ void roundToDecimalsFloatKernel(float* numbers, int decimals, int size) {
+    int tid = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (tid < size) {
+        float factor = powf(10, decimals);
+        numbers[tid] = round(numbers[tid] * factor) / factor;
+    }
+}
+
 __global__ void l2NormFloatKernel(const float* input, const int size, float* result)
 {
     __shared__ float sdata[1024];  // Shared memory for intermediate results
@@ -1144,6 +1153,14 @@ extern "C" {
     }
 
     void
+    cuda_float_round(int nblocks, float *d_array, float decimals) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        roundToDecimalsFloatKernel<<<numBlocks, blockSize>>>(d_array, (int)decimals, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
     cuda_float_floor(int nblocks, float *d_array) {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
@@ -1211,6 +1228,13 @@ extern "C" {
     NDArrayMathGPU_ElementWise(NDArray* ndarray, ElementWiseFloatGPUOperation op) {
         NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
         op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn));
+        return rtn;
+    }
+
+    NDArray*
+    NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1) {
+        NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
+        op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn), val1);
         return rtn;
     }
 
