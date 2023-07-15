@@ -709,7 +709,7 @@ extern "C" {
 
     void
     cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB) {
-        dim3 blockSize(16, 16); // Use a block size appropriate for your hardware
+        dim3 blockSize(32, 32); // Use a block size appropriate for your hardware
         dim3 gridSize((widthB + blockSize.x - 1) / blockSize.x, (heightA + blockSize.y - 1) / blockSize.y);
 
         matmul_float_kernel<<<gridSize, blockSize>>>(a, b, rtn, widthA, heightA, widthB);

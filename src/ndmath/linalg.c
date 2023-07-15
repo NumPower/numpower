@@ -52,7 +52,7 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
         NDArray* result_gpu = NDArray_ToGPU(result);
         NDArray_FREE(result);
         cuda_matmul_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(result_gpu),
-                          NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[0]);
+                          NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1]);
         return result_gpu;
 #endif
     } else {
