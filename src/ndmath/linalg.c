@@ -40,24 +40,27 @@
  */
 NDArray*
 NDArray_FMatmul(NDArray *a, NDArray *b) {
-    int *output_shape = emalloc(sizeof(int) * 2);
-
+    int* output_shape = emalloc(sizeof(int) * 2);
     output_shape[0] = NDArray_SHAPE(a)[0];
     output_shape[1] = NDArray_SHAPE(b)[1];
 
-    NDArray *result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+    NDArray* result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+        // Perform GPU matrix multiplication
 #ifdef HAVE_CUBLAS
-        NDArray *result_gpu = NDArray_ToGPU(result);
+        NDArray* result_gpu = NDArray_ToGPU(result);
         NDArray_FREE(result);
         cuda_matmul_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(result_gpu),
                           NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[0]);
         return result_gpu;
 #endif
     } else {
+        // Perform CPU matrix multiplication
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1],
-                    1.0f, NDArray_FDATA(a), NDArray_SHAPE(a)[1], NDArray_FDATA(b), NDArray_SHAPE(b)[1],
+                    NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
+                    1.0f, NDArray_FDATA(a), NDArray_SHAPE(a)[1],
+                    NDArray_FDATA(b), NDArray_SHAPE(b)[1],
                     0.0f, NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
     }
     return result;
