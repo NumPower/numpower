@@ -35,9 +35,29 @@ void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArra
     NDArray_FREE(temp);
 }
 
-void apply_single_reduce(NDArray* result, NDArray *target, double (*operation)(NDArray*)) {
-    double temp = operation(target);
-    NDArray_DDATA(result)[0] = temp;
+void apply_single_reduce(NDArray* result, NDArray *target, float (*operation)(NDArray*)) {
+    float temp;
+    float temp2;
+    float tmp_result;
+    int *tmp_shape = emalloc(sizeof(int));
+    tmp_shape[0] = 2;
+    NDArray_Print(target, 0);
+    NDArray *tmp = NDArray_Zeros(tmp_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(result));
+    if (NDArray_NDIM(target) >= 1) {
+        temp = operation(target);
+        temp2 = operation(result);
+    } else {
+        temp = NDArray_FDATA(target)[0];
+        temp2 = NDArray_FDATA(result)[0];
+    }
+    NDArray_FDATA(tmp)[0] = temp;
+    NDArray_FDATA(tmp)[1] = temp2;
+
+    tmp_result = operation(tmp);
+    php_printf("\n\n%f\n\n", tmp_result);
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
+        memcpy(result->data, &tmp_result, sizeof(float));
+    }
 }
 
 void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray* rtn, NDArray* (*operation)(NDArray*, NDArray*)) {
@@ -75,7 +95,7 @@ void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray
     }
 }
 
-void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray* rtn, double (*operation)(NDArray*)) {
+void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray* rtn, float (*operation)(NDArray*)) {
     NDArray* slice;
     NDArray* rtn_slice;
     NDArrayIterator_REWIND(target);
@@ -91,30 +111,8 @@ void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, 
             NDArray_FREE(slice);
             continue;
         }
-        if (rtn_init == 0) {
-            rtn_init = 1;
-            memcpy(rtn->data, slice->data, rtn->descriptor->numElements * sizeof(double));
-            NDArrayIterator_NEXT(target);
-            NDArray_FREE(slice);
-            continue;
-        }
         apply_single_reduce(rtn, slice, operation);
         NDArrayIterator_NEXT(target);
-        NDArray_FREE(slice);
-    }
-}
-
-void
-_single_reduce_axis(int axis, NDArray* target, NDArray* rtn, float (*operation)(NDArray*)) {
-    int i = 0;
-    NDArray *slice;
-    NDArrayAxisIterator *iterator = NDArrayAxisIterator_INIT(target, axis);
-    NDArrayAxisIterator_REWIND(iterator);
-    while(!NDArrayAxisIterator_ISDONE(iterator)) {
-        slice = NDArrayAxisIterator_GET(iterator);
-        NDArray_FDATA(rtn)[i] = operation(slice);
-        NDArrayAxisIterator_NEXT(iterator);
-        i++;
         NDArray_FREE(slice);
     }
 }
@@ -191,7 +189,7 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
     //    fprintf(stderr, "Memory allocation failed.\n");
     //    return;
     //}
-    _single_reduce_axis(*axis, array, rtn, operation);
+    _single_reduce(0, 0, axis, array, rtn, operation);
     return rtn;
 }
 
@@ -283,7 +281,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
  */
 void
 NDArray_FREE(NDArray* array) {
-    if (array == NULL) {
+    if (array == NULL || array->refcount == -1) {
         return;
     }
 
@@ -323,7 +321,7 @@ NDArray_FREE(NDArray* array) {
         if (array->descriptor != NULL) {
             efree(array->descriptor);
         }
-
+        array->refcount = -1;
         efree(array);
         array = NULL;
     }

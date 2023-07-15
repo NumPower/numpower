@@ -160,6 +160,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/iterators.c \
       src/indexing.c \
       src/ndmath/arithmetics.c \
+      src/ndmath/statistics.c \
       src/types.c,
       $ext_shared)
 fi

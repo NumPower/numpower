@@ -130,6 +130,62 @@ NDArray_Mean_Float(NDArray* a) {
     return value;
 }
 
+// Comparison function for sorting
+int compare(const void* a, const void* b) {
+    float fa = *((const float*)a);
+    float fb = *((const float*)b);
+    return (fa > fb) - (fa < fb);
+}
+
+float calculate_median(float* matrix, int size) {
+    // Copy matrix elements to a separate array
+    float* temp = malloc(size * sizeof(float));
+    if (temp == NULL) {
+        // Handle memory allocation error
+        fprintf(stderr, "Memory allocation failed.\n");
+        exit(1);
+    }
+    memcpy(temp, matrix, size * sizeof(float));
+
+    // Sort the array in ascending order
+    qsort(temp, size, sizeof(float), compare);
+
+    // Calculate the median value
+    float median;
+    if (size % 2 == 0) {
+        // If the number of elements is even, average the two middle values
+        median = (temp[size / 2 - 1] + temp[size / 2]) / 2.0;
+    } else {
+        // If the number of elements is odd, take the middle value
+        median = temp[size / 2];
+    }
+
+    // Free the temporary array
+    free(temp);
+
+    return median;
+}
+
+/**
+ * Add elements of a element-wise
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+float
+NDArray_Median_Float(NDArray* a) {
+    float value = 0;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        return -1.0;
+#endif
+    } else {
+        return calculate_median(NDArray_FDATA(a), NDArray_NUMELEMENTS(a));
+    }
+    return value;
+}
+
 NDArray*
 NDArray_Add_Float(NDArray* a, NDArray* b) {
     NDArray *broadcasted = NULL;

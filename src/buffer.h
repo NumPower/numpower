@@ -11,6 +11,8 @@ struct MemoryStack {
     int numElements;
     int lastFreed;
     int totalGPUAllocated;
+    int totalAllocated;
+    int totalFreed;
 };
 
 extern struct MemoryStack MAIN_MEM_STACK;

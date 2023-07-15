@@ -14,6 +14,11 @@
  */
 struct MemoryStack MAIN_MEM_STACK;
 
+void buffer_dump() {
+    printf("\nMAIN_MEM_STACK.totalAllocated: %d", MAIN_MEM_STACK.totalAllocated);
+    printf("\nMAIN_MEM_STACK.totalFreed: %d\n", MAIN_MEM_STACK.totalFreed);
+}
+
 /**
  * If CARRAY_GC_DEBUG env is True, CArray Garbage Collector
  * will print debug messages when destructing objects.
@@ -39,6 +44,8 @@ void buffer_init(int size) {
     MAIN_MEM_STACK.numElements = 0;
     MAIN_MEM_STACK.lastFreed = -1;
     MAIN_MEM_STACK.totalGPUAllocated = 0;
+    MAIN_MEM_STACK.totalAllocated = 0;
+    MAIN_MEM_STACK.totalFreed = 0;
 }
 
 /**
@@ -47,6 +54,7 @@ void buffer_init(int size) {
 void buffer_free() {
     if (MAIN_MEM_STACK.buffer != NULL) {
         efree(MAIN_MEM_STACK.buffer);
+        MAIN_MEM_STACK.buffer = NULL;
     }
 }
 
@@ -55,10 +63,15 @@ void buffer_free() {
  */
 void buffer_ndarray_free(int uuid) {
     if (MAIN_MEM_STACK.buffer != NULL) {
+        // @todo investigate double free problem
         if (MAIN_MEM_STACK.lastFreed == -1) {
             MAIN_MEM_STACK.lastFreed = uuid;
         }
-        NDArray_FREE(MAIN_MEM_STACK.buffer[uuid]);
+        if (MAIN_MEM_STACK.buffer[uuid] != NULL) {
+            NDArray_FREE(MAIN_MEM_STACK.buffer[uuid]);
+            MAIN_MEM_STACK.buffer[uuid] = NULL;
+            MAIN_MEM_STACK.totalFreed++;
+        }
     }
 }
 
@@ -104,4 +117,5 @@ void add_to_buffer(NDArray* ndarray, size_t size) {
     // Add the NDArray to the buffer
     MAIN_MEM_STACK.buffer[MAIN_MEM_STACK.numElements] = ndarray;
     MAIN_MEM_STACK.numElements++;
+    MAIN_MEM_STACK.totalAllocated++;
 }

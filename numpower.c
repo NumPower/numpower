@@ -22,6 +22,7 @@
 #include "config.h"
 #include "src/types.h"
 #include "src/indexing.h"
+#include "src/ndmath/statistics.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -1797,7 +1798,7 @@ PHP_METHOD(NDArray, median)
     }
 
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        RETURN_DOUBLE(NDArray_Median_Float(nda));
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
@@ -1856,6 +1857,42 @@ PHP_METHOD(NDArray, std)
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::quantile
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_quantile, 0, 0, 1)
+    ZEND_ARG_INFO(0, target)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, quantile)
+{
+    NDArray *rtn = NULL;
+    zval *a, *q;
+    long axis;
+    int i_axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(q)
+    ZEND_PARSE_PARAMETERS_END();
+    i_axis = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndq = ZVAL_TO_NDARRAY(q);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtn = NDArray_Quantile(nda, ndq);
+
+    if (rtn == NULL) {
+        return;
+    }
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(q, ndq);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3101,8 +3138,8 @@ PHP_METHOD(NDArray, sum)
  * NDArray::min
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_min, 0, 0, 1)
-                ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-                ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+    ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, min)
 {
@@ -3121,10 +3158,6 @@ PHP_METHOD(NDArray, min)
         return;
     }
     if (ZEND_NUM_ARGS() == 2) {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
         axis_i = (int)axis;
         rtn = single_reduce(nda, &axis_i, NDArray_Min);
     } else {
@@ -3589,6 +3622,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, variance, arginfo_ndarray_variance, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, average, arginfo_ndarray_average, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, std, arginfo_ndarray_std, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, quantile, arginfo_ndarray_quantile, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // ARITHMETICS
         ZEND_ME(NDArray, add, arginfo_ndarray_add, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3635,12 +3669,13 @@ typedef struct {
 
 static void ndarray_destructor(zend_object* object) {
     NDArrayObject* my_object = (NDArrayObject*)object;
-
-    zval *obj_uuid = OBJ_PROP_NUM(object, 0);
-    buffer_ndarray_free(Z_LVAL_P(obj_uuid));
-    //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
-    // Call the default object destructor
-    zend_object_std_dtor(object);
+    if (GC_REFCOUNT(object) <= 1) {
+        zval *obj_uuid = OBJ_PROP_NUM(object, 0);
+        buffer_ndarray_free(Z_LVAL_P(obj_uuid));
+        //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
+        // Call the default object destructor
+        zend_object_std_dtor(object);
+    }
 }
 
 static void ndarray_objects_init(zend_class_entry *class_type)
