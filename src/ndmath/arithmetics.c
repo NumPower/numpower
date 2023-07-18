@@ -600,7 +600,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
 
         // Handle remaining elements if the length is not a multiple of 4
         for (; i < NDArray_NUMELEMENTS(a); i++) {
-            resultData[i] = aData[i] - bData[i];
+            resultData[i] = aData[i] / bData[i];
         }
 #else
         for (int i = 0; i < numElements; i++) {
