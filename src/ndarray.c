@@ -730,7 +730,7 @@ NDArray_ShapeCompare(NDArray *a, NDArray *b)
         return 0;
     }
 
-    for(int i; i < NDArray_NDIM(a); i++) {
+    for(int i = 0; i < NDArray_NDIM(a); i++) {
         if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
             return 0;
         }
@@ -772,7 +772,8 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
 }
 
 float*
-broadcastToFloat(float* a, float* b, int* a_shape, int* b_shape, int *a_strides, int *b_strides, int a_ndim, int b_ndim, int numelements) {
+broadcastToFloat(float* a, float* b, int* a_shape, int* b_shape, int *a_strides,
+                 int *b_strides, int a_ndim, int b_ndim, int numelements) {
     float *result;
     int i, j;
     int result_index, a_index;
@@ -885,12 +886,14 @@ NDArray_Overwrite(NDArray *target, NDArray *values) {
     }
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
-        memcpy(NDArray_FDATA(target), NDArray_FDATA(values), sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
+        memcpy(NDArray_FDATA(target), NDArray_FDATA(values),
+               sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
         return 1;
     }
 #ifdef HAVE_CUBLAS
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-        NDArray_VMEMCPY_D2D(values->data, target->data, sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
+        NDArray_VMEMCPY_D2D(values->data, target->data,
+                            sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
         return 1;
     }
 #endif

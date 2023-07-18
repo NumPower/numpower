@@ -390,27 +390,11 @@ NDArray*
 NDArray_Ones(int *shape, int ndim, const char *type) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
     int i;
-#ifdef HAVE_AVX2
-    if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
-        rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
-        __m256 one = _mm256_set1_ps((float)1.0);
-
-        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i += 8) {
-            _mm256_storeu_ps(&NDArray_FDATA(rtn)[i], one);
-        }
-
-        // handle tail elements, if size is not divisible by 4
-        for (i = NDArray_NUMELEMENTS(rtn) - NDArray_NUMELEMENTS(rtn) % 8; i < NDArray_NUMELEMENTS(rtn); ++i) {
-            NDArray_FDATA(rtn)[i] = (float)1.0;
-        }
-    }
-#else
     rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
     for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++)
     {
         NDArray_FDATA(rtn)[i] = (float)1.0;
     }
-#endif
     return rtn;
 }
 

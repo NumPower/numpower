@@ -412,6 +412,170 @@ PHP_METHOD(NDArray, equal)
     RETURN_NDARRAY(rtn, return_value);
 }
 
+/**
+ * NDArray::greater
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_greater, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, greater)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_Greater(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::greater_equal
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_greaterequal, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, greater_equal)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_GreaterEqual(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::less
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_less, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, less)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_Less(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::less_equal
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_lessequal, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, less_equal)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_LessEqual(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::less_equal
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_notequal, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, not_equal)
+{
+    NDArray *nda, *ndb, *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    nda = ZVAL_TO_NDARRAY(a);
+    ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) return;
+    if (ndb == NULL) return;
+
+    rtn = NDArray_NotEqual(nda, ndb);
+
+    if (rtn == NULL) return;
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
 
 /**
  * NDArray::identity
@@ -727,6 +891,46 @@ PHP_METHOD(NDArray, all)
         rtn = single_reduce(nda, &axis_i, &NDArray_All);
         RETURN_NDARRAY(rtn, return_value);
     }
+}
+
+/**
+ * NDArray::allclose
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_allclose, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+    ZEND_ARG_INFO(0, rtol)
+    ZEND_ARG_INFO(0, atol)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, allclose)
+{
+    zval *a, *b;
+    double rtol = 1e-05, atol = 1e-08;
+    int rtn;
+    ZEND_PARSE_PARAMETERS_START(2, 4)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_DOUBLE(rtol)
+        Z_PARAM_DOUBLE(atol)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+
+    if (nda == NULL) {
+        return;
+    }
+    if (ndb == NULL) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        return;
+    }
+    rtn = NDArray_AllClose(nda, ndb, (float)rtol, (float)atol);
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_BOOL(rtn);
 }
 
 /**
@@ -3621,7 +3825,13 @@ static const zend_function_entry class_NDArray_methods[] = {
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, allclose, arginfo_ndarray_allclose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, equal, arginfo_ndarray_equal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, greater, arginfo_ndarray_greater, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, greater_equal, arginfo_ndarray_greaterequal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, less, arginfo_ndarray_less, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, less_equal, arginfo_ndarray_lessequal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, not_equal, arginfo_ndarray_notequal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // MATH
         ZEND_ME(NDArray, abs, arginfo_ndarray_abs, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

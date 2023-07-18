@@ -68,6 +68,11 @@ extern "C" {
     void cuda_prod_float(int nblocks, float *a, float *rtn, int nelements);
     void cuda_float_round(int nblocks, float *d_array, float decimals);
     void cuda_calculate_outer_product(int m, int n, float *a_array, float *b_array, float *r_array);
+    void cuda_float_compare_greater(int nblocks, float *a_array, float *b_array, float *result, int n);
+    void cuda_float_compare_greater_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
+    void cuda_float_compare_less(int nblocks, float *a_array, float *b_array, float *result, int n);
+    void cuda_float_compare_less_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
+    void cuda_float_compare_not_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
     NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
 

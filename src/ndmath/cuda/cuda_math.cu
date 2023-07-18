@@ -159,7 +159,42 @@ __global__ void matrixVectorMultiplyFloatKernel(float* a, float* b, float* resul
 __global__ void compareArraysFloatKernel(const float* array1, const float* array2, float* result, int size) {
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < size) {
-        result[index] = (fabsf(array1[index] - array2[index]) <= 0.00000001) ? 1.0f : 0.0f;
+        result[index] = (fabsf(array1[index] - array2[index]) <= 0.0000001f) ? 1.0f : 0.0f;
+    }
+}
+
+__global__ void compareArraysNotEqualFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = (fabsf(array1[index] - array2[index]) <= 0.0000001f) ? 0.0f : 1.0f;
+    }
+}
+
+__global__ void compareArraysGreaterFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = array1[index] > array2[index] ? 1.0f : 0.0f;
+    }
+}
+
+__global__ void compareArraysGreaterEqualFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = array1[index] >= array2[index] ? 1.0f : 0.0f;
+    }
+}
+
+__global__ void compareArraysLessFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = array1[index] < array2[index] ? 1.0f : 0.0f;
+    }
+}
+
+__global__ void compareArraysLessEqualFloatKernel(const float* array1, const float* array2, float* result, int size) {
+    int index = blockIdx.x * blockDim.x + threadIdx.x;
+    if (index < size) {
+        result[index] = array1[index] <= array2[index] ? 1.0f : 0.0f;
     }
 }
 
@@ -1238,6 +1273,46 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         compareArraysFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_not_equal(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysNotEqualFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_greater(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysGreaterFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_greater_equal(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysGreaterEqualFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_less(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysLessFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_compare_less_equal(int nblocks, float *a_array, float *b_array, float *result, int n) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        compareArraysLessEqualFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
         cudaDeviceSynchronize();
     }
 

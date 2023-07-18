@@ -1,7 +1,73 @@
-ARG_ENABLE('phpsci_ndarray', 'phpsci_ndarray support', 'no');
+// Comments in this file start with '//'.
+// Remove where necessary.
 
-if (PHP_PHPSCI_NDARRAY != 'no') {
-	AC_DEFINE('HAVE_PHPSCI_NDARRAY', 1, 'NumPower support enabled');
+ARG_ENABLE('ndarray', 'whether to enable ndarray support', 'no')
 
-	EXTENSION('phpsci_ndarray', 'numpower.c', null, '/DZEND_ENABLE_STATIC_TSRMLS_CACHE=1');
-}
+if PHP_NDARRAY != "no"; then
+  // Check for CUBLAS library
+  PHP_CHECK_LIBRARY('cublas', 'cublasDgemm', '
+    ARG_ENABLE("cublas", "Enable CUBLAS support", "no")
+    AC_MSG_RESULT(["CUBLAS detected"])
+    CFLAGS = CFLAGS + " -lcublas -lcudart "
+  ', '
+    AC_MSG_RESULT(["Wrong CUBLAS version or library not found."])
+  ')
+
+  // Check for AVX2 support
+  PHP_CHECK_HEADER('immintrin.h', '
+    AC_DEFINE("HAVE_AVX2", 1, ["Have AVX2/SSE support"])
+    AC_MSG_RESULT(["AVX2/SSE detected"])
+    CFLAGS = CFLAGS + " -mavx2 "
+  ', '
+    AC_DEFINE("HAVE_AVX2", 0, ["Have AVX2/SSE support"])
+    AC_MSG_RESULT(["AVX2/SSE not found"])
+  ')
+
+  // Check for CBLAS library
+  PHP_CHECK_LIBRARY('cblas', 'cblas_sdot', '
+    ARG_ENABLE("cblas", "Enable CBLAS support", "no")
+    AC_MSG_RESULT(["CBLAS detected"])
+    CFLAGS = CFLAGS + " -lcblas "
+  ', '
+    PHP_CHECK_LIBRARY('openblas', 'cblas_sdot', '
+      ARG_ENABLE("openblas", "Enable OpenBLAS support", "no")
+      AC_MSG_RESULT(["OpenBLAS detected"])
+      AC_DEFINE("HAVE_CBLAS", 1, [""])
+      CFLAGS = CFLAGS + " -lopenblas -lpthread "
+    ', '
+      AC_MSG_ERROR(["Wrong OpenBLAS/BLAS version or library not found."])
+    ', '
+      -lopenblas
+    ')
+  ', '
+    -lcblas
+  ')
+
+  // Check for LAPACKE library
+  PHP_CHECK_LIBRARY('lapack', 'dgesvd_', '
+    ARG_ENABLE("lapacke", "Enable LAPACKE support", "no")
+    AC_MSG_RESULT(["LAPACKE detected"])
+    CFLAGS = CFLAGS + " -llapack -llapacke "
+  ', '
+    AC_MSG_ERROR(["Wrong LAPACKE version or library not found."])
+  ')
+
+  // Add your extension's source files
+  PHP_ADD_EXTENSION('ndarray', '
+    numpower.c \
+    src/initializers.c \
+    src/ndmath/double_math.c \
+    src/ndarray.c \
+    src/debug.c \
+    src/buffer.c \
+    src/logic.c \
+    src/gpu_alloc.c \
+    src/ndmath/linalg.c \
+    src/manipulation.c \
+    src/iterators.c \
+    src/indexing.c \
+    src/ndmath/arithmetics.c \
+    src/ndmath/statistics.c \
+    src/types.c
+  ')
+endif

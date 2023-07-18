@@ -27,7 +27,9 @@ PHP_CHECK_LIBRARY(cublas,cublasDgemm,
   CFLAGS+=" -lcublas -lcudart "
 ],[
     AC_MSG_RESULT([wrong cublas version or library not found.])
-    AC_CHECK_HEADER([immintrin.h],
+
+])
+AC_CHECK_HEADER([immintrin.h],
         [
           AC_DEFINE(HAVE_AVX2,1,[Have AV2/SSE support])
           AC_MSG_RESULT([AVX2/SSE detected ])
@@ -39,7 +41,8 @@ PHP_CHECK_LIBRARY(cublas,cublasDgemm,
 
         ]
     )
-])
+
+
 
 PHP_CHECK_LIBRARY(cblas,cblas_sdot,
 [
