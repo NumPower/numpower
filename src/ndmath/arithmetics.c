@@ -266,7 +266,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
         int i;
         __m256 vec1, vec2, mul;
 
-        for (i = 0; i < NDArray_NUMELEMENTS(a); i += 8) {
+        for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             mul = _mm256_add_ps(vec1, vec2);
@@ -277,7 +277,6 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
             resultData[i] = aData[i] + bData[i];
         }
 #elif HAVE_CBLAS
-
         if (NDArray_NUMELEMENTS(a_broad) == NDArray_NUMELEMENTS(b_broad)) {
             memcpy(resultData, NDArray_FDATA(b_broad), NDArray_ELSIZE(b_broad) * NDArray_NUMELEMENTS(b_broad));
             cblas_saxpy(NDArray_NUMELEMENTS(a_broad), 1.0F, NDArray_FDATA(a_broad), 1, resultData,
@@ -390,7 +389,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
         int i;
         __m256 vec1, vec2, mul;
 
-        for (i = 0; i < NDArray_NUMELEMENTS(a); i += 8) {
+        for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             mul = _mm256_mul_ps(vec1, vec2);
@@ -491,7 +490,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
         int i;
         __m256 vec1, vec2, sub;
 
-        for (i = 0; i < NDArray_NUMELEMENTS(a); i += 8) {
+        for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             sub = _mm256_sub_ps(vec1, vec2);
@@ -592,7 +591,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
         int i;
         __m256 vec1, vec2, sub;
 
-        for (i = 0; i < NDArray_NUMELEMENTS(a); i += 8) {
+        for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             sub = _mm256_div_ps(vec1, vec2);
