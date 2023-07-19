@@ -16,4 +16,5 @@ NDArray** NDArray_LU(NDArray* target);
 NDArray* NDArray_MatrixRank(NDArray *target, float *tol);
 NDArray* NDArray_Outer(NDArray *a, NDArray *b);
 NDArray* NDArray_Trace(NDArray *a);
+NDArray* NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_value);
 #endif //PHPSCI_NDARRAY_LINALG_H

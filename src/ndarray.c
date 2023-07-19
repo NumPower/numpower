@@ -23,6 +23,145 @@
 #include "gpu_alloc.h"
 #endif
 
+#ifdef HAVE_GD
+#include "ext/gd/libgd/gd.h"
+
+typedef struct _gd_ext_image_object {
+    gdImagePtr image;
+    zend_object std;
+} php_gd_image_object;
+
+static
+gdImagePtr gdImagePtr_from_zobj_p(zend_object* obj)
+{
+    return ((php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std)))->image;
+}
+
+static
+zend_always_inline php_gd_image_object* php_gd_exgdimage_from_zobj_p(zend_object* obj)
+{
+    return (php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std));
+}
+
+void
+php_gd_assign_libgdimageptr_as_extgdimage(zval *val, gdImagePtr image)
+{
+    zend_class_entry* gd_image_ce = zend_lookup_class(zend_string_init("GdImage", strlen("GdImage"), 1));
+    object_init_ex(val, gd_image_ce);
+    php_gd_exgdimage_from_zobj_p(Z_OBJ_P(val))->image = image;
+}
+
+gdImagePtr gdImageCreateTrueColor_ (int sx, int sy)
+{
+    int i;
+    gdImagePtr im;
+
+    im = (gdImage *) emalloc(sizeof(gdImage));
+    memset(im, 0, sizeof(gdImage));
+    im->tpixels = (int **) emalloc(sizeof(int *) * sy);
+    im->polyInts = 0;
+    im->polyAllocated = 0;
+    im->brush = 0;
+    im->tile = 0;
+    im->style = 0;
+    for (i = 0; i < sy; i++) {
+        im->tpixels[i] = (int *) ecalloc(sx, sizeof(int));
+    }
+    im->sx = sx;
+    im->sy = sy;
+    im->transparent = (-1);
+    im->interlace = 0;
+    im->trueColor = 1;
+    /* 2.0.2: alpha blending is now on by default, and saving of alpha is
+     * off by default. This allows font antialiasing to work as expected
+     * on the first try in JPEGs -- quite important -- and also allows
+     * for smaller PNGs when saving of alpha channel is not really
+     * desired, which it usually isn't!
+     */
+    im->saveAlphaFlag = 0;
+    im->alphaBlendingFlag = 1;
+    im->thick = 1;
+    im->AA = 0;
+    im->cx1 = 0;
+    im->cy1 = 0;
+    im->cx2 = im->sx - 1;
+    im->cy2 = im->sy - 1;
+    im->res_x = GD_RESOLUTION;
+    im->res_y = GD_RESOLUTION;
+    im->interpolation = NULL;
+    im->interpolation_id = GD_BILINEAR_FIXED;
+    return im;
+}
+
+NDArray *
+NDArray_FromGD(zval *a) {
+    NDArray *rtn;
+    int color_index;
+    int offset_green, offset_red, offset_blue;
+    int red, green, blue;
+    int *i_shape = emalloc(sizeof(int) * 3);
+    gdImagePtr img_ptr = gdImagePtr_from_zobj_p(Z_OBJ_P(a));
+    i_shape[0] = 3;
+    i_shape[1] = (int)img_ptr->sy;
+    i_shape[2] = (int)img_ptr->sx;
+    rtn = NDArray_Zeros(i_shape, 3, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    for (int i = 0; i < img_ptr->sy; i++) {
+        for (int j = 0; j < img_ptr->sx; j++) {
+            offset_red = (NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn) * 0) +
+                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            offset_green = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 1) +
+                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            offset_blue = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 2) +
+                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            color_index = img_ptr->tpixels[i][j];
+            red = (color_index >> 16) & 0xFF;
+            green = (color_index >> 8) & 0xFF;
+            blue = color_index & 0xFF;
+            NDArray_FDATA(rtn)[offset_red] = (float)red;
+            NDArray_FDATA(rtn)[offset_blue] = (float)blue;
+            NDArray_FDATA(rtn)[offset_green] = (float)green;
+        }
+    }
+    return rtn;
+}
+
+void
+NDArray_ToGD(NDArray *a, zval *output) {
+    if (NDArray_NDIM(a) != 3) {
+        zend_throw_error(NULL, "Incompatible shape for image");
+        return;
+    }
+
+    int color_index;
+    int offset_green, offset_red, offset_blue;
+    int red, green, blue;
+    char *tmp_red, *tmp_blue, *tmp_green;
+    gdImagePtr im = gdImageCreateTrueColor_(NDArray_SHAPE(a)[2], NDArray_SHAPE(a)[1]);
+    for (int i = 0; i < im->sy; i++) {
+        for (int j = 0; j < im->sx; j++) {
+            offset_red = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * 0) +
+                         ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                         ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            offset_green = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 1) +
+                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                           ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            offset_blue = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 2) +
+                          ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                          ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            red = NDArray_FDATA(a)[offset_red];
+            blue = NDArray_FDATA(a)[offset_blue];
+            green = NDArray_FDATA(a)[offset_green];
+            color_index = (red << 16) | (green << 8) | blue;
+            im->tpixels[i][j] = color_index;
+        }
+    }
+    php_gd_assign_libgdimageptr_as_extgdimage(output, im);
+}
+#endif
+
 void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArray*, NDArray*)) {
     NDArray* temp = operation(result, target);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
@@ -708,10 +847,10 @@ NDArray_ToCPU(NDArray *target)
     new_shape = emalloc(sizeof(int) * NDArray_NDIM(target));
     memcpy(new_shape, NDArray_SHAPE(target), sizeof(int) * NDArray_NDIM(target));
 
-    NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
+    NDArray *rtn = NDArray_Empty(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     rtn->device = NDARRAY_DEVICE_CPU;
 #ifdef HAVE_CUBLAS
-    cudaMemcpy(rtn->data, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float ), cudaMemcpyDeviceToHost);
+    cudaMemcpy(rtn->data, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyDeviceToHost);
 #endif
     return rtn;
 }

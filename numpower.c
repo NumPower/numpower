@@ -31,6 +31,10 @@
 #include "src/gpu_alloc.h"
 #endif
 
+#ifdef HAVE_GD
+
+#endif
+
 /* For compatibility with older PHP versions */
 #ifndef ZEND_PARSE_PARAMETERS_NONE
 #define ZEND_PARSE_PARAMETERS_NONE() \
@@ -63,6 +67,13 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
         if (ce == phpsci_ce_NDArray) {
             return buffer_get(get_object_uuid(obj));
         }
+#ifdef HAVE_GD
+        /* Check if the zend_object class name is "GdImage" */
+        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
+        if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
+            return NDArray_FromGD(obj);
+        }
+#endif
     }
     zend_throw_error(NULL, "Invalid object type");
     return NULL;
@@ -223,6 +234,29 @@ PHP_METHOD(NDArray, toArray)
     RETURN_ZVAL(&rtn, 0, 0);
 }
 
+ZEND_BEGIN_ARG_INFO(arginfo_toImage, 0)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, toImage)
+{
+    zval rtn;
+    zval *obj_zval = getThis();
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a PHP array.");
+        return;
+    }
+    if (NDArray_NDIM(array) != 3) {
+        zend_throw_error(NULL, "NDArray must be 3-dimensional before it can be converted to a RGB image.");
+        return;
+    }
+    NDArray_ToGD(array, return_value);
+}
+
 ZEND_BEGIN_ARG_INFO(arginfo_gpu, 0)
 ZEND_END_ARG_INFO();
 PHP_METHOD(NDArray, gpu)
@@ -259,6 +293,24 @@ PHP_METHOD(NDArray, cpu)
     rtn = NDArray_ToCPU(array);
     RETURN_NDARRAY(rtn, return_value);
 }
+
+ZEND_BEGIN_ARG_INFO(arginfo_is_gpu, 0)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, isGPU)
+{
+    NDArray *rtn;
+    zval *obj_zval = getThis();
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
+        RETURN_LONG(1);
+    } else {
+        RETURN_LONG(0);
+    }
+}
+
 
 ZEND_BEGIN_ARG_INFO(arginfo_dump, 0)
 ZEND_END_ARG_INFO();
@@ -3219,7 +3271,7 @@ PHP_METHOD(NDArray, lu)
 }
 
 /**
- * NDArray::lu
+ * NDArray::matrix_rank
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_matrix_rank, 0)
     ZEND_ARG_INFO(0, a)
@@ -3250,6 +3302,45 @@ PHP_METHOD(NDArray, matrix_rank)
 
 
     CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::convolve2d
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_convolve2d, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+    ZEND_ARG_INFO(0, mode)
+    ZEND_ARG_INFO(0, boundary)
+    ZEND_ARG_INFO(0, fill_value)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, convolve2d)
+{
+    NDArray *rtn;
+    zval *a, *b;
+    char *mode, *boundary;
+    double fill_value = 0.0f;
+    size_t size = 1;
+    ZEND_PARSE_PARAMETERS_START(4, 5)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+        Z_PARAM_STRING(mode, size)
+        Z_PARAM_STRING(boundary, size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_DOUBLE(fill_value)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL || ndb == NULL) {
+        return;
+    }
+    rtn = NDArray_Convolve2D(nda, ndb, mode[0], boundary[0], (float)fill_value);
+    if (rtn == NULL) {
+        return;
+    }
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3809,6 +3900,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, dumpDevices, arginfo_dump_devices, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, cpu, arginfo_cpu, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, isGPU, arginfo_is_gpu, ZEND_ACC_PUBLIC)
 
         ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3816,6 +3908,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         // MANIPULATION
         ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, toImage, arginfo_toImage, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, copy, arginfo_ndarray_copy, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, shape, arginfo_ndarray_shape, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, flatten, arginfo_ndarray_flat, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3860,6 +3953,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, lstsq, arginfo_ndarray_lstsq, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, lu, arginfo_ndarray_lu, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, matrix_rank, arginfo_ndarray_matrix_rank, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, convolve2d, arginfo_ndarray_convolve2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LOGIC
         ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

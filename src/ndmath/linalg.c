@@ -753,3 +753,395 @@ NDArray_Trace(NDArray *a) {
     NDArray_FREE(diagonal);
     return NDArray_CreateFromFloatScalar(result);
 }
+
+void convolve2d_full_float(const float* a, const float* b, const int* shape_a,
+                           const int* shape_b, const int* strides_a,
+                           const int* strides_b, char boundary, float* output,
+                           float fill_value) {
+    int a_height = shape_a[0];
+    int a_width = shape_a[1];
+    int b_height = shape_b[0];
+    int b_width = shape_b[1];
+    int stride_a_y = strides_a[0]/sizeof(float);
+    int stride_a_x = strides_a[1]/sizeof(float);
+    int stride_b_y = strides_b[0]/sizeof(float);
+    int stride_b_x = strides_b[1]/sizeof(float);
+
+    int output_height = a_height + b_height - 1;
+    int output_width = a_width + b_width - 1;
+
+    for (int y = 0; y < output_height; y++) {
+        for (int x = 0; x < output_width; x++) {
+            float sum = 0.0f;
+
+            for (int i = 0; i < b_height; i++) {
+                for (int j = 0; j < b_width; j++) {
+                    int a_y = y - i;
+                    int a_x = x - j;
+
+                    if (boundary == 'f') {
+                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                            a_x < a_width) {
+                            sum += a[a_y * stride_a_y + a_x * stride_a_x] *
+                                   b[i * stride_b_y + j * stride_b_x];
+                        } else {
+                            sum += fill_value * b[i * stride_b_y +
+                                                  j * stride_b_x];
+                        }
+                    } else if (boundary == 'w') {
+                        int wrapped_y = (a_y + a_height) % a_height;
+                        int wrapped_x = (a_x + a_width) % a_width;
+                        sum += a[wrapped_y * stride_a_y + wrapped_x *
+                                                          stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    } else if (boundary == 's') {
+                        int symm_y =
+                                (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
+                                                                           a_height -
+                                                                           1 -
+                                                                           a_y
+                                                                         : a_y;
+                        int symm_x =
+                                (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
+                                                                          a_width -
+                                                                          1 -
+                                                                          a_x
+                                                                        : a_x;
+                        sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    }
+                }
+            }
+
+            output[y * output_width + x] = sum;
+        }
+    }
+}
+
+void
+convolve2d_valid_float(const float* a, const float* b, const int* shape_a,
+                            const int* shape_b, const int* strides_a,
+                            const int* strides_b, char boundary,
+                            float* output, float fill_value) {
+    int a_height = shape_a[0];
+    int a_width = shape_a[1];
+    int b_height = shape_b[0];
+    int b_width = shape_b[1];
+    int stride_a_y = strides_a[0]/sizeof(float);
+    int stride_a_x = strides_a[1]/sizeof(float);
+    int stride_b_y = strides_b[0]/sizeof(float);
+    int stride_b_x = strides_b[1]/sizeof(float);
+
+    int output_height = a_height - b_height + 1;
+    int output_width = a_width - b_width + 1;
+
+    for (int y = 0; y < output_height; y++) {
+        for (int x = 0; x < output_width; x++) {
+            float sum = 0.0f;
+
+            for (int i = 0; i < b_height; i++) {
+                for (int j = 0; j < b_width; j++) {
+                    int a_y = y + i;
+                    int a_x = x + j;
+
+                    if (boundary == 'f') {
+                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                            a_x < a_width) {
+                            sum += a[a_y * stride_a_y + a_x * stride_a_x] *
+                                   b[i * stride_b_y + j * stride_b_x];
+                        } else {
+                            sum += fill_value * b[i * stride_b_y +
+                                                  j * stride_b_x];
+                        }
+                    } else if (boundary == 'w') {
+                        int wrapped_y = (a_y + a_height) % a_height;
+                        int wrapped_x = (a_x + a_width) % a_width;
+                        sum += a[wrapped_y * stride_a_y + wrapped_x *
+                                                          stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    } else if (boundary == 's') {
+                        int symm_y =
+                                (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
+                                                                           a_height -
+                                                                           1 -
+                                                                           a_y
+                                                                         : a_y;
+                        int symm_x =
+                                (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
+                                                                          a_width -
+                                                                          1 -
+                                                                          a_x
+                                                                        : a_x;
+                        sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    }
+                }
+            }
+
+            output[y * output_width + x] = sum;
+        }
+    }
+}
+
+void
+convolve2d_same_float(const float* a, const float* b, const int* shape_a,
+                           const int* shape_b, const int* strides_a,
+                           const int* strides_b, char boundary,
+                           float* output, float fill_value) {
+#ifdef HAVE_AVX2
+    int a_height = shape_a[0];
+    int a_width = shape_a[1];
+    int b_height = shape_b[0];
+    int b_width = shape_b[1];
+    int stride_a_y = strides_a[0] / sizeof(float);
+    int stride_a_x = strides_a[1] / sizeof(float);
+    int stride_b_y = strides_b[0] / sizeof(float);
+    int stride_b_x = strides_b[1] / sizeof(float);
+
+    int output_height = a_height;
+    int output_width = a_width;
+
+    int padding_top = b_height / 2;
+    int padding_left = b_width / 2;
+    int x;
+    for (int y = 0; y < output_height; y++) {
+        for (x = 0; x < output_width - 8; x += 8) {
+            __m256 sum = _mm256_setzero_ps();
+
+            for (int i = 0; i < b_height; i++) {
+                for (int j = 0; j < b_width; j++) {
+                    int a_y = y + i - padding_top;
+                    int a_x = x + j - padding_left;
+
+                    if (boundary == 'f') {
+                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                            a_x < a_width) {
+                            __m256 a_vals = _mm256_loadu_ps(
+                                    &a[a_y * stride_a_y + a_x * stride_a_x]);
+                            __m256 b_vals = _mm256_set1_ps(
+                                    b[i * stride_b_y + j * stride_b_x]);
+                            sum = _mm256_fmadd_ps(a_vals, b_vals, sum);
+                        } else {
+                            sum = _mm256_fmadd_ps(
+                                    _mm256_set1_ps(fill_value),
+                                    _mm256_set1_ps(b[i * stride_b_y +
+                                                     j * stride_b_x]),
+                                    sum);
+                        }
+                    } else if (boundary == 'w') {
+                        int wrapped_y = (a_y + a_height) % a_height;
+                        int wrapped_x = (a_x + a_width) % a_width;
+                        __m256 a_vals = _mm256_loadu_ps(
+                                &a[wrapped_y * stride_a_y + wrapped_x *
+                                                            stride_a_x]);
+                        __m256 b_vals = _mm256_set1_ps(
+                                b[i * stride_b_y + j * stride_b_x]);
+                        sum = _mm256_fmadd_ps(a_vals, b_vals, sum);
+                    } else if (boundary == 's') {
+                        int symm_y =
+                                (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
+                                                                           a_height -
+                                                                           1 -
+                                                                           a_y
+                                                                         : a_y;
+                        int symm_x =
+                                (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
+                                                                          a_width -
+                                                                          1 -
+                                                                          a_x
+                                                                        : a_x;
+                        __m256 a_vals = _mm256_loadu_ps(
+                                &a[symm_y * stride_a_y + symm_x * stride_a_x]);
+                        __m256 b_vals = _mm256_set1_ps(
+                                b[i * stride_b_y + j * stride_b_x]);
+                        sum = _mm256_fmadd_ps(a_vals, b_vals, sum);
+                    }
+                }
+            }
+
+            _mm256_storeu_ps(&output[y * output_width + x], sum);
+        }
+        for (; x < output_width; x++) {
+            float sum = 0.0f;
+
+            for (int i = 0; i < b_height; i++) {
+                for (int j = 0; j < b_width; j++) {
+                    int a_y = y + i - padding_top;
+                    int a_x = x + j - padding_left;
+
+                    if (boundary == 'f') {
+                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                            a_x < a_width) {
+                            sum += a[a_y * stride_a_y + a_x * stride_a_x] *
+                                   b[i * stride_b_y + j * stride_b_x];
+                        } else {
+                            sum += fill_value * b[i * stride_b_y +
+                                                  j * stride_b_x];
+                        }
+                    } else if (boundary == 'w') {
+                        int wrapped_y = (a_y + a_height) % a_height;
+                        int wrapped_x = (a_x + a_width) % a_width;
+                        sum += a[wrapped_y * stride_a_y + wrapped_x *
+                                                          stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    } else if (boundary == 's') {
+                        int symm_y =
+                                (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
+                                                                           a_height -
+                                                                           1 -
+                                                                           a_y
+                                                                         : a_y;
+                        int symm_x =
+                                (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
+                                                                          a_width -
+                                                                          1 -
+                                                                          a_x
+                                                                        : a_x;
+                        sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    }
+                }
+            }
+
+            output[y * output_width + x] = sum;
+        }
+    }
+#else
+    int a_height = shape_a[0];
+    int a_width = shape_a[1];
+    int b_height = shape_b[0];
+    int b_width = shape_b[1];
+    int stride_a_y = strides_a[0]/sizeof(float);
+    int stride_a_x = strides_a[1]/sizeof(float);
+    int stride_b_y = strides_b[0]/sizeof(float);
+    int stride_b_x = strides_b[1]/sizeof(float);
+
+    int output_height = a_height;
+    int output_width = a_width;
+
+    int padding_top = b_height / 2;
+    int padding_left = b_width / 2;
+
+    for (int y = 0; y < output_height; y++) {
+        for (int x = 0; x < output_width; x++) {
+            float sum = 0.0;
+
+            for (int i = 0; i < b_height; i++) {
+                for (int j = 0; j < b_width; j++) {
+                    int a_y = y + i - padding_top;
+                    int a_x = x + j - padding_left;
+
+                    if (boundary == 'f') {
+                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                            a_x < a_width) {
+                            sum += a[a_y * stride_a_y + a_x * stride_a_x] *
+                                   b[i * stride_b_y + j * stride_b_x];
+                        } else {
+                            sum += fill_value * b[i * stride_b_y +
+                                                  j * stride_b_x];
+                        }
+                    } else if (boundary == 'w') {
+                        int wrapped_y = (a_y + a_height) % a_height;
+                        int wrapped_x = (a_x + a_width) % a_width;
+                        sum += a[wrapped_y * stride_a_y + wrapped_x *
+                                                          stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    } else if (boundary == 's') {
+                        int symm_y =
+                                (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
+                                                                           a_height -
+                                                                           1 -
+                                                                           a_y
+                                                                         : a_y;
+                        int symm_x =
+                                (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
+                                                                          a_width -
+                                                                          1 -
+                                                                          a_x
+                                                                        : a_x;
+                        sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    }
+                }
+            }
+
+            output[y * output_width + x] = sum;
+        }
+    }
+#endif
+}
+
+/**
+ * NDArray::convolve2d
+ *
+ * mode: f = full, v = valid, s = same
+ * boundary: f = fill, w = wrap, s = symm
+ *
+ * @param a
+ * @param b
+ * @param mode
+ * @param boundary
+ * @param fill_value
+ * @return
+ */
+NDArray*
+NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_value) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device error.");
+        return NULL;
+    }
+
+    NDArray *rtn = NULL;
+    // Get the dimensions of the input arrays
+    int dim1 = NDArray_SHAPE(a)[0];
+    int dim2 = NDArray_SHAPE(a)[1];
+    int dim3 = NDArray_SHAPE(b)[0];
+    int dim4 = NDArray_SHAPE(b)[1];
+
+    // Calculate the output dimensions based on the convolution mode
+    int out_dim1, out_dim2;
+
+    if (mode == 'f') {
+        out_dim1 = dim1 + dim3 - 1;
+        out_dim2 = dim2 + dim4 - 1;
+    } else if (mode == 'v') {
+        out_dim1 = dim1 - dim3 + 1;
+        out_dim2 = dim2 - dim4 + 1;
+    } else if (mode == 's') {
+        out_dim1 = dim1;
+        out_dim2 = dim2;
+    } else {
+        printf("Invalid mode. Supported modes are 'f', 'v', and 's'.\n");
+        return NULL;
+    }
+
+    int *rtn_shape = emalloc(sizeof(int) * 2);
+    rtn_shape[0] = out_dim1;
+    rtn_shape[1] = out_dim2;
+    rtn = NDArray_Empty(rtn_shape, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    if (mode == 'f') {
+        convolve2d_full_float(NDArray_FDATA(a), NDArray_FDATA(b), NDArray_SHAPE(a), NDArray_SHAPE(b), NDArray_STRIDES(a),
+                         NDArray_STRIDES(b), boundary, NDArray_FDATA(rtn), fill_value);
+    }
+    if (mode == 'v') {
+        convolve2d_valid_float(NDArray_FDATA(a), NDArray_FDATA(b), NDArray_SHAPE(a), NDArray_SHAPE(b), NDArray_STRIDES(a),
+                              NDArray_STRIDES(b), boundary, NDArray_FDATA(rtn), fill_value);
+    }
+    if (mode == 's') {
+        if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+            convolve2d_same_float(NDArray_FDATA(a), NDArray_FDATA(b), NDArray_SHAPE(a), NDArray_SHAPE(b),
+                                  NDArray_STRIDES(a),
+                                  NDArray_STRIDES(b), boundary, NDArray_FDATA(rtn), fill_value);
+        }
+#ifdef HAVE_CUBLAS
+        if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+            cuda_convolve2d_same_float(NDArray_FDATA(a), NDArray_FDATA(b), NDArray_SHAPE(a), NDArray_SHAPE(b),
+                                  NDArray_STRIDES(a),
+                                  NDArray_STRIDES(b), boundary, NDArray_FDATA(rtn), fill_value);
+        }
+#endif
+    }
+
+    return rtn;
+}

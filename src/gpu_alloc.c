@@ -20,6 +20,12 @@ NDArray_VMEMCPY_D2D(char* target, char* dst, unsigned int size) {
 }
 
 void
+NDArray_VMEMCPY_H2D(char* target, char* dst, unsigned int size) {
+    cudaMemcpy(dst, target, size, cudaMemcpyHostToDevice);
+    cudaDeviceSynchronize();
+}
+
+void
 NDArray_VFREE(void* target) {
     MAIN_MEM_STACK.totalGPUAllocated--;
     cudaFree(target);
@@ -37,6 +43,13 @@ float
 NDArray_VFLOAT(char *target) {
     float value;
     cudaMemcpy(&value, target, sizeof(float), cudaMemcpyDeviceToHost);
+    return value;
+}
+
+float
+NDArray_VFLOATF_I(float *target, int index) {
+    float value;
+    cudaMemcpy(&value, &(target[index]), sizeof(float), cudaMemcpyDeviceToHost);
     return value;
 }
 

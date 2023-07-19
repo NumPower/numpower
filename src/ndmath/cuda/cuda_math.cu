@@ -36,6 +36,63 @@ __global__ void calculateOuterProductFloat(float* a, float* b, int m, int n, flo
     }
 }
 
+__global__ void convolve2dSameFloatKernel(const float* a, const float* b,
+                                      const int* shape_a, const int* shape_b,
+                                      const int* strides_a, const int* strides_b,
+                                      char boundary, float* output,
+                                      float fill_value) {
+    int a_height = shape_a[0];
+    int a_width = shape_a[1];
+    int b_height = shape_b[0];
+    int b_width = shape_b[1];
+    int stride_a_y = strides_a[0]/sizeof(float);
+    int stride_a_x = strides_a[1]/sizeof(float);
+    int stride_b_y = strides_b[0]/sizeof(float);
+    int stride_b_x = strides_b[1]/sizeof(float);
+
+    int output_height = a_height;
+    int output_width = a_width;
+
+    int padding_top = b_height / 2;
+    int padding_left = b_width / 2;
+
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (y < output_height && x < output_width) {
+        float sum = 0.0;
+
+        for (int i = 0; i < b_height; i++) {
+            for (int j = 0; j < b_width; j++) {
+                int a_y = y + i - padding_top;
+                int a_x = x + j - padding_left;
+
+                if (boundary == 'f') {
+                    if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
+                        a_x < a_width) {
+                        sum += a[a_y * stride_a_y + a_x * stride_a_x] *
+                               b[i * stride_b_y + j * stride_b_x];
+                    } else {
+                        sum += fill_value * b[i * stride_b_y + j * stride_b_x];
+                    }
+                } else if (boundary == 'w') {
+                    int wrapped_y = (a_y + a_height) % a_height;
+                    int wrapped_x = (a_x + a_width) % a_width;
+                    sum += a[wrapped_y * stride_a_y + wrapped_x * stride_a_x] *
+                           b[i * stride_b_y + j * stride_b_x];
+                } else if (boundary == 's') {
+                    int symm_y = (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 * a_height - 1 - a_y : a_y;
+                    int symm_x = (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 * a_width - 1 - a_x : a_x;
+                    sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
+                           b[i * stride_b_y + j * stride_b_x];
+                }
+            }
+        }
+
+        output[y * output_width + x] = sum;
+    }
+}
+
 // CUDA kernel for LU decomposition
 __global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, float *P, int size) {
     int i, k, maxIndex;
@@ -1314,6 +1371,40 @@ extern "C" {
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         compareArraysLessEqualFloatKernel<<<numBlocks, blockSize>>>(a_array, b_array, result, n);
         cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_convolve2d_same_float(const float* a, const float* b,
+                                   const int* shape_a, const int* shape_b,
+                                   const int* strides_a, const int* strides_b,
+                                   char boundary, float* output,
+                                   float fill_value) {
+        int output_height = shape_a[0];
+        int output_width = shape_a[1];
+        // Configure grid and block dimensions
+        dim3 blockDim(16, 16);
+        dim3 gridDim((output_width + blockDim.x - 1) / blockDim.x,
+                     (output_height + blockDim.y - 1) / blockDim.y);
+
+        int *d_shape_a, *d_shape_b, *d_strides_a, *d_strides_b;
+
+        NDArray_VMALLOC((void**)&d_shape_a, sizeof(int) * 2);
+        NDArray_VMALLOC((void**)&d_shape_b, sizeof(int) * 2);
+        NDArray_VMALLOC((void**)&d_strides_a, sizeof(int) * 2);
+        NDArray_VMALLOC((void**)&d_strides_b, sizeof(int) * 2);
+
+        NDArray_VMEMCPY_H2D((char*)shape_a, (char*)d_shape_a, sizeof(int) * 2);
+        NDArray_VMEMCPY_H2D((char*)shape_b, (char*)d_shape_b, sizeof(int) * 2);
+        NDArray_VMEMCPY_H2D((char*)strides_a, (char*)d_strides_a, sizeof(int) * 2);
+        NDArray_VMEMCPY_H2D((char*)strides_b, (char*)d_strides_b, sizeof(int) * 2);
+        // Launch the CUDA kernel
+        convolve2dSameFloatKernel<<<gridDim, blockDim>>>(a, b, d_shape_a, d_shape_b,
+                                                         d_strides_a, d_strides_b, boundary,
+                                                         output, fill_value);
+        NDArray_VFREE(d_shape_a);
+        NDArray_VFREE(d_shape_b);
+        NDArray_VFREE(d_strides_a);
+        NDArray_VFREE(d_strides_b);
     }
 
     NDArray*
