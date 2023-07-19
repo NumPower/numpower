@@ -720,3 +720,55 @@ NDArray_Copy(NDArray *a, int device) {
         return rtn;
     }
 }
+
+/*
+ * Like ceil(value), but check for overflow.
+ *
+ * Return 0 on success, -1 on failure
+ */
+static int _safe_ceil_to_int(double value, int* ret)
+{
+    double ivalue;
+
+    ivalue = ceil(value);
+    if (ivalue < INT_MIN || ivalue > INT_MAX) {
+        return -1;
+    }
+
+    *ret = (int)ivalue;
+    return 0;
+}
+
+/**
+ * NDArray::arange
+ *
+ * @param start
+ * @param stop
+ * @param step
+ * @return
+ */
+NDArray*
+NDArray_Arange(double start, double stop, double step) {
+    NDArray *rtn;
+    int i;
+    int length;
+
+    if (_safe_ceil_to_int((stop - start) / step, &length)) {
+        zend_throw_error(NULL, "arange: overflow while computing length");
+        return NULL;
+    }
+
+    if (length <= 0) {
+        zend_throw_error(NULL, "arange: zero length");
+        return NULL;
+    }
+
+    int *rtn_shape = emalloc(sizeof(int));
+    rtn_shape[0] = length;
+    rtn = NDArray_Zeros(rtn_shape, 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    NDArray_FDATA(rtn)[0] = (float)start;
+    for (i = 1; i < length; i++) {
+        NDArray_FDATA(rtn)[i] = NDArray_FDATA(rtn)[i-1] + step;
+    }
+    return rtn;
+}

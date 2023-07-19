@@ -22,7 +22,7 @@ NDArray* NDArray_CreateFromLongScalar(long scalar);
 int* Generate_Strides(int* dimensions, int dimensions_size, int elsize);
 NDArray* NDArray_CreateFromFloatScalar(float scalar);
 NDArray* NDArray_Empty(int *shape, int ndim, const char *type, int device);
-
+NDArray* NDArray_Arange(double start, double stop, double step);
 #ifdef __cplusplus
 extern "C" {
 #endif

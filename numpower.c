@@ -851,6 +851,38 @@ PHP_METHOD(NDArray, ones)
 }
 
 /**
+ * NDArray::arange
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_arange, 1)
+    ZEND_ARG_INFO(0, stop)
+    ZEND_ARG_INFO(0, start)
+    ZEND_ARG_INFO(0, step)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, arange)
+{
+    NDArray *rtn = NULL;
+    double start, stop, step;
+    ZEND_PARSE_PARAMETERS_START(1, 3)
+        Z_PARAM_DOUBLE(stop)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_DOUBLE(start)
+        Z_PARAM_DOUBLE(step)
+    ZEND_PARSE_PARAMETERS_END();
+    if (ZEND_NUM_ARGS() == 1) {
+        start = 0.0f;
+        step  = 1.0f;
+    }
+    if (ZEND_NUM_ARGS() == 2) {
+        step  = 1.0f;
+    }
+    rtn = NDArray_Arange(start, stop, step);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::all
  *
  * @param execute_data
@@ -3799,6 +3831,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         // INITIALIZERS
         ZEND_ME(NDArray, zeros, arginfo_ndarray_zeros, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, ones, arginfo_ndarray_ones, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, arange, arginfo_ndarray_arange, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, identity, arginfo_ndarray_identity, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, normal, arginfo_ndarray_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
