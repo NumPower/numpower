@@ -8,6 +8,8 @@
 #include "Zend/zend_hash.h"
 #include "iterators.h"
 #include "debug.h"
+#include "indexing.h"
+#include "manipulation.h"
 #include <math.h>
 #include <time.h>
 
@@ -527,21 +529,29 @@ NDArray_Diag(NDArray *a) {
     int i;
     int index;
     NDArray *rtn;
-    if (NDArray_NDIM(a) != 1) {
-        zend_throw_error(NULL, "Input array must be a vector");
+    if (NDArray_NDIM(a) != 1 && NDArray_NDIM(a) != 2) {
+        zend_throw_error(NULL, "Input array must be a vector or 2-dimensional");
         return NULL;
     }
 
-    int *rtn_shape = emalloc(sizeof(int) * 2);
-    rtn_shape[0] = NDArray_NUMELEMENTS(a);
-    rtn_shape[1] = NDArray_NUMELEMENTS(a);
-    rtn = NDArray_Zeros(rtn_shape, 2, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    if (NDArray_NDIM(a) == 1) {
+        int *rtn_shape = emalloc(sizeof(int) * 2);
+        rtn_shape[0] = NDArray_NUMELEMENTS(a);
+        rtn_shape[1] = NDArray_NUMELEMENTS(a);
+        rtn = NDArray_Zeros(rtn_shape, 2, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
-    for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        index = ((i * NDArray_STRIDES(rtn)[0]) + (i * NDArray_STRIDES(rtn)[1])) / NDArray_ELSIZE(rtn);
-        NDArray_FDATA(rtn)[index] = NDArray_FDATA(a)[i];
+        for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+            index = ((i * NDArray_STRIDES(rtn)[0]) + (i * NDArray_STRIDES(rtn)[1])) / NDArray_ELSIZE(rtn);
+            NDArray_FDATA(rtn)[index] = NDArray_FDATA(a)[i];
+        }
     }
 
+    if (NDArray_NDIM(a) == 2) {
+        rtn = NDArray_Diagonal(a, 0);
+        rtn->ndim = 1;
+        rtn->dimensions[0] = NDArray_NUMELEMENTS(rtn);
+        rtn->strides[0] = NDArray_ELSIZE(rtn);
+    }
     return rtn;
 }
 

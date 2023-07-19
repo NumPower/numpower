@@ -84,9 +84,6 @@ NDArray_Sum_Float(NDArray* a) {
     float value = 0;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        //cublasHandle_t handle;
-        //cublasCreate(&handle);
-        //cublasSasum(handle, NDArray_NUMELEMENTS(a), NDArray_FDATA(a), 1, &value);
         cuda_sum_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), &value, NDArray_NUMELEMENTS(a));
 #endif
     } else {
@@ -308,13 +305,9 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Multiply_Float(NDArray* a, NDArray* b) {
+    NDArray *a_temp = NULL, *b_temp = NULL;
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
-        return NULL;
-    }
-    // Check if the dimensions of the input arrays match
-    if (a->ndim != b->ndim) {
-        // Dimensions mismatch, return an error or handle it accordingly
         return NULL;
     }
 
@@ -332,6 +325,24 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
             NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] * NDArray_FDATA(b)[0];
             return rtn;
         }
+    }
+
+    // If a or b are scalars, reshape
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
+        a_temp = a;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(b));
+        copy(NDArray_SHAPE(b), n_shape, NDArray_NDIM(b));
+        a = NDArray_Zeros(n_shape, NDArray_NDIM(b), NDArray_TYPE(b), NDArray_DEVICE(b));
+        a = NDArray_Fill(a, NDArray_FDATA(a_temp)[0]);
+    } else if (NDArray_NDIM(b) == 0 && NDArray_NDIM(a) > 0) {
+        b_temp = b;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        copy(NDArray_SHAPE(a), n_shape, NDArray_NDIM(a));
+        b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
+    } else {
+        zend_throw_error(NULL, "Unsupported shapes for operation.");
+        return NULL;
     }
 
     // Check if the shape of the input arrays match
@@ -405,6 +416,12 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
             resultData[i] = aData[i] * bData[i];
         }
 #endif
+    }
+    if (a_temp != NULL) {
+        NDArray_FREE(a);
+    }
+    if (b_temp != NULL) {
+        NDArray_FREE(b);
     }
     return result;
 }
@@ -519,21 +536,35 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Divide_Float(NDArray* a, NDArray* b) {
+    NDArray *a_temp = NULL, *b_temp = NULL;
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
     }
-    // Check if the dimensions of the input arrays match
-    if (a->ndim != b->ndim) {
-        // Dimensions mismatch, return an error or handle it accordingly
-        return NULL;
-    }
 
-    if (NDArray_NDIM(a) == 0) {
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) == 0) {
         int *shape = ecalloc(1, sizeof(int));
         NDArray *rtn = NDArray_Zeros(shape, 0, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
-        NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] + NDArray_FDATA(b)[0];
+        NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] / NDArray_FDATA(b)[0];
         return rtn;
+    }
+
+    // If a or b are scalars, reshape
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
+        a_temp = a;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(b));
+        copy(NDArray_SHAPE(b), n_shape, NDArray_NDIM(b));
+        a = NDArray_Zeros(n_shape, NDArray_NDIM(b), NDArray_TYPE(b), NDArray_DEVICE(b));
+        a = NDArray_Fill(a, NDArray_FDATA(a_temp)[0]);
+    } else if (NDArray_NDIM(b) == 0 && NDArray_NDIM(a) > 0) {
+        b_temp = b;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        copy(NDArray_SHAPE(a), n_shape, NDArray_NDIM(a));
+        b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
+    } else {
+        zend_throw_error(NULL, "Unsupported shapes for operation.");
+        return NULL;
     }
 
     // Check if the shape of the input arrays match
@@ -608,6 +639,12 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
         }
 #endif
     }
+    if (a_temp != NULL) {
+        NDArray_FREE(a);
+    }
+    if (b_temp != NULL) {
+        NDArray_FREE(b);
+    }
     return result;
 }
 
@@ -618,6 +655,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Mod_Float(NDArray* a, NDArray* b) {
+    NDArray *a_temp = NULL, *b_temp = NULL;
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
@@ -633,6 +671,24 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
         NDArray *rtn = NDArray_Zeros(shape, 0, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
         NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] + NDArray_FDATA(b)[0];
         return rtn;
+    }
+
+    // If a or b are scalars, reshape
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
+        a_temp = a;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(b));
+        copy(NDArray_SHAPE(b), n_shape, NDArray_NDIM(b));
+        a = NDArray_Zeros(n_shape, NDArray_NDIM(b), NDArray_TYPE(b), NDArray_DEVICE(b));
+        a = NDArray_Fill(a, NDArray_FDATA(a_temp)[0]);
+    } else if (NDArray_NDIM(b) == 0 && NDArray_NDIM(a) > 0) {
+        b_temp = b;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        copy(NDArray_SHAPE(a), n_shape, NDArray_NDIM(a));
+        b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
+    } else {
+        zend_throw_error(NULL, "Unsupported shapes for operation.");
+        return NULL;
     }
 
     // Check if the shape of the input arrays match
@@ -690,6 +746,13 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
             resultData[i] = fmodf(aData[i], bData[i]);
         }
     }
+
+    if (a_temp != NULL) {
+        NDArray_FREE(a);
+    }
+    if (b_temp != NULL) {
+        NDArray_FREE(b);
+    }
     return result;
 }
 
@@ -702,13 +765,9 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
  */
 NDArray*
 NDArray_Pow_Float(NDArray* a, NDArray* b) {
+    NDArray *a_temp = NULL, *b_temp = NULL;
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
-        return NULL;
-    }
-    // Check if the dimensions of the input arrays match
-    if (a->ndim != b->ndim) {
-        // Dimensions mismatch, return an error or handle it accordingly
         return NULL;
     }
 
@@ -717,6 +776,24 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
         NDArray *rtn = NDArray_Zeros(shape, 0, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
         NDArray_FDATA(rtn)[0] = NDArray_FDATA(a)[0] + NDArray_FDATA(b)[0];
         return rtn;
+    }
+
+    // If a or b are scalars, reshape
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
+        a_temp = a;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(b));
+        copy(NDArray_SHAPE(b), n_shape, NDArray_NDIM(b));
+        a = NDArray_Zeros(n_shape, NDArray_NDIM(b), NDArray_TYPE(b), NDArray_DEVICE(b));
+        a = NDArray_Fill(a, NDArray_FDATA(a_temp)[0]);
+    } else if (NDArray_NDIM(b) == 0 && NDArray_NDIM(a) > 0) {
+        b_temp = b;
+        int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        copy(NDArray_SHAPE(a), n_shape, NDArray_NDIM(a));
+        b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
+    } else {
+        zend_throw_error(NULL, "Unsupported shapes for operation.");
+        return NULL;
     }
 
     // Check if the shape of the input arrays match
@@ -773,6 +850,12 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
         for (int i = 0; i < numElements; i++) {
             resultData[i] = powf(aData[i], bData[i]);
         }
+    }
+    if (a_temp != NULL) {
+        NDArray_FREE(a);
+    }
+    if (b_temp != NULL) {
+        NDArray_FREE(b);
     }
     return result;
 }

@@ -3006,7 +3006,7 @@ PHP_METHOD(NDArray, dot)
  * NDArray::trace
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_trace, 0)
-        ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, a)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, trace)
 {
@@ -3020,7 +3020,10 @@ PHP_METHOD(NDArray, trace)
     if (nda == NULL) {
         return;
     }
-
+    rtn = NDArray_Trace(nda);
+    if (rtn == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -3751,6 +3754,8 @@ static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, z
         default:
             return FAILURE;
     }
+    CHECK_INPUT_AND_FREE(op1, nda);
+    CHECK_INPUT_AND_FREE(op2, ndb);
     RETURN_NDARRAY(rtn, result);
     if (rtn != NULL) {
         return SUCCESS;

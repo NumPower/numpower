@@ -21,7 +21,7 @@ NDArray_Dump(NDArray* array)
     int i;
     printf("\n=================================================");
     printf("\nNDArray.uuid\t\t\t%d", array->uuid);
-    printf("\nNDArray.ndim\t\t\t%d\n", array->ndim);
+    printf("\nNDArray.ndim\t\t\t%d", array->ndim);
     printf("\nNDArray.dims\t\t\t[");
     for(i = 0; i < array->ndim; i ++) {
         printf(" %d", array->dimensions[i]);
@@ -41,7 +41,7 @@ NDArray_Dump(NDArray* array)
     printf("NDArray.descriptor.elsize\t%d\n", array->descriptor->elsize);
     printf("NDArray.descriptor.numElements\t%d\n", array->descriptor->numElements);
     printf("NDArray.descriptor.type\t\t%s\n", array->descriptor->type);
-    printf("NDArray.iterator.current_index\t\t%d", array->iterator->current_index);
+    printf("NDArray.iterator.current_index\t%d", array->iterator->current_index);
     printf("\n=================================================\n");
 }
 

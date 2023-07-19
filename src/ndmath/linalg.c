@@ -11,6 +11,7 @@
 #include "arithmetics.h"
 #include "../iterators.h"
 #include "../gpu_alloc.h"
+#include "../indexing.h"
 
 #ifdef HAVE_LAPACKE
 #include <lapacke.h>
@@ -737,4 +738,18 @@ NDArray_Outer(NDArray *a, NDArray *b) {
 #endif
     }
     return rtn;
+}
+
+/**
+ * NDArray::trace
+ *
+ * @return
+ */
+NDArray*
+NDArray_Trace(NDArray *a) {
+    NDArray* diagonal = NDArray_Diagonal(a, 0);
+    NDArray_Dump(diagonal);
+    float result = NDArray_Sum_Float(diagonal);
+    NDArray_FREE(diagonal);
+    return NDArray_CreateFromFloatScalar(result);
 }
