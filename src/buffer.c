@@ -53,8 +53,8 @@ void buffer_init(int size) {
  */
 void buffer_free() {
     if (MAIN_MEM_STACK.buffer != NULL) {
-        for (int i = 0; i < MAIN_MEM_STACK.numElements; i++) {
-            buffer_ndarray_free(i);
+        if (MAIN_MEM_STACK.numElements > 1) {
+            return;
         }
         efree(MAIN_MEM_STACK.buffer);
         MAIN_MEM_STACK.buffer = NULL;
@@ -94,7 +94,6 @@ NDArray* buffer_get(int uuid) {
  * @param size  size_t Size of CArray in bytes
  */
 void add_to_buffer(NDArray* ndarray, size_t size) {
-
     if (MAIN_MEM_STACK.lastFreed > -1) {
         ndarray->uuid = MAIN_MEM_STACK.lastFreed;
         MAIN_MEM_STACK.buffer[MAIN_MEM_STACK.lastFreed] = ndarray;

@@ -341,8 +341,10 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
         b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
         b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
     } else {
-        zend_throw_error(NULL, "Unsupported shapes for operation.");
-        return NULL;
+        if (NDArray_NUMELEMENTS(a) != NDArray_NUMELEMENTS(b)) {
+            zend_throw_error(NULL, "Unsupported shapes for operation.");
+            return NULL;
+        }
     }
 
     // Check if the shape of the input arrays match
@@ -563,8 +565,10 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
         b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
         b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
     } else {
-        zend_throw_error(NULL, "Unsupported shapes for operation.");
-        return NULL;
+        if (NDArray_NUMELEMENTS(a) != NDArray_NUMELEMENTS(b)) {
+            zend_throw_error(NULL, "Unsupported shapes for operation.");
+            return NULL;
+        }
     }
 
     // Check if the shape of the input arrays match
@@ -604,7 +608,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     result->descriptor->numElements = a->descriptor->numElements;
     result->refcount = 1;
 
-    // Perform element-wise subtraction
+    // Perform element-wise division
     result->strides = memcpy(result->strides, a->strides, a->ndim * sizeof(int));
     result->dimensions = memcpy(result->dimensions, a->dimensions, a->ndim * sizeof(int));
     float *resultData = (float *) result->data;
@@ -687,8 +691,10 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
         b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
         b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
     } else {
-        zend_throw_error(NULL, "Unsupported shapes for operation.");
-        return NULL;
+        if (NDArray_NUMELEMENTS(a) != NDArray_NUMELEMENTS(b)) {
+            zend_throw_error(NULL, "Unsupported shapes for operation.");
+            return NULL;
+        }
     }
 
     // Check if the shape of the input arrays match
@@ -792,8 +798,10 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
         b = NDArray_Zeros(n_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
         b = NDArray_Fill(b, NDArray_FDATA(b_temp)[0]);
     } else {
-        zend_throw_error(NULL, "Unsupported shapes for operation.");
-        return NULL;
+        if (NDArray_NUMELEMENTS(a) != NDArray_NUMELEMENTS(b)) {
+            zend_throw_error(NULL, "Unsupported shapes for operation.");
+            return NULL;
+        }
     }
 
     // Check if the shape of the input arrays match

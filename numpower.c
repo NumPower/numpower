@@ -4181,6 +4181,11 @@ PHP_MINFO_FUNCTION(ndarray)
 	php_info_print_table_end();
 }
 
+PHP_MSHUTDOWN_FUNCTION(ndarray)
+{
+    return SUCCESS;
+}
+
 PHP_RSHUTDOWN_FUNCTION(ndarray)
 {
     buffer_free();
@@ -4195,7 +4200,7 @@ zend_module_entry ndarray_module_entry = {
 	"NumPower",					    /* Extension name */
 	ext_functions,					/* zend_function_entry */
     PHP_MINIT(ndarray),             /* PHP_MINIT - Module initialization */
-    NULL,							/* PHP_MSHUTDOWN - Module shutdown */
+    PHP_MSHUTDOWN(ndarray),							/* PHP_MSHUTDOWN - Module shutdown */
 	PHP_RINIT(ndarray),			    /* PHP_RINIT - Request initialization */
 	PHP_RSHUTDOWN(ndarray), /* PHP_RSHUTDOWN - Request shutdown */
 	PHP_MINFO(ndarray),			    /* PHP_MINFO - Module info */
