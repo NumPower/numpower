@@ -19,8 +19,8 @@ NDArray* NDArray_Trace(NDArray *a);
 NDArray* NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_value);
 NDArray** NDArray_Eig(NDArray *a);
 NDArray* NDArray_Lstsq(NDArray *a, NDArray *b);
-NDArray* NDArray_Qr(NDArray *a);
-NDArray* NDArray_Solve(NDArray *a);
+NDArray** NDArray_Qr(NDArray *a);
+NDArray* NDArray_Solve(NDArray *a, NDArray *b);
 NDArray* NDArray_Cond(NDArray *a);
 NDArray* NDArray_Cholesky(NDArray *a);
 #endif //PHPSCI_NDARRAY_LINALG_H

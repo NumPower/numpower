@@ -886,6 +886,14 @@ NDArray_ShapeCompare(NDArray *a, NDArray *b)
  */
 int
 NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
+    if (NDArray_NDIM(array1) == 1 && NDArray_NDIM(array2) > 1) {
+        if (NDArray_SHAPE(array1)[0] == NDArray_SHAPE(array2)[NDArray_NDIM(array2) - 1]) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
+
     // Determine the maximum number of dimensions
     int maxDims = (NDArray_NDIM(array1) > NDArray_NDIM(array2)) ? NDArray_NDIM(array1) : NDArray_NDIM(array2);
 
@@ -909,50 +917,24 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
     return 1;
 }
 
-float*
-broadcastToFloat(float* a, float* b, int* a_shape, int* b_shape, int *a_strides,
-                 int *b_strides, int a_ndim, int b_ndim, int numelements) {
-    float *result;
-    int i, j;
-    int result_index, a_index;
-    if (a_ndim < b_ndim) {
-        // Expand rows
-
-    }
-
-    int b_last_dim1 = b_ndim - 2;
-    int b_last_dim = b_ndim - 1;
-    result = emalloc(numelements * sizeof(float));
-    if (a_ndim == b_ndim) {
-        // Expand columns
-        for (i = 0; i < b_shape[b_ndim - 2]; i++) {
-            for (j = 0; j < b_shape[b_ndim - 1]; j++) {
-                result_index = (i * (b_strides[b_last_dim1]));
-                result_index = (result_index + ((j * b_strides[b_last_dim]) * a_shape[b_last_dim])) / sizeof(float);
-                a_index = (i * a_strides[b_last_dim1]) / sizeof(float);
-                memcpy(&result[result_index], &a[a_index], sizeof(float) * a_shape[b_last_dim]);
-            }
-        }
-    }
-
-    return result;
-}
-
 /**
  * Broadcast NDArrays
  *
+ * @todo Implement ND broadcast
  * @param a
  * @param b
  * @return
  */
 NDArray*
 NDArray_Broadcast(NDArray *a, NDArray *b) {
-    int i = 0;
+    int i;
     NDArray *src, *dst, *rtn;
     src = a;
     dst = b;
-    float *tmp_out;
-
+    if (NDArray_NDIM(a) > 2 || NDArray_NDIM(b) > 2) {
+        zend_throw_error(NULL, "Broadcast shape mismatch.");
+        return NULL;
+    }
     if (NDArray_NDIM(a) == NDArray_NDIM(b)) {
         int all_equal = 1;
         for (i = 0; i < NDArray_NDIM(a); i++) {
@@ -969,16 +951,30 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
         zend_throw_error(NULL, "Broadcast shape mismatch.");
         return NULL;
     }
-
     rtn = NDArray_Copy(dst, NDArray_DEVICE(dst));
-
-    tmp_out = broadcastToFloat(NDArray_FDATA(src), NDArray_FDATA(dst), NDArray_SHAPE(src), NDArray_SHAPE(dst),
-                               NDArray_STRIDES(src), NDArray_STRIDES(dst), NDArray_NDIM(src), NDArray_NDIM(dst),
-                               NDArray_NUMELEMENTS(dst));
-
-    memcpy(NDArray_FDATA(rtn), tmp_out, NDArray_ELSIZE(dst) * NDArray_NUMELEMENTS(dst));
-    NDArray_Print(rtn, 0);
-    efree(tmp_out);
+    char *rtn_p = NDArray_DATA(rtn);
+    if (NDArray_NDIM(src) == 1 && NDArray_NDIM(dst) > 1) {
+        if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
+                for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
+                    memcpy(rtn_p,
+                           NDArray_FDATA(src), sizeof(float) * NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]);
+                    rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[0]);
+                }
+            }
+        }
+    }
+    if (NDArray_NDIM(src) == 2 && NDArray_NDIM(dst) == 2) {
+        if (NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
+                for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
+                    memcpy(rtn_p,
+                           NDArray_FDATA(src), sizeof(float) * NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]);
+                    rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1]);
+                }
+            }
+        }
+    }
     return rtn;
 }
 

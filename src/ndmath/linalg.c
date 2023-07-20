@@ -3,7 +3,6 @@
 #include "Zend/zend_API.h"
 #include "linalg.h"
 #include "../../config.h"
-#include "../ndarray.h"
 #include "../initializers.h"
 #include "../types.h"
 #include "../debug.h"
@@ -391,7 +390,6 @@ NDArray_L2Norm(NDArray* target) {
     if (svd == NULL) {
         return NULL;
     }
-
     float max_svd = NDArray_Max(svd[1]);
     rtn = NDArray_CreateFromFloatScalar(max_svd);
     NDArray_FREE(svd[0]);
@@ -748,7 +746,6 @@ NDArray_Outer(NDArray *a, NDArray *b) {
 NDArray*
 NDArray_Trace(NDArray *a) {
     NDArray* diagonal = NDArray_Diagonal(a, 0);
-    NDArray_Dump(diagonal);
     float result = NDArray_Sum_Float(diagonal);
     NDArray_FREE(diagonal);
     return NDArray_CreateFromFloatScalar(result);
@@ -1215,6 +1212,7 @@ NDArray_Eig(NDArray *a) {
 
 /**
  * NDArray::lstsq
+ * @todo Implement GPU
  *
  * @param a
  * @param b
@@ -1222,6 +1220,11 @@ NDArray_Eig(NDArray *a) {
  */
 NDArray*
 NDArray_Lstsq(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "ndarray::lstsq not implemented for GPU");
+        return NULL;
+    }
+
     // Check if input matrices have compatible dimensions
     if (NDArray_NDIM(a) != 2 || NDArray_NDIM(b) != 2 || NDArray_SHAPE(a)[0] != NDArray_SHAPE(b)[0]) {
         zend_throw_error(NULL, "Invalid dimensions to calculate lstsq, both arrays must have 2 dimensions and $b must contain the same amount of rows as $a");
@@ -1236,25 +1239,238 @@ NDArray_Lstsq(NDArray *a, NDArray *b) {
     out_shape[0] = n;
     out_shape[1] = nrhs;
     NDArray *x = NDArray_Zeros(out_shape, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        // Allocate memory and copy data for the coefficient matrix A
+        float *a_data = (float *) emalloc(m * n * sizeof(float));
+        memcpy(a_data, a->data, m * n * sizeof(float));
 
-    // Allocate memory and copy data for the coefficient matrix A
-    float* a_data = (float*)emalloc(m * n * sizeof(float));
-    memcpy(a_data, a->data, m * n * sizeof(float));
+        // Allocate memory and copy data for the right-hand side matrix B
+        float *b_data = (float *) emalloc(m * nrhs * sizeof(float));
+        memcpy(b_data, b->data, m * nrhs * sizeof(float));
 
-    // Allocate memory and copy data for the right-hand side matrix B
-    float* b_data = (float*)emalloc(m * nrhs * sizeof(float));
-    memcpy(b_data, b->data, m * nrhs * sizeof(float));
+        int info = LAPACKE_sgels(LAPACK_ROW_MAJOR, 'N', NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[1],
+                                 a_data,
+                                 NDArray_SHAPE(a)[1], b_data, NDArray_SHAPE(b)[1]);
 
-    int info = LAPACKE_sgels(LAPACK_ROW_MAJOR, 'N', NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[1], a_data,
-                  NDArray_SHAPE(a)[1], b_data, NDArray_SHAPE(b)[1]);
+        if (info > 0) {
+            zend_throw_error(NULL,
+                             "The diagonal element %i of the triangular factor of $a is zero, so that $a does not have full rank.",
+                             info);
+            return NULL;
+        }
+        // Copy the result data to the output NDArray
+        memcpy(NDArray_FDATA(x), b_data, n * nrhs * sizeof(float));
+        efree(a_data);
+        efree(b_data);
+    } else {
+#ifdef HAVE_CUBLAS
+        cuda_lstsq_float(NDArray_FDATA(a), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_FDATA(b), NDArray_SHAPE(b)[0],
+                         NDArray_FDATA(x));
+#endif
+    }
+    return x;
+}
 
-    if (info > 0) {
-        zend_throw_error(NULL, "The diagonal element %i of the triangular factor of $a is zero, so that $a does not have full rank.", info );
+
+/**
+ * NDArray::qr
+ * @todo Implement GPU
+ *
+ * @param a
+ * @return
+ */
+NDArray**
+NDArray_Qr(NDArray *a) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "ndarray::qr not implemented for GPU");
         return NULL;
     }
+
+    // Check if the input matrix is 2D
+    if (a->ndim != 2) {
+        return NULL;
+    }
+
+    int m = a->dimensions[0]; // Number of rows of the matrix A
+    int n = a->dimensions[1]; // Number of columns of the matrix A
+
+    // Ensure that m >= n for the QR factorization
+    if (m < n) {
+        return NULL;
+    }
+
+    // Allocate memory for the result matrices Q and R
+    int *q_dimensions = (int*)emalloc(2 * sizeof(int));
+    q_dimensions[0] = m;
+    q_dimensions[1] = n;
+    NDArray* q = NDArray_Zeros(q_dimensions, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    int *r_dimensions = (int*)emalloc(2 * sizeof(int));
+    r_dimensions[0] = n;
+    r_dimensions[1] = n;
+    NDArray* r = NDArray_Zeros(r_dimensions, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    // Allocate memory and copy data for the matrix A
+    float* a_data = (float*)emalloc(m * n * n * sizeof(float));
+    memcpy(a_data, NDArray_FDATA(a), m * n * sizeof(float));
+
+    // Allocate memory for the workspace
+    float* tau = (float*)emalloc(n * sizeof(float));
+    int info;
+
+    // Query the optimal workspace size
+    info = LAPACKE_sgeqrf(LAPACK_ROW_MAJOR, m, n, a_data, n, tau);
+
+    // Extract the upper triangular part of the matrix A to R
+    for (int i = 0; i < n; i++) {
+        for (int j = i; j < n; j++) {
+            ((float*)r->data)[i * (r->strides[0]/NDArray_ELSIZE(r)) + j * (r->strides[1]/NDArray_ELSIZE(r))] = ((float*)a_data)[i * m + j];
+        }
+    }
+
+    for (int i = 0; i < n; i++) {
+        for (int j = i + 1; j < m; j++) {
+            ((float*)q->data)[i * (q->strides[0]/NDArray_ELSIZE(q)) + j * (q->strides[1]/NDArray_ELSIZE(q))] = ((float*)a_data)[i * m + j];
+        }
+    }
+
+    memcpy(NDArray_FDATA(q), a_data, NDArray_NUMELEMENTS(a) * NDArray_ELSIZE(a));
+    efree(tau);
+    efree(a_data);
+    NDArray **rtn = emalloc(sizeof(NDArray*) * 2);
+    rtn[0] = q;
+    rtn[1] = r;
+    return rtn;
+}
+
+/**
+ * NDArray::solve
+ * @todo Implement GPU
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Solve(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Both NDArray must be in the same device.");
+        return NULL;
+    }
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "ndarray::solve not implemented for GPU");
+        return NULL;
+    }
+    // Check if input matrices are valid
+    if (a == NULL || b == NULL) {
+        return NULL;
+    }
+
+    // Check if input matrices are 2D and have compatible dimensions
+    if (a->ndim != 2 || b->ndim != 2 || a->dimensions[0] != a->dimensions[1] || a->dimensions[0] != b->dimensions[0]) {
+        zend_throw_error(NULL, "Incompatible shapes");
+        return NULL;
+    }
+
+    int n = a->dimensions[0]; // Number of rows/columns of the square matrix A
+
+    int *x_dimensions = (int*)emalloc(2 * sizeof(int));
+    x_dimensions[0] = n;
+    x_dimensions[1] = b->dimensions[1];
+    NDArray *x = NDArray_Zeros(x_dimensions, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    // Allocate memory and copy data for the square matrix A
+    float* a_data = (float*)emalloc(n * n * sizeof(float));
+    memcpy(a_data, a->data, n * n * sizeof(float));
+
+    // Allocate memory and copy data for the matrix B
+    float* b_data = (float*)emalloc(n * x->dimensions[1] * sizeof(float));
+    memcpy(b_data, b->data, n * x->dimensions[1] * sizeof(float));
+
+    // Allocate memory for the pivot indices
+    int* ipiv = (int*)emalloc(n * sizeof(int));
+
+    LAPACKE_sgesv(LAPACK_ROW_MAJOR, n, NDArray_SHAPE(b)[1], a_data, NDArray_SHAPE(a)[0], ipiv, b_data, NDArray_SHAPE(b)[0]);
+
     // Copy the result data to the output NDArray
-    memcpy(NDArray_FDATA(x), b_data, n * nrhs * sizeof(float));
+    memcpy(x->data, b_data, NDArray_NUMELEMENTS(b) * sizeof(float));
+
     efree(a_data);
     efree(b_data);
+    efree(ipiv);
     return x;
+}
+
+/**
+ * NDArray::cond
+ *
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Cond(NDArray *a) {
+    NDArray *a_norm = NDArray_L2Norm(a);
+    NDArray *a_inv = NDArray_Inverse(a);
+    NDArray *a_inv_norm = NDArray_L2Norm(a_inv);
+    NDArray_FREE(a_inv);
+    NDArray *rtn = NDArray_Multiply_Float(a_norm, a_inv_norm);
+    NDArray_FREE(a_norm);
+    NDArray_FREE(a_inv_norm);
+    return rtn;
+}
+
+/**
+ * NDArray::cholesky
+ *
+ * @todo Implement GPU
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_Cholesky(NDArray *a) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "ndarray::cholesky not implemented for GPU");
+        return NULL;
+    }
+    if (NDArray_NDIM(a) != 2 || NDArray_SHAPE(a)[0] != NDArray_SHAPE(a)[1]) {
+        zend_throw_error(NULL, "NDArray_Cholesky: $a must be a square matrix.");
+        return NULL;
+    }
+
+    NDArray *rtn = NDArray_Copy(a, NDArray_DEVICE(a));
+    int info = LAPACKE_spotrf(LAPACK_ROW_MAJOR, 'L', NDArray_SHAPE(a)[0], NDArray_FDATA(rtn), NDArray_SHAPE(a)[0]);
+
+    if (info > 0) {
+        NDArray_FREE(rtn);
+        zend_throw_error(NULL, "Error calculating the cholesky decomposition. (Is $a not positive definite?)");
+        return NULL;
+    }
+#ifdef HAVE_AVX2
+    int blockSize = 8; // AVX2 can process 8 single-precision floats at a time
+    for (int i = 0; i < NDArray_SHAPE(a)[0]; i++) {
+        // Perform AVX2 loop for blocks of 8 elements
+        int j = i + 1;
+        for (; j < NDArray_SHAPE(a)[0] - blockSize + 1; j += blockSize) {
+            // Load 8 elements of the row (upper triangular elements) into an AVX register
+            __m256 row_avx = _mm256_loadu_ps(&NDArray_FDATA(rtn)[i * NDArray_SHAPE(a)[0] + j]);
+            // Set all elements of the AVX register to 0
+            __m256 zero_avx = _mm256_setzero_ps();
+            // Store the 0s back into the upper triangular elements of the row
+            _mm256_storeu_ps(&NDArray_FDATA(rtn)[i * NDArray_SHAPE(a)[0] + j], zero_avx);
+        }
+        // Handle the remaining elements
+        for (; j < NDArray_SHAPE(a)[0]; j++) {
+            NDArray_FDATA(rtn)[i * NDArray_SHAPE(a)[0] + j] = 0.0f;
+        }
+    }
+#else
+    for (int i = 0; i < NDArray_SHAPE(a)[0]; i++) {
+        for (int j = i + 1; j < NDArray_SHAPE(a)[1]; j++) {
+            NDArray_FDATA(rtn)[i * NDArray_SHAPE(a)[0] + j] = 0.0f;
+        }
+    }
+#endif
+
+    return rtn;
 }

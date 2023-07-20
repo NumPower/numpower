@@ -2235,9 +2235,9 @@ PHP_METHOD(NDArray, median)
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
-            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+            RETURN_DOUBLE(NDArray_Median_Float(nda));
         } else {
-            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
+            rtn = single_reduce(nda, &i_axis, NDArray_Median_Float);
         }
 #else
         zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
@@ -2266,7 +2266,7 @@ PHP_METHOD(NDArray, std)
     long axis;
     int i_axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(array)
+        Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     i_axis = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(array);
@@ -2275,17 +2275,20 @@ PHP_METHOD(NDArray, std)
     }
 
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        rtn = NDArray_Std(nda);
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
-            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+            rtn = NDArray_Std(nda);
         } else {
             rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
         }
 #else
         zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
 #endif
+    }
+    if (rtn == NULL) {
+        return;
     }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -2346,7 +2349,7 @@ PHP_METHOD(NDArray, average)
     long axis;
     int i_axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-            Z_PARAM_ZVAL(array)
+        Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     i_axis = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(array);
@@ -2355,7 +2358,7 @@ PHP_METHOD(NDArray, average)
     }
 
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        RETURN_DOUBLE(NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda));
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
@@ -2399,17 +2402,20 @@ PHP_METHOD(NDArray, variance)
     }
 
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        rtn = NDArray_Variance(nda);
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
-            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+            rtn = NDArray_Variance(nda);
         } else {
             rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
         }
 #else
         zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
 #endif
+    }
+    if (rtn == NULL) {
+        return;
     }
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
@@ -3299,7 +3305,10 @@ PHP_METHOD(NDArray, cholesky)
     if (nda == NULL) {
         return;
     }
-    rtn = NDArray_Copy(nda, NDArray_DEVICE(nda));
+    rtn = NDArray_Cholesky(nda);
+    if (rtn == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -3307,7 +3316,7 @@ PHP_METHOD(NDArray, cholesky)
 /**
  * NDArray::solve
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_solve, 1)
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_solve, 2)
     ZEND_ARG_INFO(0, a)
     ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
@@ -3321,11 +3330,19 @@ PHP_METHOD(NDArray, solve)
         Z_PARAM_ZVAL(b)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
     if (nda == NULL) {
         return;
     }
 
+    rtn = NDArray_Solve(nda, ndb);
+
+    if (rtn == NULL) {
+        return;
+    }
+
     CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3379,11 +3396,10 @@ PHP_METHOD(NDArray, qr)
     if (nda == NULL) {
         return;
     }
-
-    rtns = NDArray_SVD(nda);
+    rtns = NDArray_Qr(nda);
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
+    RETURN_2NDARRAY(rtns[0], rtns[1], return_value);
     efree(rtns);
 }
 
@@ -3526,9 +3542,8 @@ ZEND_BEGIN_ARG_INFO(arginfo_ndarray_cond, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, cond)
 {
-    NDArray **rtns;
-    zval *a, *b;
-    long axis;
+    NDArray *rtn;
+    zval *a;
     ZEND_PARSE_PARAMETERS_START(1, 1)
         Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
@@ -3536,12 +3551,12 @@ PHP_METHOD(NDArray, cond)
     if (nda == NULL) {
         return;
     }
-
-    rtns = NDArray_SVD(nda);
-
+    rtn = NDArray_Cond(nda);
+    if (rtn == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_3NDARRAY(rtns[0], rtns[1], rtns[2], return_value);
-    efree(rtns);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**

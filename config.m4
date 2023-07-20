@@ -4,11 +4,8 @@ PHP_ARG_ENABLE([ndarray],
     [Enable ndarray support])],
   [no])
 
-PHP_ARG_ENABLE([cuda],
-[whether to enable CUDA support],
-[AS_HELP_STRING([--enable-cuda],
-  [Enable CUDA support])],
-[no])
+PHP_ARG_WITH(cuda, for CUDA support,
+[  --with-cuda           Include CUDA support], [no], [no])
 
 if test "$PHP_CUDA" != "no"; then
     PHP_CHECK_LIBRARY(cublas,cublasDgemm,

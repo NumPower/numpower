@@ -6,7 +6,6 @@
 #include "ndarray.h"
 #include "initializers.h"
 #include "debug.h"
-#include "types.h"
 
 /**
  * @param iterator

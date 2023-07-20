@@ -74,6 +74,8 @@ extern "C" {
     void cuda_float_compare_less_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
     void cuda_float_compare_not_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
     void cuda_matrix_eig_float(float* d_matrix, int n, float* rightEigenvectors);
+    void cuda_lstsq_float(float* A, int m, int n, float* B, int k, float* X);
+    float cuda_float_median_float(int nblocks, float *a_array, int n);
     NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
     NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
     void cuda_convolve2d_same_float(const float* a, const float* b,

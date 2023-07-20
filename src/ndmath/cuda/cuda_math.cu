@@ -27,6 +27,46 @@
   } \
 } while (0)
 
+
+// CUDA kernel to calculate the median of a float* array
+__global__ void findMedianKernelFloat(float* input, int size, float* median) {
+    extern __shared__ float sharedData[];
+
+    int tid = threadIdx.x;
+    int globalIdx = blockIdx.x * blockDim.x + tid;
+
+    if (globalIdx >= size)
+        return;
+
+    // Copy the data to shared memory
+    sharedData[tid] = input[globalIdx];
+    __syncthreads();
+
+    // Perform parallel reduction to find the local median
+    for (unsigned int stride = 1; stride < blockDim.x; stride *= 2)
+    {
+        int index = 2 * stride * tid;
+
+        if (index < blockDim.x)
+        {
+            float value1 = sharedData[index];
+            float value2 = sharedData[index + stride];
+
+            // Perform a simple swap to ensure value1 <= value2
+            if (value1 > value2)
+            {
+                sharedData[index] = value2;
+                sharedData[index + stride] = value1;
+            }
+        }
+        __syncthreads();
+    }
+
+    // The median is the middle element of the sorted data
+    if (tid == blockDim.x / 2)
+        median[blockIdx.x] = sharedData[tid];
+}
+
 __global__ void calculateOuterProductFloat(float* a, float* b, int m, int n, float* result) {
     int row = blockIdx.y * blockDim.y + threadIdx.y;
     int col = blockIdx.x * blockDim.x + threadIdx.x;
@@ -598,53 +638,129 @@ pow_float_kernel(float *a, float *b, float *result, int size) {
     }
 }
 
-__global__ void
-max_reduce_naive(float * d_out, float * d_in, int n) {
-    extern __shared__ float sdata[];
-
-    int myId = threadIdx.x + blockDim.x * blockIdx.x;
-    int tid = threadIdx.x;
-
-    // load shared mem from global mem
-    sdata[tid] = d_in[myId];
-    __syncthreads();            // make sure entire block is loaded!
-
-    // do reduction in shared mem
-    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] = fmaxf(sdata[tid], sdata[tid + s]);
-        }
-        __syncthreads();        // make sure all adds at one stage are done!
+__device__ float warpReduceMax(float val) {
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+        val = fmaxf(val, __shfl_down_sync(0xFFFFFFFF, val, offset));
     }
+    return val;
+}
 
-    // only thread 0 writes result for this block back to global mem
-    if (tid == 0) {
-        d_out[blockIdx.x] = sdata[0];
-    }
+__device__ float atomicMaxFloat(float* address, float val) {
+    int* address_as_int = (int*)address;
+    int old_val_as_int = *address_as_int;
+    int assumed;
+    do {
+        assumed = old_val_as_int;
+        int max_val_as_int = __float_as_int(fmaxf(val, __int_as_float(old_val_as_int)));
+        old_val_as_int = atomicCAS(address_as_int, assumed, max_val_as_int);
+    } while (assumed != old_val_as_int);
+    return __int_as_float(old_val_as_int);
 }
 
 __global__ void
-min_reduce_naive(float * d_out, float * d_in, int n) {
-    extern __shared__ float sdata[];
-
-    int myId = threadIdx.x + blockDim.x * blockIdx.x;
+max_reduce_naive(float * result, float * data, int size) {
+    extern __shared__ float sharedData[];
     int tid = threadIdx.x;
+    int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
 
-    // load shared mem from global mem
-    sdata[tid] = d_in[myId];
-    __syncthreads();            // make sure entire block is loaded!
-
-    // do reduction in shared mem
-    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1) {
-        if (tid < s) {
-            sdata[tid] = fminf(sdata[tid], sdata[tid + s]);
+    // Load data into shared memory
+    if (i < size) {
+        sharedData[tid] = data[i];
+        if (i + blockDim.x < size) {
+            sharedData[tid + blockDim.x] = data[i + blockDim.x];
+        } else {
+            // If the last block has an odd number of elements, duplicate the last element
+            sharedData[tid + blockDim.x] = data[size - 1];
         }
-        __syncthreads();        // make sure all adds at one stage are done!
+    } else {
+        // If the last block has an odd number of elements, duplicate the last element
+        sharedData[tid] = data[size - 1];
+        sharedData[tid + blockDim.x] = data[size - 1];
     }
 
-    // only thread 0 writes result for this block back to global mem
-    if (tid == 0) {
-        d_out[blockIdx.x] = sdata[0];
+    __syncthreads();
+
+    // Parallel reduction within the warp to find the maximum value
+    float maxVal = sharedData[tid];
+    maxVal = warpReduceMax(maxVal);
+
+    // The maximum value within the warp is in maxVal
+    if ((tid & (warpSize - 1)) == 0) {
+        sharedData[tid / warpSize] = maxVal;
+    }
+
+    __syncthreads();
+
+    // Further reduction using one thread per warp
+    if (tid < blockDim.x / warpSize) {
+        maxVal = sharedData[tid];
+        maxVal = warpReduceMax(maxVal);
+        if (tid == 0) {
+            atomicMaxFloat(result, maxVal);
+        }
+    }
+}
+
+__device__ float warpReduceMin(float val) {
+    for (int offset = warpSize / 2; offset > 0; offset /= 2) {
+        val = fminf(val, __shfl_down_sync(0xFFFFFFFF, val, offset));
+    }
+    return val;
+}
+
+__device__ float atomicMinFloat(float* address, float val) {
+    int* address_as_int = (int*)address;
+    int old_val_as_int = *address_as_int;
+    int assumed;
+    do {
+        assumed = old_val_as_int;
+        int min_val_as_int = __float_as_int(fminf(val, __int_as_float(old_val_as_int)));
+        old_val_as_int = atomicCAS(address_as_int, assumed, min_val_as_int);
+    } while (assumed != old_val_as_int);
+    return __int_as_float(old_val_as_int);
+}
+
+__global__ void
+min_reduce_naive(float * result, float * data, int size) {
+    extern __shared__ float sharedData[];
+    int tid = threadIdx.x;
+    int i = blockIdx.x * (blockDim.x * 2) + threadIdx.x;
+
+    // Load data into shared memory
+    if (i < size) {
+        sharedData[tid] = data[i];
+        if (i + blockDim.x < size) {
+            sharedData[tid + blockDim.x] = data[i + blockDim.x];
+        } else {
+            // If the last block has an odd number of elements, duplicate the last element
+            sharedData[tid + blockDim.x] = data[size - 1];
+        }
+    } else {
+        // If the last block has an odd number of elements, duplicate the last element
+        sharedData[tid] = data[size - 1];
+        sharedData[tid + blockDim.x] = data[size - 1];
+    }
+
+    __syncthreads();
+
+    // Parallel reduction within the warp to find the minimum value
+    float minVal = sharedData[tid];
+    minVal = warpReduceMin(minVal);
+
+    // The minimum value within the warp is in minVal
+    if ((tid & (warpSize - 1)) == 0) {
+        sharedData[tid / warpSize] = minVal;
+    }
+
+    __syncthreads();
+
+    // Further reduction using one thread per warp
+    if (tid < blockDim.x / warpSize) {
+        minVal = sharedData[tid];
+        minVal = warpReduceMin(minVal);
+        if (tid == 0) {
+            atomicMinFloat(result, minVal);
+        }
     }
 }
 
@@ -925,29 +1041,15 @@ extern "C" {
     cuda_max_float(float *a, int nelements) {
         int size = nelements;
         float *d_out;
-        int blockSize = 256;  // Number of threads per block. This is a typical choice.
-
         int current_size = size;
         float *d_current_in = a;
-        while(current_size > 1) {
-            int blocks = (current_size + blockSize - 1) / blockSize;
-            cudaMalloc((void **) &d_out, blocks * sizeof(float));
-            max_reduce_naive<<<blocks, blockSize, blockSize * sizeof(float)>>>(d_out, d_current_in, current_size);
-
-            if (d_current_in != a) { // Free the intermediate input arrays
-                cudaFree(d_current_in);
-            }
-
-            // Prepare for the next iteration
-            d_current_in = d_out;
-            current_size = blocks;
-        }
-        cudaDeviceSynchronize();
-
-        // copy the result back to the host
+        // Launch the CUDA kernel
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (size + (2 * threadsPerBlock) - 1) / (2 * threadsPerBlock);
+        cudaMalloc((void**)&d_out, sizeof(float));
+        max_reduce_naive<<<blocksPerGrid, threadsPerBlock, 2 * threadsPerBlock * sizeof(float)>>>(d_out, d_current_in, current_size);
         float max_value;
         cudaMemcpy(&max_value, d_out, sizeof(float), cudaMemcpyDeviceToHost);
-
         return max_value;
     }
 
@@ -955,29 +1057,15 @@ extern "C" {
     cuda_min_float(float *a, int nelements) {
         int size = nelements;
         float *d_out;
-        int blockSize = 256;  // Number of threads per block. This is a typical choice.
-
         int current_size = size;
         float *d_current_in = a;
-        while(current_size > 1) {
-            int blocks = (current_size + blockSize - 1) / blockSize;
-            cudaMalloc((void **) &d_out, blocks * sizeof(float));
-            min_reduce_naive<<<blocks, blockSize, blockSize * sizeof(float)>>>(d_out, d_current_in, current_size);
-
-            if (d_current_in != a) { // Free the intermediate input arrays
-                cudaFree(d_current_in);
-            }
-
-            // Prepare for the next iteration
-            d_current_in = d_out;
-            current_size = blocks;
-        }
-        cudaDeviceSynchronize();
-
-        // copy the result back to the host
+        // Launch the CUDA kernel
+        int threadsPerBlock = 256;
+        int blocksPerGrid = (size + (2 * threadsPerBlock) - 1) / (2 * threadsPerBlock);
+        cudaMalloc((void**)&d_out, sizeof(float));
+        min_reduce_naive<<<blocksPerGrid, threadsPerBlock, 2 * threadsPerBlock * sizeof(float)>>>(d_out, d_current_in, current_size);
         float min_value;
         cudaMemcpy(&min_value, d_out, sizeof(float), cudaMemcpyDeviceToHost);
-
         return min_value;
     }
 
@@ -1357,6 +1445,32 @@ extern "C" {
         cudaDeviceSynchronize();
     }
 
+    float
+    cuda_float_median_float(int nblocks, float *a_array, int n) {
+        const int threadsPerBlock = 256;
+        int blocksPerGrid = (n + threadsPerBlock - 1) / threadsPerBlock;
+
+        float* d_medians;
+        cudaMalloc((void**)&d_medians, blocksPerGrid * sizeof(float));
+
+        findMedianKernelFloat<<<blocksPerGrid, threadsPerBlock, threadsPerBlock * sizeof(float)>>>(a_array, n, d_medians);
+
+        // Perform a final reduction to find the overall median
+        while (blocksPerGrid > 1)
+        {
+            int newBlocks = (blocksPerGrid + threadsPerBlock - 1) / threadsPerBlock;
+            findMedianKernelFloat<<<newBlocks, threadsPerBlock, threadsPerBlock * sizeof(float)>>>(d_medians, blocksPerGrid, d_medians);
+            blocksPerGrid = newBlocks;
+        }
+
+        float median;
+        cudaMemcpy(&median, d_medians, sizeof(float), cudaMemcpyDeviceToHost);
+
+        cudaFree(d_medians);
+
+        return median;
+    }
+
     void
     cuda_float_compare_less(int nblocks, float *a_array, float *b_array, float *result, int n) {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
@@ -1556,4 +1670,6 @@ extern "C" {
         cudaFree(d_work);
         cudaFree(d_info);
     }
+
+
 }
