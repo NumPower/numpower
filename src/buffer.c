@@ -53,6 +53,9 @@ void buffer_init(int size) {
  */
 void buffer_free() {
     if (MAIN_MEM_STACK.buffer != NULL) {
+        for (int i = 0; i < MAIN_MEM_STACK.numElements; i++) {
+            NDArray_FREE(MAIN_MEM_STACK.buffer[i]);
+        }
         efree(MAIN_MEM_STACK.buffer);
         MAIN_MEM_STACK.buffer = NULL;
     }
