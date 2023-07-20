@@ -816,8 +816,8 @@ NDArray_ToGPU(NDArray *target)
     cudaMemcpy(tmp_gpu, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyHostToDevice);
     cudaError_t err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
-        printf("Error synchronizing: %s\n", cudaGetErrorString(err));
-        // Handle error...
+        zend_throw_error("Error synchronizing: %s\n", cudaGetErrorString(err));
+        return NULL;
     }
     efree(rtn->data);
     rtn->data = (char*)tmp_gpu;
