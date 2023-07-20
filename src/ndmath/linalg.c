@@ -1213,7 +1213,48 @@ NDArray_Eig(NDArray *a) {
     return rtn;
 }
 
+/**
+ * NDArray::lstsq
+ *
+ * @param a
+ * @param b
+ * @return
+ */
 NDArray*
-NDArray_Lstq(NDArray *a, NDArray *b, float rcond) {
+NDArray_Lstsq(NDArray *a, NDArray *b) {
+    // Check if input matrices have compatible dimensions
+    if (NDArray_NDIM(a) != 2 || NDArray_NDIM(b) != 2 || NDArray_SHAPE(a)[0] != NDArray_SHAPE(b)[0]) {
+        zend_throw_error(NULL, "Invalid dimensions to calculate lstsq, both arrays must have 2 dimensions and $b must contain the same amount of rows as $a");
+        return NULL;
+    }
 
+    int m = a->dimensions[0]; // Number of rows of the coefficient matrix A
+    int n = a->dimensions[1]; // Number of columns of the coefficient matrix A
+    int nrhs = b->dimensions[1]; // Number of right-hand sides (columns of B)
+
+    int *out_shape = (int*)emalloc(2 * sizeof(int));
+    out_shape[0] = n;
+    out_shape[1] = nrhs;
+    NDArray *x = NDArray_Zeros(out_shape, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    // Allocate memory and copy data for the coefficient matrix A
+    float* a_data = (float*)emalloc(m * n * sizeof(float));
+    memcpy(a_data, a->data, m * n * sizeof(float));
+
+    // Allocate memory and copy data for the right-hand side matrix B
+    float* b_data = (float*)emalloc(m * nrhs * sizeof(float));
+    memcpy(b_data, b->data, m * nrhs * sizeof(float));
+
+    int info = LAPACKE_sgels(LAPACK_ROW_MAJOR, 'N', NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1], NDArray_SHAPE(b)[1], a_data,
+                  NDArray_SHAPE(a)[1], b_data, NDArray_SHAPE(b)[1]);
+
+    if (info > 0) {
+        zend_throw_error(NULL, "The diagonal element %i of the triangular factor of $a is zero, so that $a does not have full rank.", info );
+        return NULL;
+    }
+    // Copy the result data to the output NDArray
+    memcpy(NDArray_FDATA(x), b_data, n * nrhs * sizeof(float));
+    efree(a_data);
+    efree(b_data);
+    return x;
 }

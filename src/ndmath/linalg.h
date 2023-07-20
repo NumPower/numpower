@@ -18,7 +18,7 @@ NDArray* NDArray_Outer(NDArray *a, NDArray *b);
 NDArray* NDArray_Trace(NDArray *a);
 NDArray* NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_value);
 NDArray** NDArray_Eig(NDArray *a);
-NDArray* NDArray_Lstq(NDArray *a, NDArray *b, float rcond);
+NDArray* NDArray_Lstsq(NDArray *a, NDArray *b);
 NDArray* NDArray_Qr(NDArray *a);
 NDArray* NDArray_Solve(NDArray *a);
 NDArray* NDArray_Cond(NDArray *a);
