@@ -1145,3 +1145,75 @@ NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_
 
     return rtn;
 }
+
+int
+computeEigenvaluesAndEigenvectorsFloat(NDArray* array, NDArray* rightEigenvectors,
+                                       NDArray* eigenvalues, NDArray *wivectors, NDArray *leftEigenvectors) {
+    // Assuming 'array' contains the input square matrix
+    int n = array->dimensions[0]; // Size of the square matrix
+
+    // Compute eigenvalues and right eigenvectors using LAPACK function
+    int info = LAPACKE_sgeev(LAPACK_ROW_MAJOR, 'N', 'V', n, NDArray_FDATA(array), n,
+                             NDArray_FDATA(rightEigenvectors), NDArray_FDATA(wivectors), NDArray_FDATA(leftEigenvectors),
+                             n, NDArray_FDATA(eigenvalues),n);
+
+    // Check if the computation was successful (info == 0)
+    if (info != 0) {
+        zend_throw_error(NULL, "Error computing eigenvalues and eigenvectors.\n");
+        return 0;
+    }
+    return 1;
+}
+
+/**
+ * NDArray::eig
+ *
+ * @param a
+ * @return
+ */
+NDArray**
+NDArray_Eig(NDArray *a) {
+    if (NDArray_NDIM(a) != 2 || NDArray_SHAPE(a)[0] != NDArray_SHAPE(a)[1]) {
+        zend_throw_error(NULL, "Error: Input matrix is not square.\n");
+        return NULL;
+    }
+    NDArray **rtn = emalloc(sizeof(NDArray*) * 2);
+    NDArray* eigenvalues, *rightEigenvectors, *wivectors, *leftEigenvectors;
+    int *eigenvalues_shape, *rightEigenvectors_shape, *wivectors_shape, *leftEigenvectors_shape;
+
+    rightEigenvectors_shape = emalloc(sizeof(int));
+    rightEigenvectors_shape[0] = NDArray_SHAPE(a)[0];
+
+    rightEigenvectors = NDArray_Zeros(rightEigenvectors_shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        wivectors_shape = emalloc(sizeof(int));
+        leftEigenvectors_shape = emalloc(sizeof(int));
+        eigenvalues_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        wivectors_shape[0] = NDArray_SHAPE(a)[0];
+        eigenvalues_shape[0] = NDArray_SHAPE(a)[0];
+        eigenvalues_shape[1] = NDArray_SHAPE(a)[0];
+        leftEigenvectors_shape[0] = NDArray_SHAPE(a)[0];
+        eigenvalues = NDArray_Zeros(eigenvalues_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        wivectors = NDArray_Zeros(wivectors_shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+        leftEigenvectors = NDArray_Zeros(leftEigenvectors_shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+        if (!computeEigenvaluesAndEigenvectorsFloat(a, rightEigenvectors, eigenvalues, wivectors, leftEigenvectors)) {
+            efree(rtn);
+            return NULL;
+        }
+        NDArray_FREE(leftEigenvectors);
+        NDArray_FREE(wivectors);
+    } else {
+#ifdef HAVE_CUBLAS
+        eigenvalues = NDArray_Copy(a, NDArray_DEVICE(a));
+        cuda_matrix_eig_float(NDArray_FDATA(eigenvalues), NDArray_SHAPE(a)[0], NDArray_FDATA(rightEigenvectors));
+#endif
+    }
+    rtn[0] = rightEigenvectors;
+    rtn[1] = eigenvalues;
+    return rtn;
+}
+
+NDArray*
+NDArray_Lstq(NDArray *a, NDArray *b, float rcond) {
+
+}

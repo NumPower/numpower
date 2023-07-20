@@ -79,16 +79,6 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
     return NULL;
 }
 
-NDArray* ZVALUUID_TO_NDARRAY(zval* obj) {
-    if (Z_TYPE_P(obj) == IS_LONG) {
-        return buffer_get(Z_LVAL_P(obj));
-    }
-    if (Z_TYPE_P(obj) == IS_OBJECT) {
-        return buffer_get(get_object_uuid(obj));
-    }
-    return NULL;
-}
-
 void CHECK_INPUT_AND_FREE(zval *a, NDArray *nda) {
     if (Z_TYPE_P(a) == IS_ARRAY || Z_TYPE_P(a) == IS_DOUBLE || Z_TYPE_P(a) == IS_LONG) {
         NDArray_FREE(nda);
@@ -110,6 +100,110 @@ void RETURN_NDARRAY(NDArray* array, zval* return_value) {
     }
 }
 
+static int ndarray_objects_compare(zval *obj1, zval *obj2)
+{
+    zval result;
+    NDArray *a, *b, *c;
+
+    a = ZVAL_TO_NDARRAY(obj1);
+    b = ZVAL_TO_NDARRAY(obj2);
+
+    if (NDArray_ArrayEqual(a, b)) {
+        return 0;
+    }
+    return 1;
+}
+
+typedef struct {
+    zend_object std;
+    int value;
+} NDArrayObject;
+
+static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
+{
+    NDArray *nda = ZVAL_TO_NDARRAY(op1);
+    NDArray *ndb = ZVAL_TO_NDARRAY(op2);
+    NDArray *rtn = NULL;
+    switch(opcode) {
+        case ZEND_ADD:
+            rtn = NDArray_Add_Float(nda, ndb);
+            break;
+        case ZEND_SUB:
+            rtn = NDArray_Subtract_Float(nda, ndb);
+            break;
+        case ZEND_MUL:
+            rtn = NDArray_Multiply_Float(nda, ndb);
+            break;
+        case ZEND_DIV:
+            rtn = NDArray_Divide_Float(nda, ndb);
+            break;
+        case ZEND_POW:
+            rtn = NDArray_Pow_Float(nda, ndb);
+            break;
+        case ZEND_MOD:
+            rtn = NDArray_Mod_Float(nda, ndb);
+            break;
+        default:
+            return FAILURE;
+    }
+    CHECK_INPUT_AND_FREE(op1, nda);
+    CHECK_INPUT_AND_FREE(op2, ndb);
+    RETURN_NDARRAY(rtn, result);
+    if (rtn != NULL) {
+        return SUCCESS;
+    }
+    return FAILURE;
+}
+
+static
+int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
+{
+    int retval;
+    retval = ndarray_do_operation_ex(opcode, result, op1, op2);
+    return retval;
+}
+
+static void ndarray_destructor(zend_object* object) {
+    NDArrayObject* my_object = (NDArrayObject*)object;
+    if (GC_REFCOUNT(object) <= 1) {
+        zval *obj_uuid = OBJ_PROP_NUM(object, 0);
+        buffer_ndarray_free(Z_LVAL_P(obj_uuid));
+        //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
+        // Call the default object destructor
+        zend_object_std_dtor(object);
+    }
+}
+
+static void ndarray_objects_init(zend_class_entry *class_type)
+{
+    memcpy(&ndarray_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+    ndarray_object_handlers.compare = ndarray_objects_compare;
+    ndarray_object_handlers.do_operation = ndarray_do_operation;
+    ndarray_object_handlers.free_obj = ndarray_destructor;
+    //ndarray_object_handlers.compare = ndarray_objects_compare;
+}
+
+
+static zend_object *ndarray_create_object(zend_class_entry *class_type) {
+    NDArrayObject *intern = zend_object_alloc(sizeof(NDArrayObject), class_type);
+
+    zend_object_std_init(&intern->std, class_type);
+    object_properties_init(&intern->std, class_type);
+    intern->std.handlers = &ndarray_object_handlers;
+
+    return &intern->std;
+}
+
+NDArray* ZVALUUID_TO_NDARRAY(zval* obj) {
+    if (Z_TYPE_P(obj) == IS_LONG) {
+        return buffer_get(Z_LVAL_P(obj));
+    }
+    if (Z_TYPE_P(obj) == IS_OBJECT) {
+        return buffer_get(get_object_uuid(obj));
+    }
+    return NULL;
+}
+
 void RETURN_NDARRAY_NOBUFFER(NDArray* array, zval* return_value) {
     if (array == NULL) {
         RETURN_THROWS();
@@ -117,6 +211,27 @@ void RETURN_NDARRAY_NOBUFFER(NDArray* array, zval* return_value) {
     }
     object_init_ex(return_value, phpsci_ce_NDArray);
     ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
+}
+
+void RETURN_2NDARRAY(NDArray* array1, NDArray* array2, zval* return_value) {
+    zval a, b;
+    if (array1 == NULL) {
+        RETURN_THROWS();
+        return;
+    }
+    if (array2 == NULL) {
+        RETURN_THROWS();
+        return;
+    }
+
+    add_to_buffer(array1, sizeof(NDArray));
+    add_to_buffer(array2, sizeof(NDArray));
+
+    RETURN_NDARRAY(array1, &a);
+    RETURN_NDARRAY(array2, &b);
+    array_init(return_value);
+    add_next_index_object(return_value, Z_OBJ(a));
+    add_next_index_object(return_value, Z_OBJ(b));
 }
 
 void RETURN_3NDARRAY(NDArray* array1, NDArray* array2, NDArray* array3, zval* return_value) {
@@ -334,6 +449,32 @@ PHP_METHOD(NDArray, dumpDevices)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
     NDArray_DumpDevices();
+}
+
+ZEND_BEGIN_ARG_INFO(arginfo_setdevice, 0)
+    ZEND_ARG_INFO(0, deviceId)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, setDevice)
+{
+    int numDevices;
+    long deviceId;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_LONG(deviceId)
+    ZEND_PARSE_PARAMETERS_END();
+#ifdef HAVE_CUBLAS
+    // Get the number of available CUDA devices
+    cudaError_t cudaError = cudaGetDeviceCount(&numDevices);
+
+    if (cudaError != cudaSuccess) {
+        zend_throw_error(NULL, "Error getting the number of CUDA devices.\n");
+        return;
+    }
+    if (deviceId >= 0 && deviceId > (numDevices - 1)) {
+        zend_throw_error(NULL, "Device %d does not exist.\n", (int)deviceId);
+        return;
+    }
+    cudaSetDevice(deviceId);
+#endif
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_reshape, 1)
@@ -2724,7 +2865,7 @@ PHP_METHOD(NDArray, log1p)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_log2, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, log2)
 {
@@ -2789,8 +2930,8 @@ PHP_METHOD(NDArray, subtract)
  * NDArray::mod
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_mod, 0)
-                ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-                ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+    ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+    ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, mod)
 {
@@ -2895,8 +3036,8 @@ PHP_METHOD(NDArray, multiply)
  * NDArray::divide
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_divide, 0)
-        ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-        ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+    ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+    ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, divide)
 {
@@ -3120,7 +3261,7 @@ ZEND_BEGIN_ARG_INFO(arginfo_ndarray_eig, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, eig)
 {
-    NDArray *rtn = NULL;
+    NDArray **rtn = NULL;
     zval *a, *b;
     long axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
@@ -3131,8 +3272,13 @@ PHP_METHOD(NDArray, eig)
         return;
     }
 
+    rtn = NDArray_Eig(nda);
+    if (rtn == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    RETURN_2NDARRAY(rtn[0], rtn[1], return_value);
+    efree(rtn);
 }
 
 /**
@@ -3219,7 +3365,7 @@ PHP_METHOD(NDArray, lstsq)
  * NDArray::qr
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_qr, 0)
-                ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, a)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, qr)
 {
@@ -3547,8 +3693,8 @@ PHP_METHOD(NDArray, min)
  * NDArray::max
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_max, 0, 0, 1)
-                ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-                ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+    ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, max)
 {
@@ -3849,51 +3995,6 @@ PHP_METHOD(NDArray, __toString)
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
 }
-
-static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
-{
-    NDArray *nda = ZVAL_TO_NDARRAY(op1);
-    NDArray *ndb = ZVAL_TO_NDARRAY(op2);
-    NDArray *rtn = NULL;
-    switch(opcode) {
-        case ZEND_ADD:
-            rtn = NDArray_Add_Float(nda, ndb);
-            break;
-        case ZEND_SUB:
-            rtn = NDArray_Subtract_Float(nda, ndb);
-            break;
-        case ZEND_MUL:
-            rtn = NDArray_Multiply_Float(nda, ndb);
-            break;
-        case ZEND_DIV:
-            rtn = NDArray_Divide_Float(nda, ndb);
-            break;
-        case ZEND_POW:
-            rtn = NDArray_Pow_Float(nda, ndb);
-            break;
-        case ZEND_MOD:
-            rtn = NDArray_Mod_Float(nda, ndb);
-            break;
-        default:
-            return FAILURE;
-    }
-    CHECK_INPUT_AND_FREE(op1, nda);
-    CHECK_INPUT_AND_FREE(op2, ndb);
-    RETURN_NDARRAY(rtn, result);
-    if (rtn != NULL) {
-        return SUCCESS;
-    }
-    return FAILURE;
-}
-
-static
-int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) /* {{{ */
-{
-    int retval;
-    retval = ndarray_do_operation_ex(opcode, result, op1, op2);
-    return retval;
-}
-
 static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
@@ -3901,6 +4002,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, gpu, arginfo_gpu, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, cpu, arginfo_cpu, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, isGPU, arginfo_is_gpu, ZEND_ACC_PUBLIC)
+        ZEND_ME(NDArray, setDevice, arginfo_setdevice, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4034,56 +4136,6 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_FE_END
 };
 
-static int ndarray_objects_compare(zval *obj1, zval *obj2)
-{
-    zval result;
-    NDArray *a, *b, *c;
-
-    a = ZVAL_TO_NDARRAY(obj1);
-    b = ZVAL_TO_NDARRAY(obj2);
-
-    if (NDArray_ArrayEqual(a, b)) {
-        return 0;
-    }
-    return 1;
-}
-
-typedef struct {
-    zend_object std;
-    int value;
-} NDArrayObject;
-
-static void ndarray_destructor(zend_object* object) {
-    NDArrayObject* my_object = (NDArrayObject*)object;
-    if (GC_REFCOUNT(object) <= 1) {
-        zval *obj_uuid = OBJ_PROP_NUM(object, 0);
-        buffer_ndarray_free(Z_LVAL_P(obj_uuid));
-        //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
-        // Call the default object destructor
-        zend_object_std_dtor(object);
-    }
-}
-
-static void ndarray_objects_init(zend_class_entry *class_type)
-{
-    memcpy(&ndarray_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
-    ndarray_object_handlers.compare = ndarray_objects_compare;
-    ndarray_object_handlers.do_operation = ndarray_do_operation;
-    ndarray_object_handlers.free_obj = ndarray_destructor;
-    //ndarray_object_handlers.compare = ndarray_objects_compare;
-}
-
-
-static zend_object *ndarray_create_object(zend_class_entry *class_type) {
-    NDArrayObject *intern = zend_object_alloc(sizeof(NDArrayObject), class_type);
-
-    zend_object_std_init(&intern->std, class_type);
-    object_properties_init(&intern->std, class_type);
-    intern->std.handlers = &ndarray_object_handlers;
-
-    return &intern->std;
-}
-
 static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_Iterator, zend_class_entry *class_entry_Countable, zend_class_entry *class_entry_ArrayAccess) {
     zend_class_entry ce, *class_entry;
     INIT_CLASS_ENTRY(ce, "NDArray", class_NDArray_methods);
@@ -4131,10 +4183,10 @@ PHP_MINFO_FUNCTION(ndarray)
 
 PHP_RSHUTDOWN_FUNCTION(ndarray)
 {
+    buffer_free();
 #ifdef HAVE_CUBLAS
     NDArray_VCHECK();
 #endif
-    buffer_free();
     return SUCCESS;
 }
 

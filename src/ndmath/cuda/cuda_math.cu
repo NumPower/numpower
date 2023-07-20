@@ -1520,4 +1520,40 @@ extern "C" {
 
         cusolverDnDestroy(cusolverH);
     }
+
+    void cuda_matrix_eig_float(float* d_matrix, int n, float* d_eigvalues) {
+        cusolverDnHandle_t handle;
+        cusolverStatus_t status;
+
+        int* d_info;  // info on success or failure
+
+        cudaMalloc(&d_info, sizeof(int));
+        // Create cuSOLVER handle
+        status = cusolverDnCreate(&handle);
+        if (status != CUSOLVER_STATUS_SUCCESS) {
+            printf("CUSOLVER initialization failed.\n");
+            return;
+        }
+
+        // Compute workspace size
+        int lwork;
+        status = cusolverDnSsyevd_bufferSize(handle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_UPPER, n, d_matrix, n, d_eigvalues, &lwork);
+        if (status != CUSOLVER_STATUS_SUCCESS) {
+            printf("CUSOLVER workspace size computation failed.\n");
+            return;
+        }
+
+        // Allocate workspace on the device
+        float* d_work;
+        cudaMalloc((void**)&d_work, lwork * sizeof(float));
+
+        // Compute eigenvalues and right eigenvectors
+        status = cusolverDnSsyevd(handle, CUSOLVER_EIG_MODE_VECTOR, CUBLAS_FILL_MODE_UPPER, n, d_matrix, n, d_eigvalues, d_work, lwork, d_info);
+        if (status != CUSOLVER_STATUS_SUCCESS) {
+            printf("CUSOLVER eigenvectors computation failed.\n");
+            return;
+        }
+        cudaFree(d_work);
+        cudaFree(d_info);
+    }
 }
