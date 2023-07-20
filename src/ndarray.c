@@ -816,14 +816,13 @@ NDArray_ToGPU(NDArray *target)
     cudaMemcpy(tmp_gpu, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyHostToDevice);
     cudaError_t err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
-        zend_throw_error("Error synchronizing: %s\n", cudaGetErrorString(err));
+        zend_throw_error(NULL, "Error synchronizing: %s\n", cudaGetErrorString(err));
         return NULL;
     }
     efree(rtn->data);
     rtn->data = (char*)tmp_gpu;
     return rtn;
 #else
-    // @todo this must be a copy
     zend_throw_error(NULL, "Unable to detect a compatible device.");
     return NULL;
 #endif
