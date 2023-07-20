@@ -55,11 +55,12 @@ NDArray_Dump(NDArray* array)
  * @return
  */
 char*
-print_array(double* buffer, int ndims, int* shape, int* strides, int cur_dim, int* index, int num_elements) {
+print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_dim, int* index, int num_elements, int* padded) {
     char* str;
-    int i, j;
+    int i, j, t;
+    int reverse_run = 0;
     // Allocate memory for the string
-    str = (char*)malloc(100000000 * sizeof(char));
+    str = (char*)malloc(10000000 * sizeof(char));
     if (str == NULL) {
         fprintf(stderr, "Error: Failed to allocate memory for string.\n");
         exit(1);
@@ -73,96 +74,6 @@ print_array(double* buffer, int ndims, int* shape, int* strides, int cur_dim, in
     if (cur_dim == ndims - 1) {
         // Print the opening bracket for this dimension
         sprintf(str, "[");
-
-        // Print the elements of the array
-        for (i = 0; i < shape[cur_dim]; i++) {
-            // Update the index of this element
-            index[cur_dim] = i;
-
-            // Compute the offset of this element in the buffer
-            int offset = 0;
-            for (int k = 0; k < ndims; k++) {
-                offset += index[k] * strides[k];
-            }
-            // Print the element
-            sprintf(str + strlen(str), "%g", buffer[offset / sizeof(double)]);
-
-            // Print a comma if this is not the last element in the dimension
-            if (i < shape[cur_dim] - 1) {
-                sprintf(str + strlen(str), ", ");
-            }
-
-        }
-
-        // Print the closing bracket for this dimension
-        sprintf(str + strlen(str), "]");
-    } else {
-        // Print the opening bracket for this dimension
-        sprintf(str, "[");
-
-        // Recursively print each element in the dimension
-        for (i = 0; i < shape[cur_dim]; i++) {
-            // Update the index of this element
-            index[cur_dim] = i;
-
-            char* child_str = print_array(buffer, ndims, shape, strides, cur_dim + 1, index, num_elements);
-
-            // Add the child string to the parent string
-            sprintf(str + strlen(str), "%s", child_str);
-
-            // Free the child string
-            free(child_str);
-
-            // Print a comma and newline if this is not the last element in the dimension
-            if (i < shape[cur_dim] - 1) {
-                sprintf(str + strlen(str), ",\n ");
-                for (j = 0; j < cur_dim; j++) {
-                    sprintf(str + strlen(str), " ");
-                }
-            }
-        }
-
-        // Print the closing bracket for this dimension
-        sprintf(str + strlen(str), "]");
-    }
-
-    // Add a newline if this is the outermost dimension
-    if (cur_dim == 0) {
-        sprintf(str + strlen(str), "\n");
-    }
-
-    return str;
-}
-
-/**
- * @param buffer
- * @param ndims
- * @param shape
- * @param strides
- * @param cur_dim
- * @param index
- * @return
- */
-char*
-print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_dim, int* index, int num_elements) {
-    char* str;
-    int i, j;
-    // Allocate memory for the string
-    str = (char*)malloc(100000000 * sizeof(char));
-    if (str == NULL) {
-        fprintf(stderr, "Error: Failed to allocate memory for string.\n");
-        exit(1);
-    }
-
-    if (ndims == 0) {
-        sprintf(str, "%g\n", buffer[0]);
-        return str;
-    }
-
-    if (cur_dim == ndims - 1) {
-        // Print the opening bracket for this dimension
-        sprintf(str, "[");
-
         // Print the elements of the array
         for (i = 0; i < shape[cur_dim]; i++) {
             // Update the index of this element
@@ -181,11 +92,35 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
                 sprintf(str + strlen(str), ", ");
             }
 
+            if ((i + 1) % 10 == 0 && i < shape[cur_dim] - 1) {
+                sprintf(str + strlen(str), "\n");
+                for (t = 0; t < ndims; t++) {
+                    sprintf(str + strlen(str), " ");
+                }
+            }
+
+            if (shape[cur_dim] > 20) {
+                if (i > 1 && reverse_run == 0) {
+                    i = shape[cur_dim] - 4;
+                    reverse_run = 1;
+                    sprintf(str + strlen(str), "... ");
+                }
+            }
         }
 
         // Print the closing bracket for this dimension
         sprintf(str + strlen(str), "]");
+        if (index[cur_dim-1] < shape[ndims - 2] - 1) {
+            sprintf(str + strlen(str), "\n ");
+        }
     } else {
+        if (cur_dim != 0) {
+            if (cur_dim == index[cur_dim - 1]) {
+                for (t = cur_dim; t < ndims; t++) {
+                    sprintf(str + strlen(str), " ");
+                }
+            }
+        }
         // Print the opening bracket for this dimension
         sprintf(str, "[");
 
@@ -194,7 +129,7 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
             // Update the index of this element
             index[cur_dim] = i;
 
-            char* child_str = print_array_float(buffer, ndims, shape, strides, cur_dim + 1, index, num_elements);
+            char* child_str = print_array_float(buffer, ndims, shape, strides, cur_dim + 1, index, num_elements, padded);
 
             // Add the child string to the parent string
             sprintf(str + strlen(str), "%s", child_str);
@@ -204,15 +139,33 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
 
             // Print a comma and newline if this is not the last element in the dimension
             if (i < shape[cur_dim] - 1) {
-                sprintf(str + strlen(str), ",\n ");
                 for (j = 0; j < cur_dim; j++) {
                     sprintf(str + strlen(str), " ");
                 }
             }
-        }
 
+            if (ndims > 1) {
+                if (shape[ndims - 1] * shape[ndims - 2] > 500 && shape[cur_dim] > 10) {
+                    if(i >= 2 && reverse_run == 0) {
+                        i = shape[cur_dim] - 4;
+                        reverse_run = 1;
+                        sprintf(str + strlen(str), "...\n");
+                        if (i < shape[cur_dim] - 1) {
+                            for (j = 1; j < ndims; j++) {
+                                sprintf(str + strlen(str), " ");
+                            }
+                        }
+                        *padded = 1;
+                    }
+                }
+            }
+        }
         // Print the closing bracket for this dimension
         sprintf(str + strlen(str), "]");
+
+        if (cur_dim != 0 && index[cur_dim-1] < shape[cur_dim-1] - 1) {
+            sprintf(str + strlen(str), "\n");
+        }
     }
 
     // Add a newline if this is the outermost dimension
@@ -221,36 +174,6 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
     }
 
     return str;
-}
-
-/**
- * Print matrix to
- *
- * @param buffer
- * @param ndims
- * @param shape
- * @param strides
- */
-char*
-print_matrix(double* buffer, int ndims, int* shape, int* strides, int num_elements, int device) {
-    double *tmp_buffer;
-    int *index = emalloc(ndims * sizeof(int));
-    if (device == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        tmp_buffer = emalloc(num_elements * sizeof(double));
-        cudaMemcpy(tmp_buffer, buffer, num_elements * sizeof(double), cudaMemcpyDeviceToHost);
-#endif
-    } else {
-        tmp_buffer = buffer;
-    }
-    char* rtn = print_array(tmp_buffer, ndims, shape, strides, 0, index, num_elements);
-    efree(index);
-#ifdef HAVE_CUBLAS
-    if (device == NDARRAY_DEVICE_GPU) {
-        efree(tmp_buffer);
-    }
-#endif
-    return rtn;
 }
 
 /**
@@ -273,7 +196,8 @@ print_matrix_float(float* buffer, int ndims, int* shape, int* strides, int num_e
     } else {
         tmp_buffer = buffer;
     }
-    char* rtn = print_array_float(tmp_buffer, ndims, shape, strides, 0, index, num_elements);
+    int padded = 0;
+    char* rtn = print_array_float(tmp_buffer, ndims, shape, strides, 0, index, num_elements, &padded);
     efree(index);
 #ifdef HAVE_CUBLAS
     if (device == NDARRAY_DEVICE_GPU) {

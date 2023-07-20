@@ -4009,6 +4009,9 @@ PHP_METHOD(NDArray, __toString)
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
     ZEND_PARSE_PARAMETERS_START(0, 0)
     ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    RETURN_STRING(NDArray_Print(ndarray, 1));
 }
 static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
