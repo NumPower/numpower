@@ -1215,36 +1215,34 @@ PHP_METHOD(NDArray, transpose)
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_copy, 0, 0, 1)
     ZEND_ARG_INFO(0, array)
-    ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, device)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, copy)
 {
     NDArray *rtn = NULL;
     zval *array;
-    long axis;
-    int axis_i;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    long device = -1;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_ZVAL(array)
             Z_PARAM_OPTIONAL
-            Z_PARAM_LONG(axis)
+            Z_PARAM_LONG(device)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
-    if (nda == NULL) {
+    if (device == -1)
+    {
+        device = NDArray_DEVICE(nda);
+    }
+    if (device != NDARRAY_DEVICE_CPU && device != NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "$device argument must be either 0 (CPU) or 1 (GPU)");
+        CHECK_INPUT_AND_FREE(array, nda);
         return;
     }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
+    rtn = NDArray_Copy(nda, NDArray_DEVICE(nda));
+    if (rtn == NULL) {
         return;
     }
+    CHECK_INPUT_AND_FREE(array, nda);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**

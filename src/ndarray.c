@@ -128,6 +128,7 @@ NDArray_FromGD(zval *a) {
     return rtn;
 }
 
+
 void
 NDArray_ToGD(NDArray *a, zval *output) {
     if (NDArray_NDIM(a) != 3 || NDArray_SHAPE(a)[0] != 3) {
