@@ -4222,7 +4222,10 @@ PHP_RSHUTDOWN_FUNCTION(ndarray)
 {
     buffer_free();
 #ifdef HAVE_CUBLAS
-    NDArray_VCHECK();
+    char *envvar = "NDARRAY_VCHECK";
+    if(getenv(envvar)) {
+        NDArray_VCHECK();
+    }
 #endif
     return SUCCESS;
 }
