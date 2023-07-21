@@ -931,6 +931,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     NDArray *src, *dst, *rtn;
     src = a;
     dst = b;
+    char *tmp_p;
     if (NDArray_NDIM(a) > 2 || NDArray_NDIM(b) > 2) {
         zend_throw_error(NULL, "Broadcast shape mismatch.");
         return NULL;
@@ -962,9 +963,32 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[0]);
                 }
             }
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
+
+            }
         }
     }
+    int j;
     if (NDArray_NDIM(src) == 2 && NDArray_NDIM(dst) == 2) {
+        if (NDArray_SHAPE(src)[NDArray_NDIM(dst) - 2] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
+                for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
+                    for (j = 0; j < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]; j++) {
+                        NDArray_FDATA(rtn)[(i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2]/ NDArray_ELSIZE(rtn))+j] = NDArray_FDATA(src)[i];
+                    }
+                }
+            }
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
+                for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
+                    for (j = 0; j < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]; j++) {
+                        tmp_p = (char*)(NDArray_FDATA(src) + i);
+                        rtn_p = (char*)(NDArray_FDATA(rtn) + (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2]/ NDArray_ELSIZE(rtn))+j);
+                        NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
+                    }
+                }
+                NDArray_Print(rtn,0);
+            }
+        }
         if (NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
@@ -972,6 +996,9 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                            NDArray_FDATA(src), sizeof(float) * NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]);
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1]);
                 }
+            }
+            if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
+
             }
         }
     }

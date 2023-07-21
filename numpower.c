@@ -83,6 +83,15 @@ void CHECK_INPUT_AND_FREE(zval *a, NDArray *nda) {
     if (Z_TYPE_P(a) == IS_ARRAY || Z_TYPE_P(a) == IS_DOUBLE || Z_TYPE_P(a) == IS_LONG) {
         NDArray_FREE(nda);
     }
+#ifdef HAVE_GD
+    if (Z_TYPE_P(a) == IS_OBJECT) {
+        /* Check if the zend_object class name is "GdImage" */
+        zend_string* class_name = Z_OBJ_P(a)->ce->name;
+        if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
+            NDArray_FREE(nda);
+        }
+    }
+#endif
 }
 
 void RETURN_NDARRAY(NDArray* array, zval* return_value) {
