@@ -371,10 +371,10 @@ PHP_METHOD(NDArray, toImage)
         return;
     }
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
-        zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a PHP array.");
+        zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a GD image.");
         return;
     }
-    if (NDArray_NDIM(array) != 3) {
+    if (NDArray_NDIM(array) != 3 || NDArray_SHAPE(array)[0] != 3) {
         zend_throw_error(NULL, "NDArray must be 3-dimensional before it can be converted to a RGB image.");
         return;
     }
