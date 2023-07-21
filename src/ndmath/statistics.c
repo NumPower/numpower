@@ -134,11 +134,16 @@ NDArray_Variance(NDArray *a) {
 NDArray*
 NDArray_Average(NDArray *a, NDArray *weights) {
     NDArray *rtn = NULL;
+
     if (weights == NULL) {
         return NDArray_CreateFromFloatScalar(NDArray_Sum_Float(a) / NDArray_NUMELEMENTS(a));
     }
 
     if (weights != NULL) {
+        if (NDArray_DEVICE(a) != NDArray_DEVICE(weights)) {
+            zend_throw_error(NULL, "All NDArrays used in a operation must be on the same device.");
+            return NULL;
+        }
         NDArray *m_weights = NDArray_Multiply_Float(a, weights);
         float s_weights = NDArray_Sum_Float(weights);
         float s_aweights = NDArray_Sum_Float(m_weights);
