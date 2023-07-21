@@ -123,3 +123,27 @@ NDArray_Variance(NDArray *a) {
     NDArray_FREE(pow);
     return x;
 }
+
+/**
+ * NDArray::average
+ *
+ * @param a
+ * @param weights
+ * @return
+ */
+NDArray*
+NDArray_Average(NDArray *a, NDArray *weights) {
+    NDArray *rtn = NULL;
+    if (weights == NULL) {
+        return NDArray_CreateFromFloatScalar(NDArray_Sum_Float(a) / NDArray_NUMELEMENTS(a));
+    }
+
+    if (weights != NULL) {
+        NDArray *m_weights = NDArray_Multiply_Float(a, weights);
+        float s_weights = NDArray_Sum_Float(weights);
+        float s_aweights = NDArray_Sum_Float(m_weights);
+        rtn = NDArray_CreateFromFloatScalar(s_aweights / s_weights);
+        NDArray_FREE(m_weights);
+    }
+    return rtn;
+}

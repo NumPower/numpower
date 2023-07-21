@@ -2349,39 +2349,33 @@ PHP_METHOD(NDArray, quantile)
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_average, 0, 0, 1)
     ZEND_ARG_INFO(0, array)
-    ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, weights)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, average)
 {
     NDArray *rtn = NULL;
-    zval *array;
+    zval *array, *weights = NULL;
     long axis;
     int i_axis;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
         Z_PARAM_ZVAL(array)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL(weights)
     ZEND_PARSE_PARAMETERS_END();
     i_axis = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(array);
     if (nda == NULL) {
         return;
     }
-
-    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE(NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda));
-    } else {
-#ifdef HAVE_CUBLAS
-        if (ZEND_NUM_ARGS() == 1) {
-            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
-        } else {
-            rtn = single_reduce(nda, &i_axis, NDArray_Mean_Float);
-        }
-#else
-        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
-#endif
+    if (ZEND_NUM_ARGS() == 1) {
+        rtn = NDArray_Average(nda, NULL);
     }
-    if (Z_TYPE_P(array) == IS_ARRAY) {
-        NDArray_FREE(nda);
+    if (ZEND_NUM_ARGS() == 2) {
+        NDArray *ndw = ZVAL_TO_NDARRAY(weights);
+        rtn = NDArray_Average(nda, ndw);
+        CHECK_INPUT_AND_FREE(weights, ndw);
     }
+    CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3849,6 +3843,17 @@ PHP_METHOD(NDArray, slice)
     RETURN_NDARRAY(rtn, return_value);
 }
 
+ZEND_BEGIN_ARG_INFO(arginfo_size, 0)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, size)
+{
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
+    NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
+    RETURN_LONG(NDArray_NUMELEMENTS(ndarray));
+}
 
  /**
   * @param execute_data
@@ -4149,6 +4154,7 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, prod, arginfo_ndarray_prod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, mod, arginfo_ndarray_mod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
+        ZEND_ME(NDArray, size, arginfo_size, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, count, arginfo_count, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, current, arginfo_current, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, key, arginfo_key, ZEND_ACC_PUBLIC)
