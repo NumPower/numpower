@@ -848,7 +848,6 @@ PHP_METHOD(NDArray, standard_normal)
     NDArray *rtn = NULL;
     int *shape;
     zval* size;
-    double loc = 0.0, scale = 1.0;
     ZEND_PARSE_PARAMETERS_START(1, 3)
             Z_PARAM_ZVAL(size)
     ZEND_PARSE_PARAMETERS_END();
@@ -1847,7 +1846,7 @@ PHP_METHOD(NDArray, arcsinh)
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arccosh, 0, 0, 1)
-                ZEND_ARG_INFO(0, array)
+    ZEND_ARG_INFO(0, array)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, arccosh)
 {
@@ -3520,7 +3519,7 @@ PHP_METHOD(NDArray, norm)
 {
     NDArray *rtn;
     zval *a;
-    long order = INT_MAX;
+    long order = 2;
     ZEND_PARSE_PARAMETERS_START(1, 2)
             Z_PARAM_ZVAL(a)
             Z_PARAM_OPTIONAL
@@ -4060,14 +4059,16 @@ static const zend_function_entry class_NDArray_methods[] = {
         ZEND_ME(NDArray, ones, arginfo_ndarray_ones, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, arange, arginfo_ndarray_arange, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, identity, arginfo_ndarray_identity, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-        ZEND_ME(NDArray, normal, arginfo_ndarray_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-        ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-        ZEND_ME(NDArray, poisson, arginfo_ndarray_poisson, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-        ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, diag, arginfo_ndarray_diag, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, full, arginfo_ndarray_full, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
         ZEND_ME(NDArray, fill, arginfo_fill, ZEND_ACC_PUBLIC)
         ZEND_ME(NDArray, array, arginfo_ndarray_array, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
+        // RANDOM
+        ZEND_ME(NDArray, normal, arginfo_ndarray_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, poisson, arginfo_ndarray_poisson, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+        ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
         // LINALG
         ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

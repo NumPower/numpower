@@ -1201,8 +1201,12 @@ NDArray_Eig(NDArray *a) {
         NDArray_FREE(wivectors);
     } else {
 #ifdef HAVE_CUBLAS
-        eigenvalues = NDArray_Copy(a, NDArray_DEVICE(a));
-        cuda_matrix_eig_float(NDArray_FDATA(eigenvalues), NDArray_SHAPE(a)[0], NDArray_FDATA(rightEigenvectors));
+        efree(rtn);
+        NDArray_FREE(rightEigenvectors);
+        zend_throw_error(NULL, "GPU eig currently unavailable");
+        return NULL;
+        //eigenvalues = NDArray_Copy(a, NDArray_DEVICE(a));
+        //cuda_matrix_eig_float(NDArray_FDATA(eigenvalues), NDArray_SHAPE(a)[0], NDArray_FDATA(rightEigenvectors));
 #endif
     }
     rtn[0] = rightEigenvectors;

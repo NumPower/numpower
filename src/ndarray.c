@@ -130,11 +130,10 @@ NDArray_FromGD(zval *a) {
 
 void
 NDArray_ToGD(NDArray *a, zval *output) {
-    if (NDArray_NDIM(a) != 3) {
+    if (NDArray_NDIM(a) != 3 || NDArray_SHAPE(a)[0] != 3) {
         zend_throw_error(NULL, "Incompatible shape for image");
         return;
     }
-
     int color_index;
     int offset_green, offset_red, offset_blue;
     int red, green, blue;
