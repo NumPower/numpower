@@ -23,9 +23,10 @@ NumPower aims to manage memory more efficiently than a matrix in PHP arrays
 - Website: https://numpower.org
 - Documentation: https://numpower.org/docs/intro
 - API: https://numpower.org/api/intro
-
+- Docker: https://hub.docker.com/r/numpower/numpower
 
 ## Requirements
+- PHP 8.x
 - LAPACKE
 - OpenBLAS
 - **Optional (GPU)**: CUBLAS, CUDA Build Toolkit
