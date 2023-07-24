@@ -963,6 +963,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[0]);
                 }
             }
+#ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                     NDArray_VMEMCPY_D2D(NDArray_DATA(src), rtn_p,
@@ -970,6 +971,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[0]);
                 }
             }
+#endif
         }
     }
     int j;
