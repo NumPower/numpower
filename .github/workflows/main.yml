@@ -126,10 +126,13 @@ jobs:
           phpize
           ./configure
           sudo make install
-          sudo mkdir /usr/local/php/etc && mkdir /usr/local/php/etc/conf.d
+          sudo mkdir /usr/local/php/etc 
+          sudo mkdir /usr/local/php/etc/conf.d
+          sudo chmod 0777 /usr/local/php/etc/conf.d
           sudo echo "extension=ndarray.so" > /usr/local/php/etc/conf.d/ndarray.ini
 
       - name: Run Tests
         run: |
+          export NDARRAY_FREEBUFFER=1
           export USE_ZEND_ALLOC=1
           sudo make test

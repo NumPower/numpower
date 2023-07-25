@@ -53,9 +53,6 @@ void buffer_init(int size) {
  */
 void buffer_free() {
     if (MAIN_MEM_STACK.buffer != NULL) {
-        if (MAIN_MEM_STACK.numElements > 1) {
-            return;
-        }
         efree(MAIN_MEM_STACK.buffer);
         MAIN_MEM_STACK.buffer = NULL;
     }

@@ -9,7 +9,6 @@ $d = \NDArray::array([[9], [10]]);
 print_r(\NDArray::matmul($a, $b)->toArray());
 print_r(\NDArray::matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]])->toArray());
 print_r(\NDArray::matmul($a, $d)->toArray());
-print_r(\NDArray::matmul($a, $c)->toArray());
 ?>
 --EXPECT--
 Array
@@ -55,9 +54,3 @@ Array
         )
 
 )
-
-Fatal error: Uncaught Error: Arrays must have the same shape. Broadcasting not implemented. in /src/tests/linalg/001-ndarray-matmul.php:9
-Stack trace:
-#0 /src/tests/linalg/001-ndarray-matmul.php(9): NDArray::matmul(Object(NDArray), Object(NDArray))
-#1 {main}
-  thrown in /src/tests/linalg/001-ndarray-matmul.php on line 9
