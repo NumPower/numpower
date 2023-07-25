@@ -362,11 +362,17 @@ ZEND_BEGIN_ARG_INFO(arginfo_toImage, 0)
 ZEND_END_ARG_INFO();
 PHP_METHOD(NDArray, toImage)
 {
-    zval rtn;
+    zval *alpha = NULL;
     zval *obj_zval = getThis();
-    ZEND_PARSE_PARAMETERS_START(0, 0)
+    NDArray *n_alpha = NULL;
+    ZEND_PARSE_PARAMETERS_START(0, 1)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL(alpha)
     ZEND_PARSE_PARAMETERS_END();
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (alpha != NULL) {
+        n_alpha = ZVAL_TO_NDARRAY(alpha);
+    }
     if (array == NULL) {
         return;
     }
@@ -378,7 +384,10 @@ PHP_METHOD(NDArray, toImage)
         zend_throw_error(NULL, "NDArray must be 3-dimensional before it can be converted to a RGB image.");
         return;
     }
-    NDArray_ToGD(array, return_value);
+    NDArray_ToGD(array, n_alpha, return_value);
+    if (alpha != NULL) {
+        CHECK_INPUT_AND_FREE(alpha, n_alpha);
+    }
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_gpu, 0)
@@ -3828,7 +3837,7 @@ PHP_METHOD(NDArray, slice)
         // ...
         indices_axis[j] = ZVAL_TO_NDARRAY(current_arg);
     }
-    rtn = NDArray_Slice(ndarray, indices_axis, num_inputed_args);
+    rtn = NDArray_Slice(ndarray, indices_axis, num_inputed_args, 0);
 
     for (j = 0; j < num_inputed_args; j++) {
         NDArray_FREE(indices_axis[j]);
@@ -3962,29 +3971,34 @@ PHP_METHOD(NDArray, offsetGet)
 PHP_METHOD(NDArray, offsetSet)
 {
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
-    long offset;
+    zval *offset;
     zval *value;
     ZEND_PARSE_PARAMETERS_START(2, 2)
-        Z_PARAM_LONG(offset)
+        Z_PARAM_ZVAL(offset)
         Z_PARAM_ZVAL(value)
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    if (offset < 0) {
-        zend_throw_error(NULL, "Negative indexes are not implemented.");
-        return;
+    if (Z_TYPE_P(offset) == IS_LONG || Z_TYPE_P(offset) == IS_DOUBLE) {
+        if (zval_get_long(offset) < 0) {
+            zend_throw_error(NULL, "Negative indexes are not implemented.");
+            return;
+        }
+        if (zval_get_long(offset) > NDArray_SHAPE(ndarray)[0] - 1) {
+            zend_throw_error(NULL, "Index out of bounds");
+            return;
+        }
+        NDArray* nd_value = ZVAL_TO_NDARRAY(value);
+        ndarray->iterator->current_index = (int)zval_get_long(offset);
+        NDArray *rtn = NDArrayIterator_GET(ndarray);
+        NDArrayIterator_REWIND(ndarray);
+        NDArray_Overwrite(rtn, nd_value);
+        NDArray_FREE(rtn);
+        CHECK_INPUT_AND_FREE(value, nd_value);
     }
-    if (offset > NDArray_SHAPE(ndarray)[0] - 1) {
-        zend_throw_error(NULL, "Index out of bounds");
-        return;
+    if (Z_TYPE_P(offset) == IS_OBJECT && (Z_TYPE_P(value) == IS_LONG || Z_TYPE_P(value) == IS_OBJECT)) {
+
     }
-    NDArray* nd_value = ZVAL_TO_NDARRAY(value);
-    ndarray->iterator->current_index = (int)offset;
-    NDArray *rtn = NDArrayIterator_GET(ndarray);
-    NDArrayIterator_REWIND(ndarray);
-    NDArray_Overwrite(rtn, nd_value);
-    NDArray_FREE(rtn);
-    CHECK_INPUT_AND_FREE(value, nd_value);
 }
 
 PHP_METHOD(NDArray, offsetUnset)

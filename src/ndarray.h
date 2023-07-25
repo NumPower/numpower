@@ -150,7 +150,7 @@ float NDArray_GetFloatScalar(NDArray *a);
 void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);
 NDArray * NDArray_FromGD(zval *a);
-void NDArray_ToGD(NDArray *a, zval *output);
+void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
 #ifdef __cplusplus
 }
 #endif

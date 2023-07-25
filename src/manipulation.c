@@ -211,7 +211,7 @@ linearize_FLOAT_matrix(float *dst_in,
 }
 
 NDArray*
-NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
+NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view) {
     NDArray *slice, *rtn;
     int slice_ndim = NDArray_NDIM(array);
     int *slice_shape = emalloc(sizeof(int) * slice_ndim);
@@ -269,6 +269,7 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
     slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
     slice->base = NULL;
     NDArray_FREE(array);
+    NDArray_Print(slice,0);
     efree(slice_strides);
     return slice;
 }

@@ -130,18 +130,20 @@ NDArray_FromGD(zval *a) {
 
 
 void
-NDArray_ToGD(NDArray *a, zval *output) {
+NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
     if (NDArray_NDIM(a) != 3 || NDArray_SHAPE(a)[0] != 3) {
         zend_throw_error(NULL, "Incompatible shape for image");
         return;
     }
     int color_index;
-    int offset_green, offset_red, offset_blue;
-    int red, green, blue;
+    int offset_green, offset_red, offset_blue, offset_alpha;
+    int red, green, blue, alpha;
     char *tmp_red, *tmp_blue, *tmp_green;
     gdImagePtr im = gdImageCreateTrueColor_(NDArray_SHAPE(a)[2], NDArray_SHAPE(a)[1]);
     for (int i = 0; i < im->sy; i++) {
         for (int j = 0; j < im->sx; j++) {
+            offset_alpha = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * i) +
+                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * j);
             offset_red = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * 0) +
                          ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
                          ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
@@ -154,7 +156,12 @@ NDArray_ToGD(NDArray *a, zval *output) {
             red = NDArray_FDATA(a)[offset_red];
             blue = NDArray_FDATA(a)[offset_blue];
             green = NDArray_FDATA(a)[offset_green];
-            color_index = (red << 16) | (green << 8) | blue;
+            if (n_alpha != NULL) {
+                alpha = NDArray_FDATA(n_alpha)[offset_alpha];
+                color_index = (alpha << 24) | (red << 16) | (green << 8) | blue;
+            } else {
+                color_index = (red << 16) | (green << 8) | blue;
+            }
             im->tpixels[i][j] = color_index;
         }
     }
