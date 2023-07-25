@@ -41,6 +41,8 @@ jobs:
 
       - name: Compile PHP
         run: |
+          sudo mkdir /src
+          sudo cd /src
           sudo apt-get install -y wget
           wget -O php.tar.gz https://www.php.net/distributions/php-8.2.0.tar.gz
           tar -xf php.tar.gz --strip-components=1
@@ -69,7 +71,7 @@ jobs:
       - name: Install extension
         run: |
           cd ${{ github.workspace }}
-          ${{ github.workspace }}/php/bin/phpize
+          phpize
           ./configure
           sudo make install
           sudo echo "extension=ndarray.so" > ${{ github.workspace }}/php/etc/conf.d/ndarray.ini
