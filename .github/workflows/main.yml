@@ -51,8 +51,6 @@ jobs:
           --prefix=/usr/local/php \
           --with-config-file-path=/usr/local/php/etc \
           --enable-debug \
-          --enable-mbstring \
-          --with-curl \
           --with-jpeg \
           --with-webp \
           --with-freetype \
@@ -73,7 +71,7 @@ jobs:
       - name: Run Tests
         run: |
           export USE_ZEND_ALLOC=0
-          make test
+          sudo make test
   # This workflow contains a single job called "build"
   test_leak:
     name: PHP 8.2 - Leak Test
@@ -116,10 +114,6 @@ jobs:
           --prefix=/usr/local/php \
           --with-config-file-path=/usr/local/php/etc \
           --enable-debug \
-          --enable-mbstring \
-          --with-curl \
-          --with-openssl \
-          --with-libxml \
           --with-jpeg \
           --with-webp \
           --with-freetype \
