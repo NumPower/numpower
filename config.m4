@@ -76,14 +76,14 @@ PHP_CHECK_LIBRARY(cblas,cblas_sdot,
 
 
 
-PHP_CHECK_LIBRARY(lapack,dgesvd_,
+PHP_CHECK_LIBRARY(lapacke,LAPACKE_sgesdd,
 [
   AC_DEFINE(HAVE_LAPACKE,1,[ ])
   PHP_ADD_LIBRARY(lapack,,NDARRAY_SHARED_LIBADD)
   AC_MSG_RESULT([LAPACKE detected ])
   CFLAGS+=" -llapack -llapacke "
 ],[
-    AC_MSG_ERROR([wrong LAPACKE version or library not found.])
+    AC_MSG_ERROR([wrong LAPACKE version or library not found. Try `apt install liblapacke-dev`])
 ])
 
 if test "$PHP_NDARRAY" != "no"; then
