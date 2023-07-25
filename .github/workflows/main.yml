@@ -19,7 +19,7 @@ jobs:
 
       - name: Compile PHP
         run: |
-          apt-get install -y wget
+          sudo apt-get install -y wget
           wget -O php.tar.gz https://www.php.net/distributions/php-8.2.0.tar.gz
           tar -xf php.tar.gz --strip-components=1
           rm php.tar.gz
@@ -41,16 +41,16 @@ jobs:
           --with-xpm \
           --with-freetype \
           --with-zip \
-          && make -j$(nproc) \
-          && make install
+          && sudo make -j$(nproc) \
+          && sudo make install
 
       - name: Install extension
         run: |
           cd ${{ github.workspace }}
           ${{ github.workspace }}/php/bin/phpize
           ./configure
-          make install
-          echo "extension=ndarray.so" > ${{ github.workspace }}/php/etc/conf.d/ndarray.ini
+          sudo make install
+          sudo echo "extension=ndarray.so" > ${{ github.workspace }}/php/etc/conf.d/ndarray.ini
 
       - name: Run Tests
         run: |
