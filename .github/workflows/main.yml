@@ -74,9 +74,18 @@ jobs:
           phpize
           ./configure
           sudo make install
-          sudo echo "extension=ndarray.so" > ${{ github.workspace }}/php/etc/conf.d/ndarray.ini
+          sudo mkdir /usr/local/php/etc && mkdir /usr/local/php/etc/conf.d
+          sudo echo "extension=ndarray.so" > /usr/local/php/etc/conf.d/ndarray.ini
 
       - name: Run Tests
         run: |
+          export USE_ZEND_ALLOC=0;
+          cd ${{ github.workspace }}
+          make test
+
+      - name: Run Tests - Memory Leaks
+        continue-on-error: true
+        run: |
+          export USE_ZEND_ALLOC=1;
           cd ${{ github.workspace }}
           make test
