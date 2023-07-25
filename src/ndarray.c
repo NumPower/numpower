@@ -984,6 +984,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                     }
                 }
             }
+#ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                     for (j = 0; j < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]; j++) {
@@ -992,8 +993,8 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                         NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
                     }
                 }
-                NDArray_Print(rtn,0);
             }
+#endif
         }
         if (NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
@@ -1003,6 +1004,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[NDArray_NDIM(dst) - 1]);
                 }
             }
+#ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                     NDArray_VMEMCPY_D2D(NDArray_DATA(src), rtn_p,
@@ -1011,6 +1013,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                                       (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) + j);
                 }
             }
+#endif
         }
     }
     return rtn;
