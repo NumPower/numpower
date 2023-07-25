@@ -410,7 +410,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
         cuda_multiply_float(NDArray_NUMELEMENTS(a_broad), NDArray_FDATA(a_broad), NDArray_FDATA(b_broad), NDArray_FDATA(result),
-                       NDArray_NUMELEMENTS(a_broad));
+                            NDArray_NUMELEMENTS(a_broad));
         result->device = NDARRAY_DEVICE_GPU;
 #endif
     } else {
@@ -503,7 +503,6 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
         // Element size mismatch, return an error or handle it accordingly
         return NULL;
     }
-
 
     // Create a new NDArray to store the result
     NDArray *result = (NDArray *) emalloc(sizeof(NDArray));
@@ -673,7 +672,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
         cuda_divide_float(NDArray_NUMELEMENTS(a_broad), NDArray_FDATA(a_broad), NDArray_FDATA(b_broad), NDArray_FDATA(result),
-                            NDArray_NUMELEMENTS(a_broad));
+                          NDArray_NUMELEMENTS(a_broad));
 #endif
     } else {
 #ifdef HAVE_AVX2
@@ -804,7 +803,7 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
         cuda_mod_float(NDArray_NUMELEMENTS(a_broad), NDArray_FDATA(a_broad), NDArray_FDATA(b_broad), NDArray_FDATA(result),
-                          NDArray_NUMELEMENTS(a_broad));
+                       NDArray_NUMELEMENTS(a_broad));
 #endif
     } else {
         for (int i = 0; i < numElements; i++) {
@@ -823,8 +822,6 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
     }
     return result;
 }
-
-
 
 /**
  * @param a
@@ -961,4 +958,3 @@ NDArray_Abs(NDArray *nda) {
     }
     return rtn;
 }
-

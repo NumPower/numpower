@@ -264,11 +264,10 @@ typedef gdImage * gdImagePtr;
  * See also:
  *  <gdImageCreate>, <gdImageCreateTrueColor>,
  **/
-typedef struct
-{
+typedef struct {
     double x, y;
 }
-        gdPointF, *gdPointFPtr;
+gdPointF, *gdPointFPtr;
 
 typedef struct {
     /* # of characters in font */
@@ -309,12 +308,11 @@ void gdClearErrorMethod(void);
  * See also:
  *  <gdSetInterpolationMethod>
  **/
-typedef struct
-{
+typedef struct {
     int x, y;
     int width, height;
 }
-        gdRect, *gdRectPtr;
+gdRect, *gdRectPtr;
 
 /* For backwards compatibility only. Use gdImageSetStyle()
 	for MUCH more flexible line drawing. Also see
@@ -480,7 +478,7 @@ typedef struct {
     int hdpi;
     int vdpi;
 }
-        gdFTStringExtra, *gdFTStringExtraPtr;
+gdFTStringExtra, *gdFTStringExtraPtr;
 
 #define gdFTEX_LINESPACE 1
 #define gdFTEX_CHARMAP 2
@@ -497,7 +495,6 @@ char *
 gdImageStringFTEx(gdImage * im, int *brect, int fg, char * fontlist,
                   double ptsize, double angle, int x, int y, char * string,
                   gdFTStringExtraPtr strex);
-
 
 /* Point type for use in polygon drawing. */
 typedef struct {
@@ -804,7 +801,6 @@ void* gdDPExtractData(struct gdIOCtx* ctx, int *size);
 #define GD2_FMT_RAW             1
 #define GD2_FMT_COMPRESSED      2
 
-
 /* filters section
  *
  * Negate the imag src, white becomes black,
@@ -922,7 +918,6 @@ gdTransformAffineCopy(gdImagePtr dst, int x0, int y0, int x1, int y1,
 			const double affine[6]);
 */
 int gdTransformAffineBoundingBox(gdRectPtr src, const double affine[6], gdRectPtr bbox);
-
 
 #define GD_CMP_IMAGE		1	/* Actual image IS different */
 #define GD_CMP_NUM_COLORS	2	/* Number of Colours in palette differ */

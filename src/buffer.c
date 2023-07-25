@@ -24,8 +24,7 @@ void buffer_dump() {
  * will print debug messages when destructing objects.
  */
 static int
-CArrayBuffer_ISDEBUGON()
-{
+CArrayBuffer_ISDEBUGON() {
     if (getenv("NDARRAY_BUFFER_DEBUG") == NULL) {
         return 0;
     }
@@ -82,7 +81,6 @@ NDArray* buffer_get(int uuid) {
     assert(MAIN_MEM_STACK.buffer[uuid] != NULL);
     return MAIN_MEM_STACK.buffer[uuid];
 }
-
 
 /**
  * Add CArray to MemoryStack (Buffer) and retrieve MemoryPointer

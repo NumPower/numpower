@@ -11,13 +11,11 @@
 #include <nvml.h>
 #endif
 
-
 /**
  * Dump NDArray
  */
 void
-NDArray_Dump(NDArray* array)
-{
+NDArray_Dump(NDArray* array) {
     int i;
     printf("\n=================================================");
     printf("\nNDArray.uuid\t\t\t%d", array->uuid);
@@ -249,7 +247,6 @@ NDArray_DumpDevices() {
     php_printf("\nNo GPU devices available. CUDA not enabled.\n");
 #endif
 }
-
 
 /**
  * @param a

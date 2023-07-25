@@ -32,27 +32,23 @@ typedef struct _gd_ext_image_object {
 } php_gd_image_object;
 
 static
-gdImagePtr gdImagePtr_from_zobj_p(zend_object* obj)
-{
+gdImagePtr gdImagePtr_from_zobj_p(zend_object* obj) {
     return ((php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std)))->image;
 }
 
 static
-zend_always_inline php_gd_image_object* php_gd_exgdimage_from_zobj_p(zend_object* obj)
-{
+zend_always_inline php_gd_image_object* php_gd_exgdimage_from_zobj_p(zend_object* obj) {
     return (php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std));
 }
 
 void
-php_gd_assign_libgdimageptr_as_extgdimage(zval *val, gdImagePtr image)
-{
+php_gd_assign_libgdimageptr_as_extgdimage(zval *val, gdImagePtr image) {
     zend_class_entry* gd_image_ce = zend_lookup_class(zend_string_init("GdImage", strlen("GdImage"), 1));
     object_init_ex(val, gd_image_ce);
     php_gd_exgdimage_from_zobj_p(Z_OBJ_P(val))->image = image;
 }
 
-gdImagePtr gdImageCreateTrueColor_ (int sx, int sy)
-{
+gdImagePtr gdImageCreateTrueColor_ (int sx, int sy) {
     int i;
     gdImagePtr im;
 
@@ -108,14 +104,14 @@ NDArray_FromGD(zval *a) {
     for (int i = 0; i < img_ptr->sy; i++) {
         for (int j = 0; j < img_ptr->sx; j++) {
             offset_red = (NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn) * 0) +
-                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+                         ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                         ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
             offset_green = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 1) +
-                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+                           ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                           ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
             offset_blue = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 2) +
-                    ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                    ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+                          ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                          ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
             color_index = img_ptr->tpixels[i][j];
             red = (color_index >> 16) & 0xFF;
             green = (color_index >> 8) & 0xFF;
@@ -127,7 +123,6 @@ NDArray_FromGD(zval *a) {
     }
     return rtn;
 }
-
 
 void
 NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
@@ -284,7 +279,6 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
         *axis = 0;
     }
 
-
     if (axis != NULL) {
         if (*axis >= NDArray_NDIM(array)) {
             sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
@@ -359,7 +353,6 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
         axis = emalloc(sizeof(int));
         *axis = 0;
     }
-
 
     if (axis != NULL) {
         if (*axis >= NDArray_NDIM(array)) {
@@ -503,7 +496,7 @@ NDArray_Print(NDArray *array, int do_return) {
     char *str;
     if (is_type(NDArray_TYPE(array), NDARRAY_TYPE_DOUBLE64)) {
         str = print_matrix(NDArray_DDATA(array), NDArray_NDIM(array), NDArray_SHAPE(array),
-                                 NDArray_STRIDES(array), NDArray_NUMELEMENTS(array), NDArray_DEVICE(array));
+                           NDArray_STRIDES(array), NDArray_NUMELEMENTS(array), NDArray_DEVICE(array));
     }
     if (is_type(NDArray_TYPE(array), NDARRAY_TYPE_FLOAT32)) {
         str = print_matrix_float(NDArray_FDATA(array), NDArray_NDIM(array), NDArray_SHAPE(array),
@@ -568,13 +561,11 @@ NDArray_Compare(NDArray *a, NDArray *b) {
     return rtn;
 }
 
-
 /**
  * Check whether the given array is stored contiguously
  **/
 static void
-_UpdateContiguousFlags(NDArray * array)
-{
+_UpdateContiguousFlags(NDArray * array) {
     int sd;
     int dim;
     int i;
@@ -596,8 +587,7 @@ _UpdateContiguousFlags(NDArray * array)
     }
     if (is_c_contig) {
         NDArray_ENABLEFLAGS(array, NDARRAY_ARRAY_C_CONTIGUOUS);
-    }
-    else {
+    } else {
         NDArray_CLEARFLAGS(array, NDARRAY_ARRAY_C_CONTIGUOUS);
     }
 }
@@ -606,8 +596,7 @@ _UpdateContiguousFlags(NDArray * array)
  * Update CArray flags
  **/
 void
-NDArray_UpdateFlags(NDArray *array, int flagmask)
-{
+NDArray_UpdateFlags(NDArray *array, int flagmask) {
     if (flagmask & (NDARRAY_ARRAY_F_CONTIGUOUS | NDARRAY_ARRAY_C_CONTIGUOUS)) {
         _UpdateContiguousFlags(array);
     }
@@ -707,7 +696,7 @@ NDArray_Max(NDArray *target) {
 #ifdef HAVE_CUBLAS
         return cuda_max_float(array, NDArray_NUMELEMENTS(target));
 #else
-      return -1.f;
+        return -1.f;
 #endif
     } else {
         max = array[0];
@@ -770,7 +759,7 @@ zval
 NDArray_ToPHPArray(NDArray *target) {
     zval phpArray;
     phpArray = convertToStridedArrayToPHPArray(NDArray_FDATA(target), NDArray_STRIDES(target),
-                                             NDArray_SHAPE(target), NDArray_NDIM(target), NDArray_ELSIZE(target));
+               NDArray_SHAPE(target), NDArray_NDIM(target), NDArray_ELSIZE(target));
     return phpArray;
 }
 
@@ -782,7 +771,7 @@ int*
 NDArray_ToIntVector(NDArray *nda) {
     double *tmp_val = emalloc(sizeof(float));
     int *vector = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
-    for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++){
+    for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
             cudaMemcpy(tmp_val, &NDArray_FDATA(nda)[i], sizeof(float), cudaMemcpyDeviceToHost);
@@ -802,8 +791,7 @@ NDArray_ToIntVector(NDArray *nda) {
  * @param target
  */
 NDArray*
-NDArray_ToGPU(NDArray *target)
-{
+NDArray_ToGPU(NDArray *target) {
 #ifdef HAVE_CUBLAS
     float *tmp_gpu;
     int *new_shape;
@@ -841,8 +829,7 @@ NDArray_ToGPU(NDArray *target)
  * @param target
  */
 NDArray*
-NDArray_ToCPU(NDArray *target)
-{
+NDArray_ToCPU(NDArray *target) {
     int *new_shape;
     int n_ndim = NDArray_NDIM(target);
 
@@ -869,8 +856,7 @@ NDArray_ToCPU(NDArray *target)
  * @return
  */
 int
-NDArray_ShapeCompare(NDArray *a, NDArray *b)
-{
+NDArray_ShapeCompare(NDArray *a, NDArray *b) {
     if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
         return 0;
     }
