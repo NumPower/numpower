@@ -3778,6 +3778,7 @@ PHP_METHOD(NDArray, prod)
         rtn = reduce(nda, &axis_i, NDArray_Multiply_Float);
     } else {
         value = NDArray_Float_Prod(nda);
+        CHECK_INPUT_AND_FREE(a, nda);
         RETURN_DOUBLE(value);
         return;
     }
