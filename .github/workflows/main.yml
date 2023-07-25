@@ -132,4 +132,4 @@ jobs:
       - name: Run Tests
         run: |
           export USE_ZEND_ALLOC=1
-          make test
+          sudo make test
