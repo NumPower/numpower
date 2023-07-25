@@ -42,7 +42,7 @@ jobs:
       - name: Compile PHP
         run: |
           sudo mkdir /src
-          sudo cd /src
+          cd /src
           sudo apt-get install -y wget
           wget -O php.tar.gz https://www.php.net/distributions/php-8.2.0.tar.gz
           tar -xf php.tar.gz --strip-components=1
