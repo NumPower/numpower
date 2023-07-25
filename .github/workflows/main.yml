@@ -44,10 +44,10 @@ jobs:
           sudo mkdir /src
           cd /src
           sudo apt-get install -y wget
-          wget -O php.tar.gz https://www.php.net/distributions/php-8.2.0.tar.gz
-          tar -xf php.tar.gz --strip-components=1
-          rm php.tar.gz
-          ./configure \
+          sudo wget -O php.tar.gz https://www.php.net/distributions/php-8.2.0.tar.gz
+          sudo tar -xf php.tar.gz --strip-components=1
+          sudo rm php.tar.gz
+          sudo ./configure \
           --prefix=/usr/local/php \
           --with-config-file-path=/usr/local/php/etc \
           --enable-debug \
