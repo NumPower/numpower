@@ -746,6 +746,9 @@ NDArray_Outer(NDArray *a, NDArray *b) {
 NDArray*
 NDArray_Trace(NDArray *a) {
     NDArray* diagonal = NDArray_Diagonal(a, 0);
+    if (diagonal == NULL) {
+        return NULL;
+    }
     float result = NDArray_Sum_Float(diagonal);
     NDArray_FREE(diagonal);
     return NDArray_CreateFromFloatScalar(result);
