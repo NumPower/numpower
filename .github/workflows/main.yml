@@ -17,6 +17,27 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
+      - name: Install PHP requirements
+        run: |
+          apt-get install -y \
+          build-essential \
+          autoconf \
+          libssl-dev \
+          libxml2-dev \
+          libsqlite3-dev \
+          zlib1g-dev \
+          libonig-dev \
+          libbz2-dev \
+          libcurl4-openssl-dev \
+          libjpeg-dev \
+          libpng-dev \
+          libzip-dev \
+          libwebp-dev \
+          libxpm-dev \
+          libfreetype6-dev \
+          liblapacke-dev \
+          libopenblas-dev
+
       - name: Compile PHP
         run: |
           sudo apt-get install -y wget
