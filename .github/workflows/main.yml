@@ -53,18 +53,9 @@ jobs:
           --enable-debug \
           --enable-mbstring \
           --with-curl \
-          --with-openssl \
-          --with-libxml \
-          --with-pdo-mysql \
-          --with-pdo-sqlite \
-          --with-sqlite3 \
-          --with-zlib \
-          --with-bz2 \
           --with-jpeg \
           --with-webp \
-          --with-xpm \
           --with-freetype \
-          --with-zip \
           && sudo make -j$(nproc) \
           && sudo make install
 
@@ -82,7 +73,6 @@ jobs:
       - name: Run Tests
         run: |
           export USE_ZEND_ALLOC=0
-          cd ${{ github.workspace }}
           make test
   # This workflow contains a single job called "build"
   test_leak:
@@ -130,16 +120,9 @@ jobs:
           --with-curl \
           --with-openssl \
           --with-libxml \
-          --with-pdo-mysql \
-          --with-pdo-sqlite \
-          --with-sqlite3 \
-          --with-zlib \
-          --with-bz2 \
           --with-jpeg \
           --with-webp \
-          --with-xpm \
           --with-freetype \
-          --with-zip \
           && sudo make -j$(nproc) \
           && sudo make install
 
@@ -155,5 +138,4 @@ jobs:
       - name: Run Tests
         run: |
           export USE_ZEND_ALLOC=1
-          cd ${{ github.workspace }}
           make test
