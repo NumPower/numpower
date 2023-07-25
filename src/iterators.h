@@ -21,7 +21,6 @@ void NDArrayIteratorPHP_REWIND(NDArray* array);
 int NDArrayIteratorPHP_ISDONE(NDArray* array);
 void NDArrayIteratorPHP_NEXT(NDArray* array);
 
-
 NDArray* NDArrayAxisIterator_GET(NDArrayAxisIterator *it);
 void NDArrayAxisIterator_NEXT(NDArrayAxisIterator *it);
 void NDArrayAxisIterator_FREE(NDArrayAxisIterator *it);

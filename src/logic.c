@@ -5,7 +5,6 @@
 #include "initializers.h"
 #include <Zend/zend.h>
 
-
 #ifdef HAVE_CUBLAS
 #include "ndmath/cuda/cuda_math.h"
 #include "debug.h"
@@ -88,7 +87,7 @@ NDArray_Greater(NDArray* nda, NDArray* ndb) {
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_greater(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
-                                 NDArray_NUMELEMENTS(nda));
+                                   NDArray_NUMELEMENTS(nda));
 #endif
     } else {
 #ifdef HAVE_AVX2
@@ -151,7 +150,7 @@ NDArray_Less(NDArray* nda, NDArray* ndb) {
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_less(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
-                                      NDArray_NUMELEMENTS(nda));
+                                NDArray_NUMELEMENTS(nda));
 #endif
     } else {
 #ifdef HAVE_AVX2
@@ -214,7 +213,7 @@ NDArray_LessEqual(NDArray* nda, NDArray* ndb) {
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_less_equal(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
-                                         NDArray_NUMELEMENTS(nda));
+                                      NDArray_NUMELEMENTS(nda));
 #endif
     } else {
 #ifdef HAVE_AVX2
@@ -279,7 +278,7 @@ NDArray_GreaterEqual(NDArray* nda, NDArray* ndb) {
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_greater_equal(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
-                                        NDArray_NUMELEMENTS(nda));
+                                         NDArray_NUMELEMENTS(nda));
 #endif
     } else {
 #ifdef HAVE_AVX2
@@ -409,7 +408,7 @@ NDArray_NotEqual(NDArray* nda, NDArray* ndb) {
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_not_equal(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
-                                 NDArray_NUMELEMENTS(nda));
+                                     NDArray_NUMELEMENTS(nda));
 #endif
     } else {
 #if HAVE_AVX2
@@ -474,8 +473,7 @@ _compare_ndarrays(NDArray *a, NDArray *b, int current_axis) {
  * @return
  */
 int
-NDArray_ArrayEqual(NDArray *a, NDArray *b)
-{
+NDArray_ArrayEqual(NDArray *a, NDArray *b) {
     int i;
     if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
         return 0;

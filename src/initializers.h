@@ -26,7 +26,7 @@ NDArray* NDArray_Arange(double start, double stop, double step);
 #ifdef __cplusplus
 extern "C" {
 #endif
-    NDArray *NDArray_Copy(NDArray *a, int device);
+NDArray *NDArray_Copy(NDArray *a, int device);
 #ifdef __cplusplus
 }
 #endif

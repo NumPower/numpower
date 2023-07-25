@@ -51,7 +51,6 @@ void copy(const int* src, int* dest, unsigned int size) {
     }
 }
 
-
 /**
  * @param a
  * @param permute
@@ -93,8 +92,7 @@ NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
  * @return
  */
 NDArray*
-NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
-{
+NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     int total_new_elements = 1;
     int i;
 
@@ -120,8 +118,7 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim)
  * @return
  */
 NDArray*
-NDArray_Flatten(NDArray *target)
-{
+NDArray_Flatten(NDArray *target) {
     NDArray *rtn = NDArray_Copy(target, NDArray_DEVICE(target));
     rtn->ndim = 1;
     if (NDArray_NDIM(target) == 0) {
@@ -140,8 +137,7 @@ NDArray_Flatten(NDArray *target)
 void *
 linearize_FLOAT_matrix(float *dst_in,
                        float *src_in,
-                       NDArray * a)
-{
+                       NDArray * a) {
     float *src = (float *) src_in;
     float *dst = (float *) dst_in;
 
@@ -169,8 +165,7 @@ linearize_FLOAT_matrix(float *dst_in,
                                 column_strides, dst, one);
 #endif
                 }
-            }
-            else if (column_strides < 0) {
+            } else if (column_strides < 0) {
                 if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
 #ifdef HAVE_CBLAS
                     cblas_scopy(columns,
@@ -187,8 +182,7 @@ linearize_FLOAT_matrix(float *dst_in,
                                 column_strides / sizeof(float), dst, one);
 #endif
                 }
-            }
-            else {
+            } else {
                 if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
                     /*
                      * Zero stride has undefined behavior in some BLAS

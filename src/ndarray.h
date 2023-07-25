@@ -71,8 +71,7 @@ typedef struct NDArray {
 } NDArray;
 
 static inline int
-check_and_adjust_axis_msg(int *axis, int ndim)
-{
+check_and_adjust_axis_msg(int *axis, int ndim) {
     if (axis == NULL) {
         return 0;
     }
@@ -91,8 +90,7 @@ check_and_adjust_axis_msg(int *axis, int ndim)
 }
 
 static inline int
-check_and_adjust_axis(int *axis, int ndim)
-{
+check_and_adjust_axis(int *axis, int ndim) {
     return check_and_adjust_axis_msg(axis, ndim);
 }
 
@@ -100,8 +98,7 @@ check_and_adjust_axis(int *axis, int ndim)
  * Enables the specified array flags.
  */
 static void
-NDArray_ENABLEFLAGS(NDArray * arr, int flags)
-{
+NDArray_ENABLEFLAGS(NDArray * arr, int flags) {
     (arr)->flags |= flags;
 }
 
@@ -110,11 +107,9 @@ NDArray_ENABLEFLAGS(NDArray * arr, int flags)
  * assumes you know what you're doing.
  */
 static void
-NDArray_CLEARFLAGS(NDArray *arr, int flags)
-{
+NDArray_CLEARFLAGS(NDArray *arr, int flags) {
     (arr)->flags &= ~flags;
 }
-
 
 void NDArray_FREE(NDArray *array);
 

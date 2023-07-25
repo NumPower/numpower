@@ -65,8 +65,7 @@ NDArrayIteratorPHP_REWIND(NDArray* array) {
  * @param iterator
  */
 NDArray*
-NDArrayIteratorPHP_GET(NDArray* array)
-{
+NDArrayIteratorPHP_GET(NDArray* array) {
     NDArray_ADDREF(array);
     int output_ndim = array->ndim - 1;
     int* output_shape = emalloc(sizeof(int) * output_ndim);
@@ -95,8 +94,7 @@ NDArrayIterator_INIT(NDArray* array) {
  * @param iterator
  */
 NDArray*
-NDArrayIterator_GET(NDArray* array)
-{
+NDArrayIterator_GET(NDArray* array) {
     NDArray_ADDREF(array);
     int output_ndim = array->ndim - 1;
     int* output_shape = emalloc(sizeof(int) * output_ndim);
@@ -170,7 +168,7 @@ NDArrayAxisIterator_GET(NDArrayAxisIterator *it) {
         }
     }
     return NDArray_FromNDArray(it->array, it->current_index * NDArray_STRIDES(it->array)[it->axis + 1], new_shape, new_strides,
-                        &new_ndim);
+                               &new_ndim);
 }
 
 void

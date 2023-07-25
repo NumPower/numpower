@@ -51,7 +51,8 @@ void get_zend_array_shape(zend_array* arr, int* shape, int ndim) {
         } else {
             shape[0]++;
         }
-    } ZEND_HASH_FOREACH_END();
+    }
+    ZEND_HASH_FOREACH_END();
 }
 
 /**
@@ -96,8 +97,7 @@ int get_num_dims_from_zval(zval *arr) {
  * @param type
  * @return
  */
-NDArrayDescriptor* Create_Descriptor(int numElements, int elsize, const char* type)
-{
+NDArrayDescriptor* Create_Descriptor(int numElements, int elsize, const char* type) {
     NDArrayDescriptor* ndArrayDescriptor = emalloc(sizeof(NDArrayDescriptor));
     ndArrayDescriptor->elsize = elsize;
     ndArrayDescriptor->numElements = numElements;
@@ -110,8 +110,7 @@ NDArrayDescriptor* Create_Descriptor(int numElements, int elsize, const char* ty
  *
  * @return
  */
-int* Generate_Strides(int* dimensions, int dimensions_size, int elsize)
-{
+int* Generate_Strides(int* dimensions, int dimensions_size, int elsize) {
     if (dimensions_size == 0) {
         return NULL;
     }
@@ -141,8 +140,7 @@ int* Generate_Strides(int* dimensions, int dimensions_size, int elsize)
  * @param elsize
  */
 void
-NDArray_CreateBuffer(NDArray* array, int numElements, int elsize)
-{
+NDArray_CreateBuffer(NDArray* array, int numElements, int elsize) {
     array->data = emalloc(numElements * elsize);
 }
 
@@ -150,8 +148,7 @@ NDArray_CreateBuffer(NDArray* array, int numElements, int elsize)
  * @param target_carray
  */
 void
-NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_index)
-{
+NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_index) {
     float tmp;
     zval * element;
     float * data_double;
@@ -159,38 +156,39 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
     ZEND_HASH_FOREACH_VAL(target_zval, element) {
         ZVAL_DEREF(element);
         switch (Z_TYPE_P(element)) {
-            case IS_ARRAY:
-                NDArray_CopyFromZendArray(target, Z_ARRVAL_P(element), first_index);
-                break;
-            case IS_LONG:
-                convert_to_long(element);
-                data_double = NDArray_FDATA(target);
-                data_double[*first_index] = (float) zval_get_long(element);
-                *first_index = *first_index + 1;
-                break;
-            case IS_TRUE:
-                convert_to_long(element);
-                data_double = NDArray_FDATA(target);
-                data_double[*first_index] = (float) 1.0;
-                *first_index = *first_index + 1;
-                break;
-            case IS_FALSE:
-                convert_to_long(element);
-                data_double = NDArray_FDATA(target);
-                data_double[*first_index] = (float) 0.0;
-                *first_index = *first_index + 1;
-                break;
-            case IS_DOUBLE:
-                convert_to_double(element);
-                data_double = NDArray_FDATA(target);
-                data_double[*first_index] = (float) zval_get_double(element);
-                *first_index = *first_index + 1;
-                break;
-            default:
-                zend_throw_error(NULL, "an element with an invalid type was used at initialization");
-                return;
+        case IS_ARRAY:
+            NDArray_CopyFromZendArray(target, Z_ARRVAL_P(element), first_index);
+            break;
+        case IS_LONG:
+            convert_to_long(element);
+            data_double = NDArray_FDATA(target);
+            data_double[*first_index] = (float) zval_get_long(element);
+            *first_index = *first_index + 1;
+            break;
+        case IS_TRUE:
+            convert_to_long(element);
+            data_double = NDArray_FDATA(target);
+            data_double[*first_index] = (float) 1.0;
+            *first_index = *first_index + 1;
+            break;
+        case IS_FALSE:
+            convert_to_long(element);
+            data_double = NDArray_FDATA(target);
+            data_double[*first_index] = (float) 0.0;
+            *first_index = *first_index + 1;
+            break;
+        case IS_DOUBLE:
+            convert_to_double(element);
+            data_double = NDArray_FDATA(target);
+            data_double[*first_index] = (float) zval_get_double(element);
+            *first_index = *first_index + 1;
+            break;
+        default:
+            zend_throw_error(NULL, "an element with an invalid type was used at initialization");
+            return;
         }
-    } ZEND_HASH_FOREACH_END();
+    }
+    ZEND_HASH_FOREACH_END();
 }
 
 /**
@@ -200,8 +198,7 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
  * @param ndim
  * @return
  */
-NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
-{
+NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim) {
     int last_index = 0;
     int *shape;
     if (ndim != 0) {
@@ -236,15 +233,13 @@ NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim)
  * @param php_object
  * @return
  */
-NDArray* Create_NDArray_FromZval(zval* php_object)
-{
+NDArray* Create_NDArray_FromZval(zval* php_object) {
     NDArray* new_array = NULL;
     if (Z_TYPE_P(php_object) == IS_ARRAY) {
         new_array = Create_NDArray_FromZendArray(Z_ARRVAL_P(php_object), get_num_dims_from_zval(php_object));
     }
     return new_array;
 }
-
 
 /**
  * Create basic NDArray from shape and type
@@ -253,8 +248,7 @@ NDArray* Create_NDArray_FromZval(zval* php_object)
  * @return
  */
 NDArray*
-Create_NDArray(int* shape, int ndim, const char* type, const int device)
-{
+Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     char* new_buffer;
     NDArray* rtn;
     NDArrayDescriptor* descriptor;
@@ -286,7 +280,6 @@ Create_NDArray(int* shape, int ndim, const char* type, const int device)
     NDArrayIterator_INIT(rtn);
     return rtn;
 }
-
 
 /**
  * Create an NDArray View from another NDArray
@@ -406,8 +399,7 @@ NDArray_Ones(int *shape, int ndim, const char *type) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
     int i;
     rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
-    for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++)
-    {
+    for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         NDArray_FDATA(rtn)[i] = (float)1.0;
     }
     return rtn;
@@ -739,8 +731,7 @@ NDArray_Copy(NDArray *a, int device) {
  *
  * Return 0 on success, -1 on failure
  */
-static int _safe_ceil_to_int(double value, int* ret)
-{
+static int _safe_ceil_to_int(double value, int* ret) {
     double ivalue;
 
     ivalue = ceil(value);

@@ -1,7 +1,6 @@
 #include "types.h"
 #include "string.h"
 
-
 /**
  * Get size of a specific NDArray type
  *
