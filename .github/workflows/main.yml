@@ -76,6 +76,7 @@ jobs:
           sudo make install
           sudo mkdir /usr/local/php/etc 
           sudo mkdir /usr/local/php/etc/conf.d
+          sudo chmod 0777 /usr/local/php/etc/conf.d
           sudo echo "extension=ndarray.so" > /usr/local/php/etc/conf.d/ndarray.ini
 
       - name: Run Tests
