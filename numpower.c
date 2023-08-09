@@ -317,9 +317,7 @@ PHP_METHOD(NDArray, fill) {
     if (array == NULL) {
         return;
     }
-    rtn = NDArray_Fill(array, (float)value);
-    NDArray_ADDREF(array);
-    RETURN_NDARRAY_NOBUFFER(rtn, return_value);
+    NDArray_Fill(array, (float)value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_toArray, 0)
