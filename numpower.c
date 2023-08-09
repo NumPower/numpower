@@ -4097,12 +4097,12 @@ PHP_MSHUTDOWN_FUNCTION(ndarray) {
 
 PHP_RSHUTDOWN_FUNCTION(ndarray) {
     char *envvar = "NDARRAY_FREEBUFFER";
+    char *envvar_vcheck = "NDARRAY_VCHECK";
     if(getenv(envvar)) {
         buffer_free();
     }
 #ifdef HAVE_CUBLAS
-    char *envvar = "NDARRAY_VCHECK";
-    if(getenv(envvar)) {
+    if(getenv(envvar_vcheck)) {
         NDArray_VCHECK();
     }
 #endif
