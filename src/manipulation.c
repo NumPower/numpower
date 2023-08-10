@@ -237,6 +237,7 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         }
         slice_shape[0] = (int)floorf(((float)stop - (float)start) / (float)step);
         slice_strides[0] = NDArray_STRIDES(array)[0];
+        offset = start * NDArray_STRIDES(array)[0];
         slice = NDArray_FromNDArray(array, offset, slice_shape, slice_strides, &out_ndim);
         return slice;
     }
