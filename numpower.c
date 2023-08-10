@@ -317,9 +317,7 @@ PHP_METHOD(NDArray, fill) {
     if (array == NULL) {
         return;
     }
-    rtn = NDArray_Fill(array, (float)value);
-    NDArray_ADDREF(array);
-    RETURN_NDARRAY_NOBUFFER(rtn, return_value);
+    NDArray_Fill(array, (float)value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_toArray, 0)
@@ -423,9 +421,9 @@ PHP_METHOD(NDArray, isGPU) {
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
 
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
-        RETURN_LONG(1);
-    } else {
         RETURN_LONG(0);
+    } else {
+        RETURN_LONG(1);
     }
 }
 
