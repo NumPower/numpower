@@ -421,9 +421,9 @@ PHP_METHOD(NDArray, isGPU) {
     NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
 
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
-        RETURN_LONG(1);
-    } else {
         RETURN_LONG(0);
+    } else {
+        RETURN_LONG(1);
     }
 }
 
