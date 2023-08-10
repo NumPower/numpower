@@ -295,7 +295,7 @@ NDArray*
 NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides, const int* ndim) {
     NDArray* rtn = emalloc(sizeof(NDArray));
     int total_num_elements = 1;
-    int out_ndim;
+    int out_ndim = -1;
 
     if (strides == NULL) {
         rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(target));
@@ -310,7 +310,9 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
     if (shape != NULL) {
         rtn->dimensions = shape;
         rtn->strides = strides;
-        out_ndim = *ndim;
+        if (out_ndim == -1) {
+            out_ndim = *ndim;
+        }
     }
 
     // Calculate number of elements
