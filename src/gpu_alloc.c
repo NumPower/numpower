@@ -1,4 +1,5 @@
 #include "../config.h"
+#include <Zend/zend.h>
 
 #ifdef HAVE_CUBLAS
 #include "gpu_alloc.h"
@@ -9,27 +10,26 @@
 void
 NDArray_VMALLOC(void** target, unsigned int size) {
     MAIN_MEM_STACK.totalGPUAllocated++;
-    cudaMalloc(target, size);
-    cudaDeviceSynchronize();
+    cublasStatus_t stat = cudaMalloc(target, size);
+    if (stat != cudaSuccess) {
+        zend_throw_error(NULL, "device memory allocation failed");
+    }
 }
 
 void
 NDArray_VMEMCPY_D2D(char* target, char* dst, unsigned int size) {
     cudaMemcpy(dst, target, size, cudaMemcpyDeviceToDevice);
-    cudaDeviceSynchronize();
 }
 
 void
 NDArray_VMEMCPY_H2D(char* target, char* dst, unsigned int size) {
     cudaMemcpy(dst, target, size, cudaMemcpyHostToDevice);
-    cudaDeviceSynchronize();
 }
 
 void
 NDArray_VFREE(void* target) {
     MAIN_MEM_STACK.totalGPUAllocated--;
     cudaFree(target);
-    cudaDeviceSynchronize();
 }
 
 void
