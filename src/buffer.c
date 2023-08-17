@@ -62,7 +62,6 @@ void buffer_free() {
  */
 void buffer_ndarray_free(int uuid) {
     if (MAIN_MEM_STACK.buffer != NULL) {
-        // @todo investigate double free problem
         if (MAIN_MEM_STACK.lastFreed == -1) {
             MAIN_MEM_STACK.lastFreed = uuid;
         }

@@ -18,7 +18,6 @@
 /**
  * Check if all values are not 0
  *
- * @todo Implement non-AVX2 logic
  * @param a
  * @return
  */
