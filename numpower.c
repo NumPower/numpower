@@ -3018,6 +3018,37 @@ PHP_METHOD(NDArray, add) {
 }
 
 /**
+ * NDArray::inner
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_append, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, append) {
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL) {
+    return;
+    }
+    if (ndb == NULL) {
+    CHECK_INPUT_AND_FREE(a, nda);
+    return;
+    }
+    rtn = NDArray_Append(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::matmul
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_matmul, 0)
@@ -3927,6 +3958,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, slice, arginfo_ndarray_slice, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

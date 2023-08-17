@@ -67,19 +67,19 @@ COMMON_FLAGS = $(DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $(CPPFLAGS) $(PHP_FRAMEWORK
 install-cuda:
 	rm ./.libs -rf
 	mkdir ./.libs
-	$(NVCC) -I. -I  $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./numpower.c -shared -Xcompiler -fPIC -o .libs/numpower.o
+	$(NVCC)  -I. -I  $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./numpower.c -shared -Xcompiler -fPIC -o .libs/numpower.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/buffer.c -shared -Xcompiler -fPIC -o .libs/buffer.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/debug.c -shared -Xcompiler -fPIC -o .libs/debug.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/indexing.c -shared -Xcompiler -fPIC -o .libs/indexing.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/initializers.c -shared -Xcompiler -fPIC -o .libs/initializers.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/initializers.c -shared -fPIC -o .libs/initializers.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/iterators.c -shared -Xcompiler -fPIC -o .libs/iterators.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/logic.c -shared -Xcompiler -fPIC -o .libs/logic.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/manipulation.c -shared -Xcompiler -fPIC -o .libs/manipulation.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndarray.c -shared -Xcompiler -fPIC -o .libs/ndarray.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/logic.c -shared -fPIC -o .libs/logic.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/manipulation.c -shared -fPIC -o .libs/manipulation.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndarray.c -shared -fPIC -o .libs/ndarray.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/types.c -shared -Xcompiler -fPIC -o .libs/types.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/arithmetics.c -shared -Xcompiler -fPIC -o .libs/arithmetics.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/arithmetics.c -shared -fPIC -o .libs/arithmetics.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/double_math.c -shared -Xcompiler -fPIC -o .libs/double_math.o
-	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/linalg.c -shared -Xcompiler -fPIC -o .libs/linalg.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/linalg.c -shared -fPIC -o .libs/linalg.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/gpu_alloc.c -shared -Xcompiler -fPIC -o .libs/gpu_alloc.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/cuda/cuda_math.cu -shared -Xcompiler -fPIC -o .libs/cuda_math.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/statistics.c -shared -Xcompiler -fPIC -o .libs/statistics.o

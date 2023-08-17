@@ -218,6 +218,30 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         return NULL;
     }
 
+    if (NDArray_NDIM(array) == 1) {
+        int out_ndim = NDArray_NDIM(array);
+        if (NDArray_NUMELEMENTS(indexes[0]) >= 1) {
+            start = (int) NDArray_FDATA(indexes[0])[0];
+        } else {
+            start = 0;
+        }
+        if (NDArray_NUMELEMENTS(indexes[0]) >= 2) {
+            stop  = (int)NDArray_FDATA(indexes[0])[1];
+        } else {
+            stop = NDArray_SHAPE(array)[0];
+        }
+        if (NDArray_NUMELEMENTS(indexes[0]) == 3) {
+            step  = (int)NDArray_FDATA(indexes[0])[2];
+        } else {
+            step = 1;
+        }
+        slice_shape[0] = (int)floorf(((float)stop - (float)start) / (float)step);
+        slice_strides[0] = NDArray_STRIDES(array)[0];
+        offset = start * NDArray_STRIDES(array)[0];
+        slice = NDArray_FromNDArray(array, offset, slice_shape, slice_strides, &out_ndim);
+        return slice;
+    }
+
     for (i = 0; i < num_indices; i++) {
         if (NDArray_NUMELEMENTS(indexes[i]) >= 1) {
             start = (int) NDArray_FDATA(indexes[i])[0];
@@ -263,7 +287,45 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
     slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
     slice->base = NULL;
     NDArray_FREE(array);
-    NDArray_Print(slice,0);
     efree(slice_strides);
     return slice;
+}
+
+/**
+ * @param target
+ * @todo Append all dimensions with axis
+ * @return
+ */
+NDArray*
+NDArray_Append(NDArray *a, NDArray *b) {
+    char *tmp_ptr;
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "NDArrays must be on the same device.");
+        return NULL;
+    }
+
+    if (NDArray_NDIM(a) != 1 || NDArray_NDIM(b) != 1) {
+        zend_throw_error(NULL, "You can only append vectors.");
+        return NULL;
+    }
+
+    int *shape = emalloc(sizeof(int));
+    shape[0] = NDArray_NUMELEMENTS(a) + NDArray_NUMELEMENTS(b);
+    NDArray* rtn = NDArray_Empty(shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        NDArray_VMEMCPY_D2D(NDArray_DATA(a), NDArray_DATA(rtn), NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a));
+        tmp_ptr = NDArray_DATA(rtn) + NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a);
+        NDArray_VMEMCPY_D2D(NDArray_DATA(b), tmp_ptr, NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
+#endif
+    }
+
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        memcpy(NDArray_DATA(rtn), NDArray_DATA(a), NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a));
+        tmp_ptr = NDArray_DATA(rtn) + NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a);
+        memcpy(tmp_ptr, NDArray_DATA(b), NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
+    }
+
+    return rtn;
 }

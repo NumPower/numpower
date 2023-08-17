@@ -15,6 +15,18 @@ if test "$PHP_CUDA" != "no"; then
       AC_MSG_RESULT([CUBLAS detected ])
       PHP_ADD_MAKEFILE_FRAGMENT($abs_srcdir/Makefile.frag, $abs_builddir)
       CFLAGS+=" -lcublas -lcudart "
+      AC_CHECK_HEADER([immintrin.h],
+              [
+                AC_DEFINE(HAVE_AVX2,1,[Have AV2/SSE support])
+                AC_MSG_RESULT([AVX2/SSE detected ])
+                CXX+=" -mavx2 -march=native "
+              ],[
+                AC_DEFINE(HAVE_AVX2,0,[Have AV2/SSE support])
+                AC_MSG_RESULT([AVX2/SSE not found ])
+              ], [
+
+              ]
+          )
     ],[
         AC_MSG_RESULT([wrong cublas version or library not found.])
         AC_CHECK_HEADER([immintrin.h],

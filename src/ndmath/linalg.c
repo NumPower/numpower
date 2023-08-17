@@ -1080,7 +1080,7 @@ convolve2d_same_float(const float* a, const float* b, const int* shape_a,
 NDArray*
 NDArray_Convolve2D(NDArray *a, NDArray *b, char mode, char boundary, float fill_value) {
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
-        zend_throw_error(NULL, "Device error.");
+        zend_throw_error(NULL, "Both arrays must be at the same device.");
         return NULL;
     }
 
