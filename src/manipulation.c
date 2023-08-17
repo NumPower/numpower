@@ -206,17 +206,17 @@ linearize_FLOAT_matrix(float *dst_in,
 
 NDArray*
 NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view) {
+    if (num_indices > NDArray_NDIM(array)) {
+        zend_throw_error(NULL, "too many indices for array");
+        return NULL;
+    }
+
     NDArray *slice, *rtn;
     int slice_ndim = NDArray_NDIM(array);
     int *slice_shape = emalloc(sizeof(int) * slice_ndim);
     int *slice_strides = emalloc(sizeof(int) * slice_ndim);
     int i, offset = 0;
     int start = 0, stop = 0, step = 0;
-
-    if (num_indices > NDArray_NDIM(array)) {
-        zend_throw_error(NULL, "too many indices for array");
-        return NULL;
-    }
     if (NDArray_NDIM(array) == 1) {
         int out_ndim = NDArray_NDIM(array);
         if (NDArray_NUMELEMENTS(indexes[0]) >= 1) {
