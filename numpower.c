@@ -474,20 +474,24 @@ PHP_METHOD(NDArray, setDevice) {
 #endif
 }
 
-ZEND_BEGIN_ARG_INFO(arginfo_reshape, 1)
+// @todo Indices conversion lose precision, we must convert it directly to a integer vector in C
+//       without relying on ZVAL_TO_NDARRAY. We must apply the same for all other cases where a
+//       PHP array of longs is converted to NDArray before being converted to a C integer.
+ZEND_BEGIN_ARG_INFO(arginfo_reshape, 2)
+ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, shape_zval)
 ZEND_END_ARG_INFO();
 PHP_METHOD(NDArray, reshape) {
     int *new_shape;
     zval *shape_zval;
-    zval *current = getThis();
+    zval *a;
     NDArray *rtn;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(shape_zval)
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(shape_zval)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray* target = ZVAL_TO_NDARRAY(current);
+    NDArray* target = ZVAL_TO_NDARRAY(a);
     NDArray* shape = ZVAL_TO_NDARRAY(shape_zval);
-
     new_shape = NDArray_ToIntVector(shape);
 
     rtn = NDArray_Reshape(target, new_shape, NDArray_NUMELEMENTS(shape));
@@ -501,6 +505,7 @@ PHP_METHOD(NDArray, reshape) {
     if (Z_TYPE_P(shape_zval) == IS_ARRAY) {
         NDArray_FREE(shape);
     }
+    CHECK_INPUT_AND_FREE(a, target);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3947,7 +3952,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // MANIPULATION
-    ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, toArray, arginfo_toArray, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, toImage, arginfo_toImage, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, copy, arginfo_ndarray_copy, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

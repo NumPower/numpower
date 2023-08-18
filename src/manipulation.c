@@ -161,7 +161,7 @@ linearize_FLOAT_matrix(float *dst_in,
                     cublasHandle_t handle;
                     cublasCreate(&handle);
                     cublasScopy(handle, columns,
-                                (const float*)((const float*)src + (columns - 1) * column_strides),
+                                (const float*)src,
                                 column_strides, dst, one);
 #endif
                 }
@@ -178,7 +178,7 @@ linearize_FLOAT_matrix(float *dst_in,
 #ifdef HAVE_CUBLAS
                     cublasHandle_t handle;
                     cublasCreate(&handle);
-                    cublasScopy(handle, columns, (const float*)((const char*)src + (columns - 1) * column_strides),
+                    cublasScopy(handle, columns, (const float*)src,
                                 column_strides / sizeof(float), dst, one);
 #endif
                 }
@@ -206,18 +206,17 @@ linearize_FLOAT_matrix(float *dst_in,
 
 NDArray*
 NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view) {
+    if (num_indices > NDArray_NDIM(array)) {
+        zend_throw_error(NULL, "too many indices for array");
+        return NULL;
+    }
+
     NDArray *slice, *rtn;
     int slice_ndim = NDArray_NDIM(array);
     int *slice_shape = emalloc(sizeof(int) * slice_ndim);
     int *slice_strides = emalloc(sizeof(int) * slice_ndim);
     int i, offset = 0;
     int start = 0, stop = 0, step = 0;
-
-    if (num_indices > NDArray_NDIM(array)) {
-        zend_throw_error(NULL, "too many indices for array");
-        return NULL;
-    }
-
     if (NDArray_NDIM(array) == 1) {
         int out_ndim = NDArray_NDIM(array);
         if (NDArray_NUMELEMENTS(indexes[0]) >= 1) {
@@ -265,7 +264,6 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         slice_shape[i] = (int)floorf(((float)stop - (float)start) / (float)step);
         offset += start * NDArray_STRIDES(array)[i];
     }
-
     for (; i < slice_ndim; i++) {
         slice_shape[i] = NDArray_SHAPE(array)[i];
     }
@@ -276,12 +274,12 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
         rtn_data = emalloc(NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
     }
+
 #ifdef HAVE_CUBLAS
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
         NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
     }
 #endif
-
     linearize_FLOAT_matrix(rtn_data, NDArray_FDATA(slice), slice);
     slice->data = (char*)rtn_data;
     slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));

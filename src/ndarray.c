@@ -92,7 +92,7 @@ gdImagePtr gdImageCreateTrueColor_ (int sx, int sy) {
 NDArray *
 NDArray_FromGD(zval *a) {
     NDArray *rtn;
-    int color_index;
+    int color_index, j, i;
     int offset_green, offset_red, offset_blue;
     int red, green, blue;
     int *i_shape = emalloc(sizeof(int) * 3);
@@ -105,8 +105,8 @@ NDArray_FromGD(zval *a) {
 
 #ifdef HAVE_AVX2
     __m256i red_mask = _mm256_set_epi32(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
-    for (int i = 0; i < img_ptr->sy; i++) {
-        for (int j = 0; j < img_ptr->sx; j += 8) {
+    for (i = 0; i < img_ptr->sy; i++) {
+        for (j = 0; j < img_ptr->sx - 7; j += 8) {
             offset_red = (NDArray_STRIDES(rtn)[0] / elsize * 0) +
                          ((NDArray_STRIDES(rtn)[1] / elsize) * i) +
                          ((NDArray_STRIDES(rtn)[2] / elsize) * j);
@@ -125,6 +125,24 @@ NDArray_FromGD(zval *a) {
             _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_red], _mm256_cvtepi32_ps(red_shifted));
             _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_green], _mm256_cvtepi32_ps(green_shifted));
             _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_blue], _mm256_cvtepi32_ps(blue_shifted));
+        }
+        for (; j < img_ptr->sx; j++) {
+            offset_red = (NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn) * 0) +
+                         ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                         ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            offset_green = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 1) +
+                           ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                           ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            offset_blue = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 2) +
+                          ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
+                          ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
+            color_index = img_ptr->tpixels[i][j];
+            red = (color_index >> 16) & 0xFF;
+            green = (color_index >> 8) & 0xFF;
+            blue = color_index & 0xFF;
+            NDArray_FDATA(rtn)[offset_red] = (float)red;
+            NDArray_FDATA(rtn)[offset_blue] = (float)blue;
+            NDArray_FDATA(rtn)[offset_green] = (float)green;
         }
     }
 #else
@@ -158,7 +176,7 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
         zend_throw_error(NULL, "Incompatible shape for image");
         return;
     }
-    int color_index;
+    int color_index, i, j;
     int offset_green, offset_red, offset_blue, offset_alpha;
     int red, green, blue, alpha;
     char *tmp_red, *tmp_blue, *tmp_green;
@@ -168,8 +186,8 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
     int elsize = NDArray_ELSIZE(a);
     __m256i alpha_mask = _mm256_set_epi32(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
 
-    for (int i = 0; i < im->sy; i++) {
-        for (int j = 0; j < im->sx; j += 8) {
+    for (i = 0; i < im->sy; i++) {
+        for (j = 0; j < im->sx - 7; j += 8) {
             offset_alpha = (NDArray_STRIDES(a)[0] / elsize * i) +
                            ((NDArray_STRIDES(a)[1] / elsize) * j);
             offset_red = (NDArray_STRIDES(a)[0] / elsize * 0) +
@@ -218,6 +236,29 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
             }
 
             _mm256_storeu_si256((__m256i*)&im->tpixels[i][j], color_indices);
+        }
+        for (; j < im->sx; j++) {
+            offset_alpha = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * i) +
+                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * j);
+            offset_red = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * 0) +
+                         ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                         ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            offset_green = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 1) +
+                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                           ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            offset_blue = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 2) +
+                          ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
+                          ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            red = NDArray_FDATA(a)[offset_red];
+            blue = NDArray_FDATA(a)[offset_blue];
+            green = NDArray_FDATA(a)[offset_green];
+            if (n_alpha != NULL) {
+                alpha = NDArray_FDATA(n_alpha)[offset_alpha];
+                color_index = (alpha << 24) | (red << 16) | (green << 8) | blue;
+            } else {
+                color_index = (red << 16) | (green << 8) | blue;
+            }
+            im->tpixels[i][j] = color_index;
         }
     }
 #else
