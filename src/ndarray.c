@@ -1076,6 +1076,13 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     }
     rtn = NDArray_Copy(dst, NDArray_DEVICE(dst));
     char *rtn_p = NDArray_DATA(rtn);
+
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
+        for (i = 0; i < NDArray_NUMELEMENTS(b); i++) {
+            NDArray_FDATA(rtn)[i] = NDArray_FDATA(a)[0];
+        }
+    }
+
     if (NDArray_NDIM(src) == 1 && NDArray_NDIM(dst) > 1) {
         if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {

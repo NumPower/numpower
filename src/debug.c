@@ -32,8 +32,10 @@ NDArray_Dump(NDArray* array) {
     printf(" ]\n");
     if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
         printf("NDArray.device\t\t\t%s\n", "GPU");
-    } else {
+    } else if(NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
         printf("NDArray.device\t\t\t%s\n", "CPU");
+    } else {
+        printf("NDArray.device\t\t\t%s\n", "ERROR");
     }
     printf("NDArray.refcount\t\t%d\n", array->refcount);
     printf("NDArray.descriptor.elsize\t%d\n", array->descriptor->elsize);

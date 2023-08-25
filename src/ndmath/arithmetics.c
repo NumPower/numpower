@@ -193,7 +193,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
 
     NDArray *a_broad = NULL, *b_broad = NULL;
 
-    if (NDArray_NDIM(a) == 0) {
+    if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) == 0) {
         int* shape = ecalloc(1, sizeof(int));
         NDArray *rtn = NDArray_Zeros(shape, 0, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
 #ifdef HAVE_CUBLAS
@@ -584,6 +584,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
 NDArray*
 NDArray_Divide_Float(NDArray* a, NDArray* b) {
     NDArray *a_temp = NULL, *b_temp = NULL;
+    php_printf("\n %d != %d ? \n", NDArray_DEVICE(a), NDArray_DEVICE(b));
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
