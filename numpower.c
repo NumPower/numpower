@@ -809,7 +809,7 @@ PHP_METHOD(NDArray, normal) {
     if (nda == NULL) return;
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-        shape[i] = (int) NDArray_DDATA(nda)[i];
+            shape[i] = (int) NDArray_FDATA(nda)[i];
     }
     rtn = NDArray_Normal(loc, scale, shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
