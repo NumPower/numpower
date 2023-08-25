@@ -185,13 +185,10 @@ NDArray_Median_Float(NDArray* a) {
 
 NDArray*
 NDArray_Add_Float(NDArray* a, NDArray* b) {
-    NDArray *broadcasted = NULL;
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
     }
-
-    NDArray *a_broad = NULL, *b_broad = NULL;
 
     if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) == 0) {
         int* shape = ecalloc(1, sizeof(int));
@@ -207,6 +204,9 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
 #endif
         return rtn;
     }
+
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
 
     if (NDArray_NUMELEMENTS(a) < NDArray_NUMELEMENTS(b)) {
         broadcasted = NDArray_Broadcast(a, b);
@@ -250,6 +250,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
     result->descriptor = (NDArrayDescriptor*)emalloc(sizeof(NDArrayDescriptor));
     result->descriptor->type = NDARRAY_TYPE_FLOAT32;
     result->descriptor->elsize = sizeof(float);
+    result->device = NDArray_DEVICE(a_broad)
     result->descriptor->numElements = a_broad->descriptor->numElements;
     result->refcount = 1;
 
@@ -584,7 +585,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
 NDArray*
 NDArray_Divide_Float(NDArray* a, NDArray* b) {
     NDArray *a_temp = NULL, *b_temp = NULL;
-    php_printf("\n %d != %d ? \n", NDArray_DEVICE(a), NDArray_DEVICE(b));
+
     if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
         zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
         return NULL;
@@ -659,6 +660,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     result->descriptor = (NDArrayDescriptor *) emalloc(sizeof(NDArrayDescriptor));
     result->descriptor->type = NDARRAY_TYPE_FLOAT32;
     result->descriptor->elsize = sizeof(float);
+    result->device = NDArray_DEVICE(a_broad)
     result->descriptor->numElements = a_broad->descriptor->numElements;
     result->refcount = 1;
 
