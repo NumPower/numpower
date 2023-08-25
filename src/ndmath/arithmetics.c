@@ -250,7 +250,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
     result->descriptor = (NDArrayDescriptor*)emalloc(sizeof(NDArrayDescriptor));
     result->descriptor->type = NDARRAY_TYPE_FLOAT32;
     result->descriptor->elsize = sizeof(float);
-    result->device = NDArray_DEVICE(a_broad)
+    result->device = NDArray_DEVICE(a_broad);
     result->descriptor->numElements = a_broad->descriptor->numElements;
     result->refcount = 1;
 
@@ -279,7 +279,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
             _mm256_storeu_ps(&resultData[i], mul);
         }
         // Handle remaining elements if the length is not a multiple of 4
-        for (; i < NDArray_NUMELEMENTS(a); i++) {
+        for (; i < numElements; i++) {
             resultData[i] = aData[i] + bData[i];
         }
 #elif HAVE_CBLAS
@@ -366,7 +366,6 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
         b_broad = b;
         a_broad = a;
     }
-
     if (b_broad == NULL || a_broad == NULL) {
         zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
@@ -416,10 +415,10 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
 #endif
     } else {
 #ifdef HAVE_AVX2
-        int i;
+        int i = 0;
         __m256 vec1, vec2, mul;
 
-        for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
+        for (; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             mul = _mm256_mul_ps(vec1, vec2);
@@ -427,7 +426,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
         }
 
         // Handle remaining elements if the length is not a multiple of 4
-        for (; i < NDArray_NUMELEMENTS(a); i++) {
+        for (; i < numElements; i++) {
             resultData[i] = aData[i] * bData[i];
         }
 #else
@@ -554,7 +553,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
         }
 
         // Handle remaining elements if the length is not a multiple of 4
-        for (; i < NDArray_NUMELEMENTS(a); i++) {
+        for (; i < numElements; i++) {
             resultData[i] = aData[i] - bData[i];
         }
 #else
@@ -660,7 +659,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     result->descriptor = (NDArrayDescriptor *) emalloc(sizeof(NDArrayDescriptor));
     result->descriptor->type = NDARRAY_TYPE_FLOAT32;
     result->descriptor->elsize = sizeof(float);
-    result->device = NDArray_DEVICE(a_broad)
+    result->device = NDArray_DEVICE(a_broad);
     result->descriptor->numElements = a_broad->descriptor->numElements;
     result->refcount = 1;
 
@@ -690,7 +689,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
         }
 
         // Handle remaining elements if the length is not a multiple of 4
-        for (; i < NDArray_NUMELEMENTS(a); i++) {
+        for (; i < numElements; i++) {
             resultData[i] = aData[i] / bData[i];
         }
 #else
