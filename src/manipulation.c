@@ -107,6 +107,7 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     NDArray *rtn = NDArray_Empty(new_shape, ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     rtn->ndim = ndim;
     rtn->device = NDArray_DEVICE(target);
+    NDArray_FREEDATA(rtn);
     rtn->data = target->data;
     rtn->base = target;
     NDArray_ADDREF(target);
