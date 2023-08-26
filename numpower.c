@@ -809,7 +809,7 @@ PHP_METHOD(NDArray, normal) {
     if (nda == NULL) return;
     shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-        shape[i] = (int) NDArray_DDATA(nda)[i];
+            shape[i] = (int) NDArray_FDATA(nda)[i];
     }
     rtn = NDArray_Normal(loc, scale, shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
@@ -1260,36 +1260,23 @@ PHP_METHOD(NDArray, atleast_1d) {
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_atleast_2d, 0, 0, 1)
-ZEND_ARG_INFO(0, array)
-ZEND_ARG_INFO(0, axis)
+ZEND_ARG_INFO(0, a)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, atleast_2d) {
     NDArray *rtn = NULL;
-    zval *array;
+    zval *a;
     long axis;
     int axis_i;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(array)
-    Z_PARAM_OPTIONAL
-    Z_PARAM_LONG(axis)
+        Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
     }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
-        return;
-    }
+    //rtn = NDArray_AtLeast2D(nda);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**
@@ -2843,9 +2830,8 @@ PHP_METHOD(NDArray, subtract) {
         CHECK_INPUT_AND_FREE(a, nda);
         return;
     }
-    if (!NDArray_ShapeCompare(nda, ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes");
-        return;
+    if (!NDArray_IsBroadcastable(nda, ndb)) {
+        zend_throw_error(NULL, "Can´t broadcast array.");
     }
     rtn = NDArray_Subtract_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
@@ -2877,9 +2863,8 @@ PHP_METHOD(NDArray, mod) {
         CHECK_INPUT_AND_FREE(a, nda);
         return;
     }
-    if (!NDArray_ShapeCompare(nda, ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes");
-        return;
+    if (!NDArray_IsBroadcastable(nda, ndb)) {
+        zend_throw_error(NULL, "Can´t broadcast array.");
     }
     rtn = NDArray_Mod_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
@@ -2945,9 +2930,8 @@ PHP_METHOD(NDArray, multiply) {
         CHECK_INPUT_AND_FREE(a, nda);
         return;
     }
-    if (!NDArray_ShapeCompare(nda, ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes");
-        return;
+    if (!NDArray_IsBroadcastable(nda, ndb)) {
+        zend_throw_error(NULL, "Can´t broadcast array.");
     }
     rtn = NDArray_Multiply_Float(nda, ndb);
 
@@ -2979,9 +2963,8 @@ PHP_METHOD(NDArray, divide) {
     if (ndb == NULL) {
         return;
     }
-    if (!NDArray_ShapeCompare(nda, ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes");
-        return;
+    if (!NDArray_IsBroadcastable(nda, ndb)) {
+        zend_throw_error(NULL, "Can´t broadcast array.");
     }
     rtn = NDArray_Divide_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
