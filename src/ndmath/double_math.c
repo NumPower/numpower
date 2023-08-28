@@ -225,7 +225,7 @@ float float_sign(float val) {
 }
 
 float float_clip(float val, float min, float max) {
-    return fminf(fmaxf(val, min), max);
+    return fminf(max, fmaxf(val, min));
 }
 
 float float_round(float number, float decimals) {

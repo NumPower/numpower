@@ -3888,6 +3888,41 @@ PHP_METHOD(NDArray, offsetSet) {
     }
 }
 
+PHP_METHOD(NDArray, __serialize) {
+    zval rtn;
+    zval *obj_zval = getThis();
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray* array = ZVAL_TO_NDARRAY(obj_zval);
+    if (array == NULL) {
+        return;
+    }
+    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray must be on CPU RAM before it can be converted to a PHP array.");
+        return;
+    }
+    if (NDArray_NDIM(array) == 0) {
+        RETURN_DOUBLE(NDArray_FDATA(array)[0]);
+        NDArray_FREE(array);
+        return;
+    }
+    rtn = NDArray_ToPHPArray(array);
+    RETURN_ZVAL(&rtn, 0, 0);
+}
+
+PHP_METHOD(NDArray, __unserialize) {
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    long offset;
+    zval *data;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(data)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(data);
+    add_to_buffer(nda, sizeof(NDArray));
+    ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(nda));
+}
+
+
 PHP_METHOD(NDArray, offsetUnset) {
     zend_object *obj = Z_OBJ_P(ZEND_THIS);
     long offset;
@@ -4064,6 +4099,8 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, offsetGet, arginfo_offsetget, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, offsetSet, arginfo_offsetset, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, offsetUnset, arginfo_offsetunset, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, __serialize, arginfo_serialize, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, __unserialize, arginfo_unserialize, ZEND_ACC_PUBLIC)
     ZEND_FE_END
 };
 
