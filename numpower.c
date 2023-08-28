@@ -2810,8 +2810,8 @@ PHP_METHOD(NDArray, log2) {
  * NDArray::subtract
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_subtract, 0)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, subtract) {
     NDArray *rtn = NULL;
@@ -2843,8 +2843,8 @@ PHP_METHOD(NDArray, subtract) {
  * NDArray::mod
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_mod, 0)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, mod) {
     NDArray *rtn = NULL;
@@ -2876,8 +2876,8 @@ PHP_METHOD(NDArray, mod) {
  * NDArray::pow
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_pow, 0)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, pow) {
     NDArray *rtn = NULL;
@@ -2910,8 +2910,8 @@ PHP_METHOD(NDArray, pow) {
  * NDArray::multiply
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_multiply, 0)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, multiply) {
     NDArray *rtn = NULL;
@@ -2944,8 +2944,8 @@ PHP_METHOD(NDArray, multiply) {
  * NDArray::divide
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_divide, 0)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
-ZEND_ARG_OBJ_INFO(0, b, NDArray, 0)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, b)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, divide) {
     NDArray *rtn = NULL;
@@ -3547,7 +3547,7 @@ PHP_METHOD(NDArray, det) {
  * NDArray::sum
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_sum, 0, 0, 1)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, sum) {
@@ -3581,7 +3581,7 @@ PHP_METHOD(NDArray, sum) {
  * NDArray::min
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_min, 0, 0, 1)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, min) {
@@ -3616,7 +3616,7 @@ PHP_METHOD(NDArray, min) {
  * NDArray::max
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_max, 0, 0, 1)
-ZEND_ARG_OBJ_INFO(0, a, NDArray, 0)
+ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, max) {
@@ -3651,7 +3651,7 @@ PHP_METHOD(NDArray, max) {
     RETURN_NDARRAY(rtn, return_value);
 }
 
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_prod, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_prod, 0, 0, 1)
 ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
