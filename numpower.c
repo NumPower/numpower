@@ -2093,6 +2093,7 @@ PHP_METHOD(NDArray, clip) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3700,7 +3701,7 @@ PHP_METHOD(NDArray, array) {
     RETURN_NDARRAY(nda, return_value);
 }
 
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_slice, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_slice, 0, -1, -1)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, slice) {
     int j;
