@@ -539,6 +539,8 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     if (null_axis == 1) {
         efree(axis);
     }
+
+    NDArrayIterator_REWIND(array);
     return rtn;
 }
 
@@ -1015,6 +1017,13 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
             return 0;
         }
     }
+    if (NDArray_NDIM(array1) > 1 && NDArray_NDIM(array2) == 1) {
+        if (NDArray_SHAPE(array2)[0] == NDArray_SHAPE(array1)[NDArray_NDIM(array1) - 1]) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 
     // Determine the maximum number of dimensions
     int maxDims = (NDArray_NDIM(array1) > NDArray_NDIM(array2)) ? NDArray_NDIM(array1) : NDArray_NDIM(array2);
@@ -1084,7 +1093,9 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     }
 
     if (NDArray_NDIM(src) == 1 && NDArray_NDIM(dst) > 1) {
-        if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
+
+        if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]
+            || NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]) {
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                     memcpy(rtn_p,
