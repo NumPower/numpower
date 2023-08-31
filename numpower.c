@@ -3734,7 +3734,8 @@ PHP_METHOD(NDArray, array) {
     RETURN_NDARRAY(nda, return_value);
 }
 
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_slice, 0, -1, -1)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_slice, 0, 0, IS_MIXED, 0)
+ZEND_ARG_VARIADIC_TYPE_INFO(0, arg, IS_MIXED, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, slice) {
     int j;
@@ -4014,7 +4015,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    ZEND_ME(NDArray, slice, arginfo_ndarray_slice, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, slice, arginfo_slice, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
