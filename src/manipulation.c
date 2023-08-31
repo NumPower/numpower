@@ -250,6 +250,9 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         }
         if (NDArray_NUMELEMENTS(indexes[i]) >= 2) {
             stop  = (int)NDArray_FDATA(indexes[i])[1];
+            if (stop > NDArray_SHAPE(array)[i]) {
+                stop = NDArray_SHAPE(array)[i];
+            }
         } else {
             stop = NDArray_SHAPE(array)[i];
         }
