@@ -778,3 +778,27 @@ NDArray_Arange(double start, double stop, double step) {
     }
     return rtn;
 }
+
+NDArray*
+NDArray_Binominal(int *shape, int ndim, int n, float p) {
+    // Calculate the total number of elements in the output array
+    int total_elements = 1;
+    for (int i = 0; i < ndim; i++) {
+        total_elements *= shape[i];
+    }
+
+    NDArray *rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    // Generate random binomial numbers
+    for (int i = 0; i < total_elements; i++) {
+        int successes = 0;
+        for (int j = 0; j < n; j++) {
+            // Generate a random number between 0 and 1
+            float random_value = (float)rand() / RAND_MAX;
+            if (random_value < p) {
+                successes++;
+            }
+        }
+        NDArray_FDATA(rtn)[i] = (float)successes;
+    }
+    return rtn;
+}
