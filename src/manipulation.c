@@ -331,3 +331,46 @@ NDArray_Append(NDArray *a, NDArray *b) {
 
     return rtn;
 }
+
+
+/**
+ * @param a
+ * @param axis
+ * @return
+ */
+NDArray*
+NDArray_ExpandDim(NDArray *a, int axis) {
+    int *output_shape = emalloc(sizeof(int) * (NDArray_NDIM(a) + 1));
+    int output_ndim = NDArray_NDIM(a) + 1;
+
+    // Calculate the total size of the input and output arrays in bytes
+    size_t input_size = sizeof(float);
+    size_t output_size = sizeof(float);
+
+    for (int i = 0; i < NDArray_NDIM(a); i++) {
+        input_size *= NDArray_SHAPE(a)[i];
+        output_size *= (i < axis) ? NDArray_SHAPE(a)[i] : (i == axis) ? 1 : NDArray_SHAPE(a)[i - 1];
+    }
+
+    // Initialize the output shape and strides
+    for (int i = 0; i <= NDArray_NDIM(a); i++) {
+        if (i < axis) {
+            output_shape[i] = NDArray_SHAPE(a)[i];
+        } else if (i == axis) {
+            output_shape[i] = 1; // Expand along this axis
+        } else {
+            output_shape[i] = NDArray_SHAPE(a)[i - 1];
+        }
+    }
+    NDArray *rtn = NDArray_Empty(output_shape, output_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+
+    // Copy data to the expanded output array
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), input_size);
+    } else {
+#ifdef HAVE_CUBLAS
+        NDArray_VMEMCPY_D2D(NDArray_FDATA(a), NDArray_FDATA(rtn), input_size);
+#endif
+    }
+    return rtn;
+}

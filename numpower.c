@@ -3040,6 +3040,30 @@ PHP_METHOD(NDArray, add) {
 }
 
 /**
+* NDArray::expand_dims
+*/
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_expand_dims, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, expand_dims) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_ExpandDim(nda, (int)axis);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::inner
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_append, 0)
@@ -4017,6 +4041,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, slice, arginfo_slice, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, expand_dims, arginfo_ndarray_expand_dims, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

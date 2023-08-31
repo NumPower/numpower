@@ -11,5 +11,6 @@ void copy(const int* src, int* dest, unsigned int size);
 NDArray* NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view);
 void *linearize_FLOAT_matrix(float *dst_in, float *src_in, NDArray * a);
 NDArray* NDArray_Append(NDArray *a, NDArray *b);
+NDArray* NDArray_ExpandDim(NDArray *a, int axis);
 
 #endif //PHPSCI_NDARRAY_MANIPULATION_H
