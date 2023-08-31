@@ -126,6 +126,7 @@ void NDArray_UpdateFlags(NDArray *array, int flagmask);
 float NDArray_Min(NDArray *target);
 
 float NDArray_Max(NDArray *target);
+NDArray* NDArray_MaxAxis(NDArray* target, int axis);
 
 zval NDArray_ToPHPArray(NDArray *target);
 

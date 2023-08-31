@@ -3683,7 +3683,7 @@ PHP_METHOD(NDArray, max) {
     long axis;
     int axis_i;
     double value;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
     Z_PARAM_ZVAL(a)
     Z_PARAM_OPTIONAL
     Z_PARAM_LONG(axis)
@@ -3698,7 +3698,7 @@ PHP_METHOD(NDArray, max) {
             return;
         }
         axis_i = (int)axis;
-        rtn = single_reduce(nda, &axis_i, NDArray_Min);
+        rtn = NDArray_MaxAxis(nda, axis_i);
     } else {
         value = NDArray_Max(nda);
         CHECK_INPUT_AND_FREE(a, nda);
