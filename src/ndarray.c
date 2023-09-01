@@ -923,7 +923,11 @@ NDArray_Maximum(NDArray *a, NDArray *b) {
 
     NDArray* rtn = NDArray_EmptyLike(a_broad);
     for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a)[i], NDArray_FDATA(b)[i]);
+        NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a_broad)[i], NDArray_FDATA(b_broad)[i]);
+    }
+
+    if (broadcasted != NULL) {
+        NDArray_FREE(broadcasted);
     }
     return rtn;
 }
@@ -1199,9 +1203,8 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
         zend_throw_error(NULL, "Broadcast shape mismatch.");
         return NULL;
     }
-    rtn = NDArray_Copy(dst, NDArray_DEVICE(dst));
+    rtn = NDArray_EmptyLike(dst);
     char *rtn_p = NDArray_DATA(rtn);
-
     if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
         for (i = 0; i < NDArray_NUMELEMENTS(b); i++) {
             NDArray_FDATA(rtn)[i] = NDArray_FDATA(a)[0];
