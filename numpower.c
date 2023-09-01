@@ -62,12 +62,14 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
     if (Z_TYPE_P(obj) == IS_OBJECT) {
         zend_class_entry* ce = NULL;
         ce = Z_OBJCE_P(obj);
-        if (ce == phpsci_ce_NDArray) {
-            return buffer_get(get_object_uuid(obj));
+        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
+        if (strcmp(ZSTR_VAL(class_name), "NDArray") == 0) {
+            if (ce == phpsci_ce_NDArray) {
+                return buffer_get(get_object_uuid(obj));
+            }
         }
 #ifdef HAVE_GD
         /* Check if the zend_object class name is "GdImage" */
-        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
         if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
             return NDArray_FromGD(obj);
         }
@@ -2131,6 +2133,36 @@ PHP_METHOD(NDArray, clip) {
 }
 
 /**
+ * NDArray::maximum
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_maximum, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, maximum) {
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL || ndb == NULL) {
+        return;
+    }
+
+    rtn = NDArray_Maximum(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::mean
  *
  * @param execute_data
@@ -4025,8 +4057,10 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, isGPU, arginfo_is_gpu, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, setDevice, arginfo_setdevice, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
+    // EXTREMA
     ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, maximum, arginfo_ndarray_maximum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // MANIPULATION
     ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

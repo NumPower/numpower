@@ -357,6 +357,17 @@ NDArray_Empty(int *shape, int ndim, const char *type, int device) {
 }
 
 /**
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_EmptyLike(NDArray *a) {
+    int *output_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+    memcpy(output_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+    return NDArray_Empty(output_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+}
+
+/**
  * Initialize NDArray with zeros
  *
  * @param shape

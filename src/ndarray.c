@@ -889,6 +889,44 @@ NDArray_MaxAxis(NDArray* target, int axis) {
     return rtn;
 }
 
+/**
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Maximum(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray_Maximum not implemented for GPU");
+        return NULL;
+    }
+
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
+    if (NDArray_NUMELEMENTS(a) < NDArray_NUMELEMENTS(b)) {
+        broadcasted = NDArray_Broadcast(a, b);
+        a_broad = broadcasted;
+        b_broad = b;
+    } else if (NDArray_NUMELEMENTS(b) < NDArray_NUMELEMENTS(a)) {
+        broadcasted = NDArray_Broadcast(b, a);
+        b_broad = broadcasted;
+        a_broad = a;
+    } else {
+        b_broad = b;
+        a_broad = a;
+    }
+
+    if (b_broad == NULL || a_broad == NULL) {
+        zend_throw_error(NULL, "Can't broadcast arrays.");
+        return NULL;
+    }
+
+    NDArray* rtn = NDArray_EmptyLike(a_broad);
+    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+        NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a)[i], NDArray_FDATA(b)[i]);
+    }
+    return rtn;
+}
 
 /**
  * Return maximum value of NDArray
