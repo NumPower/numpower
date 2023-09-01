@@ -203,9 +203,26 @@ NDArray_LessEqual(NDArray* nda, NDArray* ndb) {
         rtn_shape[i] = NDArray_SHAPE(nda)[i];
     }
 
-    NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(nda), NDArray_TYPE(nda), NDArray_DEVICE(nda));
-    if (NDArray_NUMELEMENTS(nda) != NDArray_NUMELEMENTS(ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes in `equal` function");
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
+
+    if (NDArray_NUMELEMENTS(nda) < NDArray_NUMELEMENTS(ndb)) {
+        broadcasted = NDArray_Broadcast(nda, ndb);
+        a_broad = broadcasted;
+        b_broad = ndb;
+    } else if (NDArray_NUMELEMENTS(ndb) < NDArray_NUMELEMENTS(nda)) {
+        broadcasted = NDArray_Broadcast(ndb, nda);
+        b_broad = broadcasted;
+        a_broad = nda;
+    } else {
+        b_broad = ndb;
+        a_broad = nda;
+    }
+
+    NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(a_broad), NDArray_TYPE(a_broad), NDArray_DEVICE(a_broad));
+
+    if (b_broad == NULL || a_broad == NULL) {
+        zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
     }
 
@@ -218,10 +235,10 @@ NDArray_LessEqual(NDArray* nda, NDArray* ndb) {
 #ifdef HAVE_AVX2
         // Process 8 elements at a time using AVX2
         i = 0;
-        for (; i < NDArray_NUMELEMENTS(nda) - 7; i += 8) {
+        for (; i < NDArray_NUMELEMENTS(a_broad) - 7; i += 8) {
             // Load 8 elements from each array
-            __m256 vec1 = _mm256_loadu_ps(&NDArray_FDATA(nda)[i]);
-            __m256 vec2 = _mm256_loadu_ps(&NDArray_FDATA(ndb)[i]);
+            __m256 vec1 = _mm256_loadu_ps(&NDArray_FDATA(a_broad)[i]);
+            __m256 vec2 = _mm256_loadu_ps(&NDArray_FDATA(b_broad)[i]);
 
             // Compare elements for equality
             __m256 cmp = _mm256_cmp_ps(vec1, vec2, _CMP_LE_OQ);
@@ -234,15 +251,17 @@ NDArray_LessEqual(NDArray* nda, NDArray* ndb) {
         }
 
         // Process remaining elements using scalar operations
-        for (; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = NDArray_FDATA(nda)[i] <= NDArray_FDATA(ndb)[i] ? 1.0f : 0.0f;
+        for (; i < NDArray_NUMELEMENTS(a_broad); i++) {
+            NDArray_FDATA(result)[i] = NDArray_FDATA(a_broad)[i] <= NDArray_FDATA(b_broad)[i] ? 1.0f : 0.0f;
         }
-        return result;
 #else
-        for (i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = NDArray_FDATA(nda)[i] <= NDArray_FDATA(ndb)[i] ? 1.0f : 0.0f;
+        for (i = 0; i < NDArray_NUMELEMENTS(a_broad); i++) {
+            NDArray_FDATA(result)[i] = NDArray_FDATA(a_broad)[i] <= NDArray_FDATA(b_broad)[i] ? 1.0f : 0.0f;
         }
 #endif
+    }
+    if (broadcasted != NULL) {
+        NDArray_FREE(broadcasted);
     }
     return result;
 }
@@ -268,13 +287,30 @@ NDArray_GreaterEqual(NDArray* nda, NDArray* ndb) {
         rtn_shape[i] = NDArray_SHAPE(nda)[i];
     }
 
-    NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(nda), NDArray_TYPE(nda), NDArray_DEVICE(nda));
-    if (NDArray_NUMELEMENTS(nda) != NDArray_NUMELEMENTS(ndb)) {
-        zend_throw_error(NULL, "Incompatible shapes in `equal` function");
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
+
+    if (NDArray_NUMELEMENTS(nda) < NDArray_NUMELEMENTS(ndb)) {
+        broadcasted = NDArray_Broadcast(nda, ndb);
+        a_broad = broadcasted;
+        b_broad = ndb;
+    } else if (NDArray_NUMELEMENTS(ndb) < NDArray_NUMELEMENTS(nda)) {
+        broadcasted = NDArray_Broadcast(ndb, nda);
+        b_broad = broadcasted;
+        a_broad = nda;
+    } else {
+        b_broad = ndb;
+        a_broad = nda;
+    }
+
+    NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(a_broad), NDArray_TYPE(a_broad), NDArray_DEVICE(a_broad));
+
+    if (b_broad == NULL || a_broad == NULL) {
+        zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
     }
 
-    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
+    if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         cuda_float_compare_greater_equal(NDArray_SHAPE(nda)[0], NDArray_FDATA(nda), NDArray_FDATA(ndb), NDArray_FDATA(result),
                                          NDArray_NUMELEMENTS(nda));
@@ -283,10 +319,10 @@ NDArray_GreaterEqual(NDArray* nda, NDArray* ndb) {
 #ifdef HAVE_AVX2
         // Process 8 elements at a time using AVX2
         i = 0;
-        for (; i < NDArray_NUMELEMENTS(nda) - 7; i += 8) {
+        for (; i < NDArray_NUMELEMENTS(a_broad) - 7; i += 8) {
             // Load 8 elements from each array
-            __m256 vec1 = _mm256_loadu_ps(&NDArray_FDATA(nda)[i]);
-            __m256 vec2 = _mm256_loadu_ps(&NDArray_FDATA(ndb)[i]);
+            __m256 vec1 = _mm256_loadu_ps(&NDArray_FDATA(a_broad)[i]);
+            __m256 vec2 = _mm256_loadu_ps(&NDArray_FDATA(b_broad)[i]);
 
             // Compare elements for equality
             __m256 cmp = _mm256_cmp_ps(vec1, vec2, _CMP_GE_OS);
@@ -299,15 +335,17 @@ NDArray_GreaterEqual(NDArray* nda, NDArray* ndb) {
         }
 
         // Process remaining elements using scalar operations
-        for (; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = NDArray_FDATA(nda)[i] >= NDArray_FDATA(ndb)[i] ? 1.0f : 0.0f;
+        for (; i < NDArray_NUMELEMENTS(a_broad); i++) {
+            NDArray_FDATA(result)[i] = NDArray_FDATA(a_broad)[i] >= NDArray_FDATA(b_broad)[i] ? 1.0f : 0.0f;
         }
-        return result;
 #else
-        for (i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-            NDArray_FDATA(result)[i] = NDArray_FDATA(nda)[i] >= NDArray_FDATA(ndb)[i] ? 1.0f : 0.0f;
+        for (i = 0; i < NDArray_NUMELEMENTS(a_broad); i++) {
+            NDArray_FDATA(result)[i] = NDArray_FDATA(a_broad)[i] >= NDArray_FDATA(b_broad)[i] ? 1.0f : 0.0f;
         }
 #endif
+    }
+    if (broadcasted != NULL) {
+        NDArray_FREE(broadcasted);
     }
     return result;
 }
