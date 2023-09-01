@@ -791,7 +791,7 @@ NDArray_Arange(double start, double stop, double step) {
 }
 
 NDArray*
-NDArray_Binominal(int *shape, int ndim, int n, float p) {
+NDArray_Binomial(int *shape, int ndim, int n, float p) {
     // Calculate the total number of elements in the output array
     int total_elements = 1;
     for (int i = 0; i < ndim; i++) {

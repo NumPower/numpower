@@ -819,17 +819,17 @@ PHP_METHOD(NDArray, normal) {
 }
 
 /**
- * NDArray::random_binominal
+ * NDArray::random_binomial
  *
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_binominal, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_binomial, 0, 0, 3)
     ZEND_ARG_INFO(0, shape)
     ZEND_ARG_INFO(0, p)
     ZEND_ARG_INFO(0, n)
 ZEND_END_ARG_INFO()
-PHP_METHOD(NDArray, random_binominal) {
+PHP_METHOD(NDArray, random_binomial) {
     NDArray *rtn = NULL;
     int *ishape;
     zval* shape;
@@ -845,7 +845,7 @@ PHP_METHOD(NDArray, random_binominal) {
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
         ishape[i] = (int) NDArray_FDATA(nda)[i];
     }
-    rtn = NDArray_Binominal(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
+    rtn = NDArray_Binomial(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -4095,7 +4095,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, poisson, arginfo_ndarray_poisson, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    ZEND_ME(NDArray, random_binominal, arginfo_ndarray_binominal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, random_binomial, arginfo_ndarray_binomial, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LINALG
     ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4246,7 +4246,7 @@ PHP_MSHUTDOWN_FUNCTION(ndarray) {
 }
 
 PHP_RSHUTDOWN_FUNCTION(ndarray) {
-    char *envvar = "NDARRAY_FREEBUFFER";
+    char *envvar = "NDARRAY_BUFFERFREE";
     char *envvar_vcheck = "NDARRAY_VCHECK";
     if(getenv(envvar)) {
         buffer_free();
