@@ -357,6 +357,17 @@ NDArray_Empty(int *shape, int ndim, const char *type, int device) {
 }
 
 /**
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_EmptyLike(NDArray *a) {
+    int *output_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+    memcpy(output_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+    return NDArray_Empty(output_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+}
+
+/**
  * Initialize NDArray with zeros
  *
  * @param shape
@@ -775,6 +786,30 @@ NDArray_Arange(double start, double stop, double step) {
     NDArray_FDATA(rtn)[0] = (float)start;
     for (i = 1; i < length; i++) {
         NDArray_FDATA(rtn)[i] = NDArray_FDATA(rtn)[i-1] + step;
+    }
+    return rtn;
+}
+
+NDArray*
+NDArray_Binominal(int *shape, int ndim, int n, float p) {
+    // Calculate the total number of elements in the output array
+    int total_elements = 1;
+    for (int i = 0; i < ndim; i++) {
+        total_elements *= shape[i];
+    }
+
+    NDArray *rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    // Generate random binomial numbers
+    for (int i = 0; i < total_elements; i++) {
+        int successes = 0;
+        for (int j = 0; j < n; j++) {
+            // Generate a random number between 0 and 1
+            float random_value = (float)rand() / RAND_MAX;
+            if (random_value < p) {
+                successes++;
+            }
+        }
+        NDArray_FDATA(rtn)[i] = (float)successes;
     }
     return rtn;
 }

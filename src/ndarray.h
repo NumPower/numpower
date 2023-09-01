@@ -112,35 +112,22 @@ NDArray_CLEARFLAGS(NDArray *arr, int flags) {
 }
 
 void NDArray_FREE(NDArray *array);
-
 char *NDArray_Print(NDArray *array, int do_return);
-
 NDArray *reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *));
-
 NDArray *single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *));
-
 NDArray *NDArray_Compare(NDArray *a, NDArray *b);
-
 void NDArray_UpdateFlags(NDArray *array, int flagmask);
-
 float NDArray_Min(NDArray *target);
-
 float NDArray_Max(NDArray *target);
-
+NDArray* NDArray_Maximum(NDArray *a, NDArray *b);
+NDArray* NDArray_MaxAxis(NDArray* target, int axis);
 zval NDArray_ToPHPArray(NDArray *target);
-
 int *NDArray_ToIntVector(NDArray *nda);
-
 NDArray *NDArray_ToGPU(NDArray *target);
-
 NDArray *NDArray_ToCPU(NDArray *target);
-
 int NDArray_ShapeCompare(NDArray *a, NDArray *b);
-
 NDArray* NDArray_Broadcast(NDArray *a, NDArray *b);
-
 int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
-
 float NDArray_GetFloatScalar(NDArray *a);
 void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);

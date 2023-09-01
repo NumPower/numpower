@@ -31,7 +31,7 @@ NDArrayIterator_NEXT(NDArray* array) {
  */
 void
 NDArrayIterator_REWIND(NDArray* array) {
-    array->php_iterator->current_index = 0;
+    array->iterator->current_index = 0;
 }
 
 /**

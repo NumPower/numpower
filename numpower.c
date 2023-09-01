@@ -62,12 +62,14 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
     if (Z_TYPE_P(obj) == IS_OBJECT) {
         zend_class_entry* ce = NULL;
         ce = Z_OBJCE_P(obj);
-        if (ce == phpsci_ce_NDArray) {
-            return buffer_get(get_object_uuid(obj));
+        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
+        if (strcmp(ZSTR_VAL(class_name), "NDArray") == 0) {
+            if (ce == phpsci_ce_NDArray) {
+                return buffer_get(get_object_uuid(obj));
+            }
         }
 #ifdef HAVE_GD
         /* Check if the zend_object class name is "GdImage" */
-        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
         if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
             return NDArray_FromGD(obj);
         }
@@ -815,6 +817,39 @@ PHP_METHOD(NDArray, normal) {
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
+
+/**
+ * NDArray::random_binominal
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_binominal, 0, 0, 3)
+    ZEND_ARG_INFO(0, shape)
+    ZEND_ARG_INFO(0, p)
+    ZEND_ARG_INFO(0, n)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, random_binominal) {
+    NDArray *rtn = NULL;
+    int *ishape;
+    zval* shape;
+    double n = 0.0, p = 1.0;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(shape)
+        Z_PARAM_DOUBLE(n)
+        Z_PARAM_DOUBLE(p)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(shape);
+    if (nda == NULL) return;
+    ishape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
+    for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
+        ishape[i] = (int) NDArray_FDATA(nda)[i];
+    }
+    rtn = NDArray_Binominal(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
+    NDArray_FREE(nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
 
 /**
  * NDArray::standard_normal
@@ -2093,6 +2128,37 @@ PHP_METHOD(NDArray, clip) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    CHECK_INPUT_AND_FREE(array, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::maximum
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_maximum, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, maximum) {
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL || ndb == NULL) {
+        return;
+    }
+
+    rtn = NDArray_Maximum(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3006,6 +3072,30 @@ PHP_METHOD(NDArray, add) {
 }
 
 /**
+* NDArray::expand_dims
+*/
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_expand_dims, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, expand_dims) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_ExpandDim(nda, (int)axis);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::inner
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_append, 0)
@@ -3625,7 +3715,7 @@ PHP_METHOD(NDArray, max) {
     long axis;
     int axis_i;
     double value;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
     Z_PARAM_ZVAL(a)
     Z_PARAM_OPTIONAL
     Z_PARAM_LONG(axis)
@@ -3640,7 +3730,7 @@ PHP_METHOD(NDArray, max) {
             return;
         }
         axis_i = (int)axis;
-        rtn = single_reduce(nda, &axis_i, NDArray_Min);
+        rtn = NDArray_MaxAxis(nda, axis_i);
     } else {
         value = NDArray_Max(nda);
         CHECK_INPUT_AND_FREE(a, nda);
@@ -3700,7 +3790,8 @@ PHP_METHOD(NDArray, array) {
     RETURN_NDARRAY(nda, return_value);
 }
 
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_slice, 0)
+ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_slice, 0, 0, IS_MIXED, 0)
+ZEND_ARG_VARIADIC_TYPE_INFO(0, arg, IS_MIXED, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, slice) {
     int j;
@@ -3966,8 +4057,10 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, isGPU, arginfo_is_gpu, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, setDevice, arginfo_setdevice, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
+    // EXTREMA
     ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, maximum, arginfo_ndarray_maximum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // MANIPULATION
     ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -3980,8 +4073,9 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, atleast_2d, arginfo_ndarray_atleast_2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, atleast_3d, arginfo_ndarray_atleast_3d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, transpose, arginfo_ndarray_transpose, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    ZEND_ME(NDArray, slice, arginfo_ndarray_slice, ZEND_ACC_PUBLIC)
+    ZEND_ME(NDArray, slice, arginfo_slice, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, expand_dims, arginfo_ndarray_expand_dims, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4001,6 +4095,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, poisson, arginfo_ndarray_poisson, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, random_binominal, arginfo_ndarray_binominal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LINALG
     ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

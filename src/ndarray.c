@@ -539,6 +539,8 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     if (null_axis == 1) {
         efree(axis);
     }
+
+    NDArrayIterator_REWIND(array);
     return rtn;
 }
 
@@ -811,6 +813,126 @@ NDArray_Min(NDArray *target) {
 }
 
 /**
+ * Return maximum value of NDArray over a given axis
+ *
+ * @param target
+ * @param axis
+ * @return
+ */
+NDArray*
+NDArray_MaxAxis(NDArray* target, int axis) {
+    if (NDArray_NDIM(target) > 2) {
+        zend_throw_error(NULL, "NDArray_MaxAxis not implemented for tensors > 2D");
+        return NULL;
+    }
+
+    if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "GPU NDArray_MaxAxis not implemented");
+        return NULL;
+    }
+
+    if (axis < 0 || axis >= NDArray_NDIM(target)) {
+        // Invalid axis
+        zend_throw_error(NULL, "Invalid axis.\n");
+        return NULL;
+    }
+    int *output_shape = emalloc(sizeof(int) * (NDArray_NDIM(target) - 1));
+
+    int axis_size = NDArray_SHAPE(target)[axis];
+    int num_elements = 1;
+
+    // Calculate the number of elements before the specified axis
+    for (int i = 0; i < axis; i++) {
+        num_elements *= NDArray_SHAPE(target)[i];
+    }
+
+    // Calculate the output shape (excluding the specified axis)
+    int output_index = 0;
+    for (int i = 0; i < NDArray_NDIM(target); i++) {
+        if (i != axis) {
+            output_shape[output_index++] = NDArray_SHAPE(target)[i];
+        }
+    }
+
+    NDArray *rtn = NDArray_Empty(output_shape, NDArray_NDIM(target) - 1, NDArray_TYPE(target), NDArray_DEVICE(target));
+
+    int axis_first_element_index, j = 0, i = 0, axis_step = 0;
+    if (axis == 0) {
+        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
+            axis_step = (NDArray_STRIDES(target)[axis] / NDArray_ELSIZE(target));
+            axis_first_element_index = i * (NDArray_STRIDES(target)[NDArray_NDIM(target) - 1] / NDArray_ELSIZE(target));
+            NDArray_FDATA(rtn)[i] = NDArray_FDATA(target)[axis_first_element_index];
+            for (j = 1; j < axis_size; j++) {
+                float current_val = NDArray_FDATA(target)[axis_first_element_index + (j * axis_step)];
+                if (current_val > NDArray_FDATA(rtn)[i]) {
+                    NDArray_FDATA(rtn)[i] = current_val;
+                }
+            }
+        }
+    } else {
+        for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
+            axis_step = (NDArray_STRIDES(target)[axis] / NDArray_ELSIZE(target));
+            if (NDArray_NDIM(target) - 1 == axis) {
+                axis_first_element_index = i * (NDArray_STRIDES(target)[axis - 1] / NDArray_ELSIZE(target));
+            } else {
+                axis_first_element_index = i * (NDArray_STRIDES(target)[axis + 1] / NDArray_ELSIZE(target));
+            }
+            NDArray_FDATA(rtn)[i] = NDArray_FDATA(target)[axis_first_element_index];
+            for (j = 1; j < axis_size; j++) {
+                float current_val = NDArray_FDATA(target)[axis_first_element_index + (j * axis_step)];
+                if (current_val > NDArray_FDATA(rtn)[i]) {
+                    NDArray_FDATA(rtn)[i] = current_val;
+                }
+            }
+        }
+    }
+    return rtn;
+}
+
+/**
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray*
+NDArray_Maximum(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray_Maximum not implemented for GPU");
+        return NULL;
+    }
+
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
+    if (NDArray_NUMELEMENTS(a) < NDArray_NUMELEMENTS(b)) {
+        broadcasted = NDArray_Broadcast(a, b);
+        a_broad = broadcasted;
+        b_broad = b;
+    } else if (NDArray_NUMELEMENTS(b) < NDArray_NUMELEMENTS(a)) {
+        broadcasted = NDArray_Broadcast(b, a);
+        b_broad = broadcasted;
+        a_broad = a;
+    } else {
+        b_broad = b;
+        a_broad = a;
+    }
+
+    if (b_broad == NULL || a_broad == NULL) {
+        zend_throw_error(NULL, "Can't broadcast arrays.");
+        return NULL;
+    }
+
+    NDArray* rtn = NDArray_EmptyLike(a_broad);
+    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+        NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a_broad)[i], NDArray_FDATA(b_broad)[i]);
+    }
+
+    if (broadcasted != NULL) {
+        NDArray_FREE(broadcasted);
+    }
+    return rtn;
+}
+
+/**
  * Return maximum value of NDArray
  *
  * @param target
@@ -1015,6 +1137,13 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
             return 0;
         }
     }
+    if (NDArray_NDIM(array1) > 1 && NDArray_NDIM(array2) == 1) {
+        if (NDArray_SHAPE(array2)[0] == NDArray_SHAPE(array1)[NDArray_NDIM(array1) - 1]) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 
     // Determine the maximum number of dimensions
     int maxDims = (NDArray_NDIM(array1) > NDArray_NDIM(array2)) ? NDArray_NDIM(array1) : NDArray_NDIM(array2);
@@ -1074,9 +1203,8 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
         zend_throw_error(NULL, "Broadcast shape mismatch.");
         return NULL;
     }
-    rtn = NDArray_Copy(dst, NDArray_DEVICE(dst));
+    rtn = NDArray_EmptyLike(dst);
     char *rtn_p = NDArray_DATA(rtn);
-
     if (NDArray_NDIM(a) == 0 && NDArray_NDIM(b) > 0) {
         for (i = 0; i < NDArray_NUMELEMENTS(b); i++) {
             NDArray_FDATA(rtn)[i] = NDArray_FDATA(a)[0];
@@ -1084,7 +1212,9 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     }
 
     if (NDArray_NDIM(src) == 1 && NDArray_NDIM(dst) > 1) {
-        if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]) {
+
+        if (NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]
+            || NDArray_SHAPE(src)[0] == NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]) {
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                     memcpy(rtn_p,
