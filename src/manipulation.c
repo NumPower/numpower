@@ -369,7 +369,7 @@ NDArray_ExpandDim(NDArray *a, int axis) {
         memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), input_size);
     } else {
 #ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_FDATA(a), NDArray_FDATA(rtn), input_size);
+        NDArray_VMEMCPY_D2D(NDArray_DATA(a), NDArray_DATA(rtn), input_size);
 #endif
     }
     return rtn;
