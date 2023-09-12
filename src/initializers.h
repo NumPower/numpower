@@ -25,6 +25,7 @@ NDArray* NDArray_Empty(int *shape, int ndim, const char *type, int device);
 NDArray* NDArray_Arange(double start, double stop, double step);
 NDArray* NDArray_Binomial(int *shape, int ndim, int n, float p);
 NDArray* NDArray_EmptyLike(NDArray *a);
+NDArray* NDArray_Create(char *data, int ndim, int *shape, int device, const char* type);
 #ifdef __cplusplus
 extern "C" {
 #endif
