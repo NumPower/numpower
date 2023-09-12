@@ -41,6 +41,21 @@ void copy(const int* src, int* dest, unsigned int size) {
     }
 }
 
+void
+transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
+    int i, j;
+    for ( i = 0; i < rows; i++) {
+        for ( j = 0; j < cols; j++) {
+            output[j * rows + i] = matrix[i * cols + j];
+        }
+    }
+}
+
+/**
+ * @param a
+ * @param permute
+ * @return
+ */
 /**
  * @param a
  * @param permute
@@ -48,36 +63,30 @@ void copy(const int* src, int* dest, unsigned int size) {
  */
 NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
-    NDArray *rtn = NULL;
-    int ndim = NDArray_NDIM(a);
+    NDArray *ret = NULL;
+
     if (NDArray_NDIM(a) < 2) {
+        int ndim = NDArray_NDIM(a);
         return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
     }
 
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    reverse_copy(NDArray_SHAPE(a), new_shape, ndim);
+    reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
+    ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
 
     // @todo Implement N-dimensinal permutation
-    if (NDArray_NDIM(a) > 2) {
+    if (NDArray_NDIM(a) != 2) {
         zend_throw_error(NULL, "must be a 2-d array");
         return NULL;
     }
-
-    rtn = NDArray_Empty(new_shape, ndim, NDArray_TYPE(a), NDArray_DEVICE(a));
-
-    int index = 0;
-    int offset = 0, perm = 0;
-    for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        index = perm * (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) + offset;
-        if (index > NDArray_NUMELEMENTS(rtn) - 1) {
-            perm = 0;
-            offset++;
-            index = (perm * (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn))) + offset;
-        }
-        NDArray_FDATA(rtn)[i] = NDArray_FDATA(a)[index];
-        perm++;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        cuda_float_transpose(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+#endif
+    } else {
+        transposeMatrixFloat(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
     }
-    return rtn;
+    return ret;
 }
 
 /**

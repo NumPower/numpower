@@ -72,7 +72,7 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
 #ifdef HAVE_GD
         /* Check if the zend_object class name is "GdImage" */
         if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
-            return NDArray_FromGD(obj);
+            return NDArray_FromGD(obj, false);
         }
 #endif
     }
@@ -1844,6 +1844,29 @@ PHP_METHOD(NDArray, arccosh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::fromImage
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_fromimage, 0, 0, 1)
+    ZEND_ARG_INFO(0, image)
+    ZEND_ARG_INFO(0, channelLast)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, fromImage) {
+    NDArray *rtn = NULL;
+    zval *image;
+    bool channelLast = true;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ZVAL(image)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(channelLast)
+    ZEND_PARSE_PARAMETERS_END();
+    rtn = NDArray_FromGD(image, channelLast);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -4174,6 +4197,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, full, arginfo_ndarray_full, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, fill, arginfo_fill, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, array, arginfo_ndarray_array, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, fromImage, arginfo_ndarray_fromimage, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // RANDOM
     ZEND_ME(NDArray, normal, arginfo_ndarray_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
