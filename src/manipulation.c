@@ -29,16 +29,6 @@ multiply_int_vector(int *a, int size) {
     return total;
 }
 
-void
-transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
-    int i, j;
-    for ( i = 0; i < rows; i++) {
-        for ( j = 0; j < cols; j++) {
-            output[j * rows + i] = matrix[i * cols + j];
-        }
-    }
-}
-
 void reverse_copy(const int* src, int* dest, int size) {
     for (int i = size - 1; i >= 0; i--) {
         dest[i] = src[size - i - 1];
@@ -58,30 +48,36 @@ void copy(const int* src, int* dest, unsigned int size) {
  */
 NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
-    NDArray *ret = NULL;
-
+    NDArray *rtn = NULL;
+    int ndim = NDArray_NDIM(a);
     if (NDArray_NDIM(a) < 2) {
-        int ndim = NDArray_NDIM(a);
         return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
     }
 
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
-    ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+    reverse_copy(NDArray_SHAPE(a), new_shape, ndim);
 
     // @todo Implement N-dimensinal permutation
-    if (NDArray_NDIM(a) != 2) {
+    if (NDArray_NDIM(a) > 2) {
         zend_throw_error(NULL, "must be a 2-d array");
         return NULL;
     }
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        cuda_float_transpose(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
-#endif
-    } else {
-        transposeMatrixFloat(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
+
+    rtn = NDArray_Empty(new_shape, ndim, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    int index = 0;
+    int offset = 0, perm = 0;
+    for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
+        index = perm * (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) + offset;
+        if (index > NDArray_NUMELEMENTS(rtn) - 1) {
+            perm = 0;
+            offset++;
+            index = (perm * (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn))) + offset;
+        }
+        NDArray_FDATA(rtn)[i] = NDArray_FDATA(a)[index];
+        perm++;
     }
-    return ret;
+    return rtn;
 }
 
 /**
@@ -146,7 +142,7 @@ linearize_FLOAT_matrix(float *dst_in,
         int i, j;
         float* rv = dst;
         int columns = (int)NDArray_SHAPE(a)[1];
-        int column_strides = NDArray_STRIDES(a)[1]/sizeof(float);
+        int column_strides = NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a);
         int one = 1;
         for (i = 0; i < NDArray_SHAPE(a)[0]; i++) {
             if (column_strides > 0) {
@@ -284,10 +280,6 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
     }
 #endif
-    linearize_FLOAT_matrix(rtn_data, NDArray_FDATA(slice), slice);
-    slice->data = (char*)rtn_data;
-    slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
-    slice->base = NULL;
     NDArray_FREE(array);
     efree(slice_strides);
     return slice;
