@@ -29,16 +29,6 @@ multiply_int_vector(int *a, int size) {
     return total;
 }
 
-void
-transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
-    int i, j;
-    for ( i = 0; i < rows; i++) {
-        for ( j = 0; j < cols; j++) {
-            output[j * rows + i] = matrix[i * cols + j];
-        }
-    }
-}
-
 void reverse_copy(const int* src, int* dest, int size) {
     for (int i = size - 1; i >= 0; i--) {
         dest[i] = src[size - i - 1];
@@ -51,6 +41,21 @@ void copy(const int* src, int* dest, unsigned int size) {
     }
 }
 
+void
+transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
+    int i, j;
+    for ( i = 0; i < rows; i++) {
+        for ( j = 0; j < cols; j++) {
+            output[j * rows + i] = matrix[i * cols + j];
+        }
+    }
+}
+
+/**
+ * @param a
+ * @param permute
+ * @return
+ */
 /**
  * @param a
  * @param permute
@@ -146,7 +151,7 @@ linearize_FLOAT_matrix(float *dst_in,
         int i, j;
         float* rv = dst;
         int columns = (int)NDArray_SHAPE(a)[1];
-        int column_strides = NDArray_STRIDES(a)[1]/sizeof(float);
+        int column_strides = NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a);
         int one = 1;
         for (i = 0; i < NDArray_SHAPE(a)[0]; i++) {
             if (column_strides > 0) {
@@ -284,10 +289,6 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
     }
 #endif
-    linearize_FLOAT_matrix(rtn_data, NDArray_FDATA(slice), slice);
-    slice->data = (char*)rtn_data;
-    slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
-    slice->base = NULL;
     NDArray_FREE(array);
     efree(slice_strides);
     return slice;
@@ -369,7 +370,7 @@ NDArray_ExpandDim(NDArray *a, int axis) {
         memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), input_size);
     } else {
 #ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_FDATA(a), NDArray_FDATA(rtn), input_size);
+        NDArray_VMEMCPY_D2D(NDArray_DATA(a), NDArray_DATA(rtn), input_size);
 #endif
     }
     return rtn;

@@ -13,17 +13,22 @@
 #include <Zend/zend_types.h>
 
 #ifdef HAVE_AVX2
+
 #include <immintrin.h>
+
 #endif
 
 #ifdef HAVE_CUBLAS
+
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
 #include "gpu_alloc.h"
+
 #endif
 
 #ifdef HAVE_GD
+
 #include "gd.h"
 
 typedef struct _gd_ext_image_object {
@@ -32,23 +37,23 @@ typedef struct _gd_ext_image_object {
 } php_gd_image_object;
 
 static
-gdImagePtr gdImagePtr_from_zobj_p(zend_object* obj) {
+gdImagePtr gdImagePtr_from_zobj_p(zend_object *obj) {
     return ((php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std)))->image;
 }
 
 static
-zend_always_inline php_gd_image_object* php_gd_exgdimage_from_zobj_p(zend_object* obj) {
+zend_always_inline php_gd_image_object *php_gd_exgdimage_from_zobj_p(zend_object *obj) {
     return (php_gd_image_object *) ((char *) (obj) - XtOffsetOf(php_gd_image_object, std));
 }
 
 void
 php_gd_assign_libgdimageptr_as_extgdimage(zval *val, gdImagePtr image) {
-    zend_class_entry* gd_image_ce = zend_lookup_class(zend_string_init("GdImage", strlen("GdImage"), 1));
+    zend_class_entry *gd_image_ce = zend_lookup_class(zend_string_init("GdImage", strlen("GdImage"), 1));
     object_init_ex(val, gd_image_ce);
     php_gd_exgdimage_from_zobj_p(Z_OBJ_P(val))->image = image;
 }
 
-gdImagePtr gdImageCreateTrueColor_ (int sx, int sy) {
+gdImagePtr gdImageCreateTrueColor_(int sx, int sy) {
     int i;
     gdImagePtr im;
 
@@ -90,83 +95,87 @@ gdImagePtr gdImageCreateTrueColor_ (int sx, int sy) {
 }
 
 NDArray *
-NDArray_FromGD(zval *a) {
+NDArray_FromGD(zval *a, bool channel_last) {
     NDArray *rtn;
     int color_index, j, i;
     int offset_green, offset_red, offset_blue;
     int red, green, blue;
     int *i_shape = emalloc(sizeof(int) * 3);
     gdImagePtr img_ptr = gdImagePtr_from_zobj_p(Z_OBJ_P(a));
-    i_shape[0] = 3;
-    i_shape[1] = (int)img_ptr->sy;
-    i_shape[2] = (int)img_ptr->sx;
+    if (!channel_last) {
+        i_shape[0] = 3;
+        i_shape[1] = (int) img_ptr->sy;
+        i_shape[2] = (int) img_ptr->sx;
+    } else {
+        i_shape[1] = (int) img_ptr->sy;
+        i_shape[0] = (int) img_ptr->sx;
+        i_shape[2] = 3;
+    }
     rtn = NDArray_Zeros(i_shape, 3, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     int elsize = NDArray_ELSIZE(rtn);
-
-#ifdef HAVE_AVX2
-    __m256i red_mask = _mm256_set_epi32(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
     for (i = 0; i < img_ptr->sy; i++) {
-        for (j = 0; j < img_ptr->sx - 7; j += 8) {
-            offset_red = (NDArray_STRIDES(rtn)[0] / elsize * 0) +
-                         ((NDArray_STRIDES(rtn)[1] / elsize) * i) +
-                         ((NDArray_STRIDES(rtn)[2] / elsize) * j);
-            offset_green = ((NDArray_STRIDES(rtn)[0] / elsize) * 1) +
-                           ((NDArray_STRIDES(rtn)[1] / elsize) * i) +
-                           ((NDArray_STRIDES(rtn)[2] / elsize) * j);
-            offset_blue = ((NDArray_STRIDES(rtn)[0] / elsize) * 2) +
-                          ((NDArray_STRIDES(rtn)[1] / elsize) * i) +
-                          ((NDArray_STRIDES(rtn)[2] / elsize) * j);
-
-            __m256i color_indices = _mm256_loadu_si256((__m256i*)&img_ptr->tpixels[i][j]);
-            __m256i red_shifted = _mm256_and_si256(_mm256_srli_epi32(color_indices, 16), red_mask);
-            __m256i green_shifted = _mm256_and_si256(_mm256_srli_epi32(color_indices, 8), red_mask);
-            __m256i blue_shifted = _mm256_and_si256(color_indices, red_mask);
-
-            _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_red], _mm256_cvtepi32_ps(red_shifted));
-            _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_green], _mm256_cvtepi32_ps(green_shifted));
-            _mm256_storeu_ps(&NDArray_FDATA(rtn)[offset_blue], _mm256_cvtepi32_ps(blue_shifted));
-        }
-        for (; j < img_ptr->sx; j++) {
-            offset_red = (NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn) * 0) +
-                         ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                         ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            offset_green = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 1) +
-                           ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                           ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            offset_blue = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 2) +
-                          ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                          ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            color_index = img_ptr->tpixels[i][j];
-            red = (color_index >> 16) & 0xFF;
-            green = (color_index >> 8) & 0xFF;
-            blue = color_index & 0xFF;
-            NDArray_FDATA(rtn)[offset_red] = (float)red;
-            NDArray_FDATA(rtn)[offset_blue] = (float)blue;
-            NDArray_FDATA(rtn)[offset_green] = (float)green;
+        for (j = 0; j < img_ptr->sx; j++) {
+            if (img_ptr->trueColor) {
+                if (!channel_last) {
+                    offset_red = (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn) * 0) +
+                                 ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                 ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * j);
+                    offset_green = ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * 1) +
+                                   ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                   ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * j);
+                    offset_blue = ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * 2) +
+                                  ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                  ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * j);
+                } else {
+                    offset_red = (NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn) * 0) +
+                                ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * j);
+                    offset_green = ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * 1) +
+                                   ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                   ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * j);
+                    offset_blue = ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * 2) +
+                                  ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * i) +
+                                  ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * j);
+                }
+                color_index = img_ptr->tpixels[i][j];
+                red = (color_index >> 16) & 0xFF;
+                green = (color_index >> 8) & 0xFF;
+                blue = color_index & 0xFF;
+                NDArray_FDATA(rtn)[offset_red] = (float) red;
+                NDArray_FDATA(rtn)[offset_blue] = (float) blue;
+                NDArray_FDATA(rtn)[offset_green] = (float) green;
+            } else {
+                if (!channel_last) {
+                    offset_red = (NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn) * 0) +
+                                 ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                 ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * i);
+                    offset_green = ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * 1) +
+                                   ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                   ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * i);
+                    offset_blue = ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * 2) +
+                                  ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                  ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * i);
+                } else {
+                    offset_red = (NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn) * 0) +
+                                 ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                 ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * i);
+                    offset_green = ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * 1) +
+                                   ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                   ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * i);
+                    offset_blue = ((NDArray_STRIDES(rtn)[2] / NDArray_ELSIZE(rtn)) * 2) +
+                                  ((NDArray_STRIDES(rtn)[1] / NDArray_ELSIZE(rtn)) * j) +
+                                  ((NDArray_STRIDES(rtn)[0] / NDArray_ELSIZE(rtn)) * i);
+                }
+                color_index = gdImagePalettePixel(img_ptr, i, j);
+                red = img_ptr->red[color_index];
+                green = img_ptr->green[color_index];
+                blue = img_ptr->blue[color_index];
+                NDArray_FDATA(rtn)[offset_red] = (float) red;
+                NDArray_FDATA(rtn)[offset_blue] = (float) blue;
+                NDArray_FDATA(rtn)[offset_green] = (float) green;
+            }
         }
     }
-#else
-    for (int i = 0; i < img_ptr->sy; i++) {
-        for (int j = 0; j < img_ptr->sx; j++) {
-            offset_red = (NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn) * 0) +
-                         ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                         ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            offset_green = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 1) +
-                           ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                           ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            offset_blue = ((NDArray_STRIDES(rtn)[0]/ NDArray_ELSIZE(rtn)) * 2) +
-                          ((NDArray_STRIDES(rtn)[1]/ NDArray_ELSIZE(rtn)) * i) +
-                          ((NDArray_STRIDES(rtn)[2]/ NDArray_ELSIZE(rtn)) * j);
-            color_index = img_ptr->tpixels[i][j];
-            red = (color_index >> 16) & 0xFF;
-            green = (color_index >> 8) & 0xFF;
-            blue = color_index & 0xFF;
-            NDArray_FDATA(rtn)[offset_red] = (float)red;
-            NDArray_FDATA(rtn)[offset_blue] = (float)blue;
-            NDArray_FDATA(rtn)[offset_green] = (float)green;
-        }
-    }
-#endif
     return rtn;
 }
 
@@ -235,20 +244,20 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
                                                 blue_int);
             }
 
-            _mm256_storeu_si256((__m256i*)&im->tpixels[i][j], color_indices);
+            _mm256_storeu_si256((__m256i *) &im->tpixels[i][j], color_indices);
         }
         for (; j < im->sx; j++) {
-            offset_alpha = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * i) +
-                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * j);
-            offset_red = (NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a) * 0) +
-                         ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
-                         ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
-            offset_green = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 1) +
-                           ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
-                           ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
-            offset_blue = ((NDArray_STRIDES(a)[0]/ NDArray_ELSIZE(a)) * 2) +
-                          ((NDArray_STRIDES(a)[1]/ NDArray_ELSIZE(a)) * i) +
-                          ((NDArray_STRIDES(a)[2]/ NDArray_ELSIZE(a)) * j);
+            offset_alpha = (NDArray_STRIDES(a)[0] / NDArray_ELSIZE(a) * i) +
+                           ((NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a)) * j);
+            offset_red = (NDArray_STRIDES(a)[0] / NDArray_ELSIZE(a) * 0) +
+                         ((NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a)) * i) +
+                         ((NDArray_STRIDES(a)[2] / NDArray_ELSIZE(a)) * j);
+            offset_green = ((NDArray_STRIDES(a)[0] / NDArray_ELSIZE(a)) * 1) +
+                           ((NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a)) * i) +
+                           ((NDArray_STRIDES(a)[2] / NDArray_ELSIZE(a)) * j);
+            offset_blue = ((NDArray_STRIDES(a)[0] / NDArray_ELSIZE(a)) * 2) +
+                          ((NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a)) * i) +
+                          ((NDArray_STRIDES(a)[2] / NDArray_ELSIZE(a)) * j);
             red = NDArray_FDATA(a)[offset_red];
             blue = NDArray_FDATA(a)[offset_blue];
             green = NDArray_FDATA(a)[offset_green];
@@ -293,19 +302,19 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
 
 #endif
 
-void apply_reduce(NDArray* result, NDArray *target, NDArray* (*operation)(NDArray*, NDArray*)) {
-    NDArray* temp = operation(result, target);
+void apply_reduce(NDArray *result, NDArray *target, NDArray *(*operation)(NDArray *, NDArray *)) {
+    NDArray *temp = operation(result, target);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
         memcpy(result->data, temp->data, result->descriptor->numElements * sizeof(float));
     } else {
 #ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_DATA(temp), NDArray_DATA(result), result->descriptor->numElements * sizeof(float ));
+        NDArray_VMEMCPY_D2D(NDArray_DATA(temp), NDArray_DATA(result), result->descriptor->numElements * sizeof(float));
 #endif
     }
     NDArray_FREE(temp);
 }
 
-void apply_single_reduce(NDArray* result, NDArray *target, float (*operation)(NDArray*)) {
+void apply_single_reduce(NDArray *result, NDArray *target, float (*operation)(NDArray *)) {
     float temp;
     float temp2;
     float tmp_result;
@@ -330,11 +339,12 @@ void apply_single_reduce(NDArray* result, NDArray *target, float (*operation)(ND
     }
 }
 
-void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray* rtn, NDArray* (*operation)(NDArray*, NDArray*)) {
-    NDArray* slice;
-    NDArray* rtn_slice;
+void _reduce(int current_axis, int rtn_init, int *axis, NDArray *target, NDArray *rtn,
+             NDArray *(*operation)(NDArray *, NDArray *)) {
+    NDArray *slice;
+    NDArray *rtn_slice;
     NDArrayIterator_REWIND(target);
-    while(!NDArrayIterator_ISDONE(target)) {
+    while (!NDArrayIterator_ISDONE(target)) {
         slice = NDArrayIterator_GET(target);
         if (axis != NULL && current_axis < *axis) {
             rtn_slice = NDArrayIterator_GET(rtn);
@@ -352,7 +362,8 @@ void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray
             }
 #ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(rtn) == NDARRAY_DEVICE_GPU) {
-                NDArray_VMEMCPY_D2D(NDArray_DATA(slice), NDArray_DATA(rtn), rtn->descriptor->numElements * sizeof(float));
+                NDArray_VMEMCPY_D2D(NDArray_DATA(slice), NDArray_DATA(rtn),
+                                    rtn->descriptor->numElements * sizeof(float));
             }
 #endif
             NDArrayIterator_NEXT(target);
@@ -365,12 +376,13 @@ void _reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray
     }
 }
 
-void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, NDArray* rtn, float (*operation)(NDArray*)) {
-    NDArray* slice;
-    NDArray* rtn_slice;
+void _single_reduce(int current_axis, int rtn_init, int *axis, NDArray *target, NDArray *rtn,
+                    float (*operation)(NDArray *)) {
+    NDArray *slice;
+    NDArray *rtn_slice;
     NDArrayIterator_REWIND(target);
 
-    while(!NDArrayIterator_ISDONE(target)) {
+    while (!NDArrayIterator_ISDONE(target)) {
         slice = NDArrayIterator_GET(target);
         if (axis != NULL && current_axis < *axis) {
             rtn_slice = NDArrayIterator_GET(rtn);
@@ -397,9 +409,9 @@ void _single_reduce(int current_axis, int rtn_init, int* axis, NDArray* target, 
  * @param axis
  * @return
  */
-NDArray*
-single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
-    char* exception_buffer[256];
+NDArray *
+single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *)) {
+    char *exception_buffer[256];
     int null_axis = 0;
 
     if (axis == NULL) {
@@ -432,7 +444,7 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
     }
 
     out_ndim = out_dim;
-    int* out_shape = emalloc(sizeof(int) * out_ndim);
+    int *out_shape = emalloc(sizeof(int) * out_ndim);
 
     if (axis != NULL) {
         int j = 0;
@@ -453,7 +465,7 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
     }
 
     // Allocate memory for the reduced buffer
-    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
+    NDArray *rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
     //if (reduced_buffer == NULL) {
     //    fprintf(stderr, "Memory allocation failed.\n");
     //    return;
@@ -472,9 +484,9 @@ single_reduce(NDArray* array, int* axis, float (*operation)(NDArray*)) {
  * @param axis
  * @return
  */
-NDArray*
-reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
-    char* exception_buffer[256];
+NDArray *
+reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *)) {
+    char *exception_buffer[256];
     int null_axis = 0;
 
     if (axis == NULL) {
@@ -507,7 +519,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     }
 
     out_ndim = out_dim;
-    int* out_shape = emalloc(sizeof(int) * out_ndim);
+    int *out_shape = emalloc(sizeof(int) * out_ndim);
 
     if (axis != NULL) {
         int j = 0;
@@ -528,7 +540,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
     }
 
     // Allocate memory for the reduced buffer
-    NDArray* rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
+    NDArray *rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
 
     //if (reduced_buffer == NULL) {
     //    fprintf(stderr, "Memory allocation failed.\n");
@@ -550,7 +562,7 @@ reduce(NDArray* array, int* axis, NDArray* (*operation)(NDArray*, NDArray*)) {
  * @param array
  */
 void
-NDArray_FREE(NDArray* array) {
+NDArray_FREE(NDArray *array) {
     if (array == NULL || array->refcount == -1) {
         return;
     }
@@ -641,24 +653,13 @@ NDArray_Print(NDArray *array, int do_return) {
 }
 
 /**
- * NDArray Reduce
- *
- * @param array
- * @return
- */
-NDArray*
-NDArray_Reduce(NDArray *array, int axis, char* function) {
-
-}
-
-/**
  * Compare two NDArrays
  *
  * @param a
  * @param b
  * @return
  */
-NDArray*
+NDArray *
 NDArray_Compare(NDArray *a, NDArray *b) {
     int i;
     int *rtn_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
@@ -673,7 +674,7 @@ NDArray_Compare(NDArray *a, NDArray *b) {
 
     // Check if arrays are equal
     for (i = 0; i < NDArray_NDIM(a); i++) {
-        if(NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
+        if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
             zend_throw_error(NULL, "Can't compare two different shape arrays");
             return NULL;
         }
@@ -682,7 +683,7 @@ NDArray_Compare(NDArray *a, NDArray *b) {
 #ifdef HAVE_AVX2
     NDArrayIterator_REWIND(a);
     NDArrayIterator_REWIND(b);
-    while(!NDArrayIterator_ISDONE(a)) {
+    while (!NDArrayIterator_ISDONE(a)) {
         NDArrayIterator_NEXT(a);
         NDArrayIterator_NEXT(b);
     }
@@ -696,7 +697,7 @@ NDArray_Compare(NDArray *a, NDArray *b) {
  * Check whether the given array is stored contiguously
  **/
 static void
-_UpdateContiguousFlags(NDArray * array) {
+_UpdateContiguousFlags(NDArray *array) {
     int sd;
     int dim;
     int i;
@@ -736,7 +737,7 @@ NDArray_UpdateFlags(NDArray *array, int flagmask) {
 /**
  * @param array
  */
-NDArray*
+NDArray *
 NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
     NDArray *rtn;
     int i;
@@ -753,7 +754,7 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
 /**
  * @param array
  */
-NDArray*
+NDArray *
 NDArray_Map1F(NDArray *array, ElementWiseFloatOperation1F op, float val1) {
     NDArray *rtn;
     int i;
@@ -770,7 +771,7 @@ NDArray_Map1F(NDArray *array, ElementWiseFloatOperation1F op, float val1) {
 /**
  * @param array
  */
-NDArray*
+NDArray *
 NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float val2) {
     NDArray *rtn;
     int i;
@@ -792,7 +793,7 @@ NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float 
  */
 float
 NDArray_Min(NDArray *target) {
-    float* array = NDArray_FDATA(target);
+    float *array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
     float min = 0.f;
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
@@ -819,13 +820,8 @@ NDArray_Min(NDArray *target) {
  * @param axis
  * @return
  */
-NDArray*
-NDArray_MaxAxis(NDArray* target, int axis) {
-    if (NDArray_NDIM(target) > 2) {
-        zend_throw_error(NULL, "NDArray_MaxAxis not implemented for tensors > 2D");
-        return NULL;
-    }
-
+NDArray *
+NDArray_MaxAxis(NDArray *target, int axis) {
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
         zend_throw_error(NULL, "GPU NDArray_MaxAxis not implemented");
         return NULL;
@@ -875,7 +871,7 @@ NDArray_MaxAxis(NDArray* target, int axis) {
             if (NDArray_NDIM(target) - 1 == axis) {
                 axis_first_element_index = i * (NDArray_STRIDES(target)[axis - 1] / NDArray_ELSIZE(target));
             } else {
-                axis_first_element_index = i * (NDArray_STRIDES(target)[axis + 1] / NDArray_ELSIZE(target));
+                axis_first_element_index = i * (NDArray_STRIDES(target)[NDArray_NDIM(target) + 1] / NDArray_ELSIZE(target));
             }
             NDArray_FDATA(rtn)[i] = NDArray_FDATA(target)[axis_first_element_index];
             for (j = 1; j < axis_size; j++) {
@@ -889,12 +885,13 @@ NDArray_MaxAxis(NDArray* target, int axis) {
     return rtn;
 }
 
+
 /**
  * @param a
  * @param b
  * @return
  */
-NDArray*
+NDArray *
 NDArray_Maximum(NDArray *a, NDArray *b) {
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
         zend_throw_error(NULL, "NDArray_Maximum not implemented for GPU");
@@ -921,7 +918,7 @@ NDArray_Maximum(NDArray *a, NDArray *b) {
         return NULL;
     }
 
-    NDArray* rtn = NDArray_EmptyLike(a_broad);
+    NDArray *rtn = NDArray_EmptyLike(a_broad);
     for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a_broad)[i], NDArray_FDATA(b_broad)[i]);
     }
@@ -941,7 +938,7 @@ NDArray_Maximum(NDArray *a, NDArray *b) {
 float
 NDArray_Max(NDArray *target) {
     float max = 0.f;
-    float* array = NDArray_FDATA(target);
+    float *array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
@@ -968,7 +965,7 @@ NDArray_Max(NDArray *target) {
  * @return
  */
 zval
-convertToStridedArrayToPHPArray(float* data, int* strides, int* dimensions, int ndim, int elsize) {
+convertToStridedArrayToPHPArray(float *data, int *strides, int *dimensions, int ndim, int elsize) {
     zval phpArray;
     int i;
 
@@ -983,9 +980,9 @@ convertToStridedArrayToPHPArray(float* data, int* strides, int* dimensions, int 
             zval subArray;
 
             // Calculate the pointer and strides for the sub-array
-            float* subData = data + (i * (strides[0]/elsize));
-            int* subStrides = strides + 1;
-            int* subDimensions = dimensions + 1;
+            float *subData = data + (i * (strides[0] / elsize));
+            int *subStrides = strides + 1;
+            int *subDimensions = dimensions + 1;
 
             // Convert the sub-array to a PHP array
             subArray = convertToStridedArrayToPHPArray(subData, subStrides, subDimensions, ndim - 1, elsize);
@@ -995,7 +992,7 @@ convertToStridedArrayToPHPArray(float* data, int* strides, int* dimensions, int 
         } else {
             //printf("\nNDIM: %d\n", *strides);
             // Add the scalar values to the main array
-            add_index_double(&phpArray, i, *(data + (i * (*strides/elsize))));
+            add_index_double(&phpArray, i, *(data + (i * (*strides / elsize))));
         }
     }
     return phpArray;
@@ -1010,7 +1007,7 @@ zval
 NDArray_ToPHPArray(NDArray *target) {
     zval phpArray;
     phpArray = convertToStridedArrayToPHPArray(NDArray_FDATA(target), NDArray_STRIDES(target),
-               NDArray_SHAPE(target), NDArray_NDIM(target), NDArray_ELSIZE(target));
+                                               NDArray_SHAPE(target), NDArray_NDIM(target), NDArray_ELSIZE(target));
     return phpArray;
 }
 
@@ -1018,7 +1015,7 @@ NDArray_ToPHPArray(NDArray *target) {
  * @param nda
  * @return
  */
-int*
+int *
 NDArray_ToIntVector(NDArray *nda) {
     double *tmp_val = emalloc(sizeof(float));
     int *vector = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
@@ -1041,7 +1038,7 @@ NDArray_ToIntVector(NDArray *nda) {
  *
  * @param target
  */
-NDArray*
+NDArray *
 NDArray_ToGPU(NDArray *target) {
 #ifdef HAVE_CUBLAS
     float *tmp_gpu;
@@ -1066,7 +1063,7 @@ NDArray_ToGPU(NDArray *target) {
         return NULL;
     }
     efree(rtn->data);
-    rtn->data = (char*)tmp_gpu;
+    rtn->data = (char *) tmp_gpu;
     return rtn;
 #else
     zend_throw_error(NULL, "Unable to detect a compatible device.");
@@ -1079,7 +1076,7 @@ NDArray_ToGPU(NDArray *target) {
  *
  * @param target
  */
-NDArray*
+NDArray *
 NDArray_ToCPU(NDArray *target) {
     int *new_shape;
     int n_ndim = NDArray_NDIM(target);
@@ -1112,7 +1109,7 @@ NDArray_ShapeCompare(NDArray *a, NDArray *b) {
         return 0;
     }
 
-    for(int i = 0; i < NDArray_NDIM(a); i++) {
+    for (int i = 0; i < NDArray_NDIM(a); i++) {
         if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
             return 0;
         }
@@ -1129,7 +1126,7 @@ NDArray_ShapeCompare(NDArray *a, NDArray *b) {
  * @return
  */
 int
-NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
+NDArray_IsBroadcastable(const NDArray *array1, const NDArray *array2) {
     if (NDArray_NDIM(array1) == 1 && NDArray_NDIM(array2) > 1) {
         if (NDArray_SHAPE(array1)[0] == NDArray_SHAPE(array2)[NDArray_NDIM(array2) - 1]) {
             return 1;
@@ -1176,17 +1173,13 @@ NDArray_IsBroadcastable(const NDArray* array1, const NDArray* array2) {
  * @param b
  * @return
  */
-NDArray*
+NDArray *
 NDArray_Broadcast(NDArray *a, NDArray *b) {
     int i;
     NDArray *src, *dst, *rtn;
     src = a;
     dst = b;
     char *tmp_p;
-    if (NDArray_NDIM(a) > 2 || NDArray_NDIM(b) > 2) {
-        zend_throw_error(NULL, "Broadcast shape mismatch.");
-        return NULL;
-    }
     if (NDArray_NDIM(a) == NDArray_NDIM(b)) {
         int all_equal = 1;
         for (i = 0; i < NDArray_NDIM(a); i++) {
@@ -1259,16 +1252,20 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                 if (NDArray_NUMELEMENTS(src) != 1) {
                     for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                         for (j = 0; j < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]; j++) {
-                            tmp_p = (char*)(NDArray_FDATA(src) + i);
-                            rtn_p = (char*)(NDArray_FDATA(rtn) + (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2]/ NDArray_ELSIZE(rtn))+j);
+                            tmp_p = (char *) (NDArray_FDATA(src) + i);
+                            rtn_p = (char *) (NDArray_FDATA(rtn) +
+                                              (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) +
+                                              j);
                             NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
                         }
                     }
                 } else {
                     for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
                         for (j = 0; j < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]; j++) {
-                            tmp_p = (char*)(NDArray_FDATA(src));
-                            rtn_p = (char*)(NDArray_FDATA(rtn) + (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2]/ NDArray_ELSIZE(rtn))+j);
+                            tmp_p = (char *) (NDArray_FDATA(src));
+                            rtn_p = (char *) (NDArray_FDATA(rtn) +
+                                              (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) +
+                                              j);
                             NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
                         }
                     }

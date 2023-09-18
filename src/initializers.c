@@ -791,7 +791,7 @@ NDArray_Arange(double start, double stop, double step) {
 }
 
 NDArray*
-NDArray_Binominal(int *shape, int ndim, int n, float p) {
+NDArray_Binomial(int *shape, int ndim, int n, float p) {
     // Calculate the total number of elements in the output array
     int total_elements = 1;
     for (int i = 0; i < ndim; i++) {
@@ -812,4 +812,58 @@ NDArray_Binominal(int *shape, int ndim, int n, float p) {
         NDArray_FDATA(rtn)[i] = (float)successes;
     }
     return rtn;
+}
+
+/**
+ * Create NDArray from pre-allocated data.
+ *
+ * @param data
+ * @param ndim
+ * @param shape
+ * @param device
+ * @param type
+ * @return
+ */
+NDArray*
+NDArray_Create(char *data, int ndim, int *shape, int device, const char* type) {
+    NDArray *rtn;
+
+    int *strides = emalloc(sizeof(int) * ndim);
+    int num_elements = 1;
+    for (int i = 0; i < ndim; i++) {
+        num_elements = num_elements * shape[i];
+        strides[i] = shape[i] * sizeof(float);
+    }
+
+    if (device == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+        rtn = emalloc(sizeof(NDArray));
+        rtn->dimensions = shape;
+        rtn->strides = strides;
+        rtn->device = NDARRAY_DEVICE_GPU;
+        rtn->refcount = 1;
+        rtn->flags = 0;
+        rtn->base = NULL;
+        rtn->ndim = ndim;
+        rtn->data = data;
+        rtn->descriptor = Create_Descriptor(num_elements, sizeof(float), type);
+        NDArrayIterator_INIT(rtn);
+        return rtn;
+#else
+        return NULL;
+#endif
+    } else {
+        rtn = emalloc(sizeof(NDArray));
+        rtn->dimensions = shape;
+        rtn->strides = strides;
+        rtn->device = NDARRAY_DEVICE_CPU;
+        rtn->refcount = 1;
+        rtn->flags = 0;
+        rtn->ndim = ndim;
+        rtn->base = NULL;
+        rtn->data = data;
+        rtn->descriptor = Create_Descriptor(num_elements, sizeof(float), type);
+        NDArrayIterator_INIT(rtn);
+        return rtn;
+    }
 }

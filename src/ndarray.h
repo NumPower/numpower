@@ -7,6 +7,7 @@ extern "C" {
 
 #include "stddef.h"
 #include <Zend/zend_types.h>
+#include <stdbool.h>
 
 #define NDARRAY_ARRAY_C_CONTIGUOUS    0x0001
 #define NDARRAY_ARRAY_F_CONTIGUOUS    0x0002
@@ -131,7 +132,7 @@ int NDArray_IsBroadcastable(const NDArray *arr1, const NDArray *arr2);
 float NDArray_GetFloatScalar(NDArray *a);
 void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);
-NDArray * NDArray_FromGD(zval *a);
+NDArray* NDArray_FromGD(zval *a, bool channel_last);
 void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
 #ifdef __cplusplus
 }

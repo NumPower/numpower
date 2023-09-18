@@ -23,6 +23,7 @@
 #include "src/types.h"
 #include "src/indexing.h"
 #include "src/ndmath/statistics.h"
+#include "src/ndmath/signal.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -71,7 +72,7 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
 #ifdef HAVE_GD
         /* Check if the zend_object class name is "GdImage" */
         if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
-            return NDArray_FromGD(obj);
+            return NDArray_FromGD(obj, false);
         }
 #endif
     }
@@ -819,17 +820,17 @@ PHP_METHOD(NDArray, normal) {
 }
 
 /**
- * NDArray::random_binominal
+ * NDArray::random_binomial
  *
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_binominal, 0, 0, 3)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_binomial, 0, 0, 3)
     ZEND_ARG_INFO(0, shape)
     ZEND_ARG_INFO(0, p)
     ZEND_ARG_INFO(0, n)
 ZEND_END_ARG_INFO()
-PHP_METHOD(NDArray, random_binominal) {
+PHP_METHOD(NDArray, random_binomial) {
     NDArray *rtn = NULL;
     int *ishape;
     zval* shape;
@@ -845,7 +846,7 @@ PHP_METHOD(NDArray, random_binominal) {
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
         ishape[i] = (int) NDArray_FDATA(nda)[i];
     }
-    rtn = NDArray_Binominal(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
+    rtn = NDArray_Binomial(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }
@@ -1843,6 +1844,29 @@ PHP_METHOD(NDArray, arccosh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::fromImage
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_fromimage, 0, 0, 1)
+    ZEND_ARG_INFO(0, image)
+    ZEND_ARG_INFO(0, channelLast)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, fromImage) {
+    NDArray *rtn = NULL;
+    zval *image;
+    bool channelLast = true;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ZVAL(image)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_BOOL(channelLast)
+    ZEND_PARSE_PARAMETERS_END();
+    rtn = NDArray_FromGD(image, channelLast);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3476,7 +3500,7 @@ PHP_METHOD(NDArray, matrix_rank) {
 /**
  * NDArray::convolve2d
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_convolve2d, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_convolve2d, 4, 0, 1)
 ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, b)
 ZEND_ARG_INFO(0, mode)
@@ -3489,6 +3513,7 @@ PHP_METHOD(NDArray, convolve2d) {
     char *mode, *boundary;
     double fill_value = 0.0f;
     size_t size = 1;
+    int imode = 0, iboundary = 0;
     ZEND_PARSE_PARAMETERS_START(4, 5)
     Z_PARAM_ZVAL(a)
     Z_PARAM_ZVAL(b)
@@ -3502,7 +3527,90 @@ PHP_METHOD(NDArray, convolve2d) {
     if (nda == NULL || ndb == NULL) {
         return;
     }
-    rtn = NDArray_Convolve2D(nda, ndb, mode[0], boundary[0], (float)fill_value);
+    switch(mode[0]) {
+        case 'v':
+            imode = VALID;
+            break;
+        case 's':
+            imode = SAME;
+            break;
+        case 'f':
+            imode = FULL;
+            break;
+    }
+    switch(boundary[0]) {
+        case 'f':
+            iboundary = PAD;
+            break;
+        case 'w':
+            iboundary = CIRCULAR;
+            break;
+        case 's':
+            iboundary = REFLECT;
+            break;
+    }
+    rtn = NDArray_Correlate2D(nda, ndb, imode, iboundary, NULL, 1);
+    if (rtn == NULL) {
+        return;
+    }
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::correlate2d
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_correlate2d, 4, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+    ZEND_ARG_INFO(0, mode)
+    ZEND_ARG_INFO(0, boundary)
+    ZEND_ARG_INFO(0, fill_value)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, correlate2d) {
+    NDArray *rtn;
+    zval *a, *b;
+    char *mode, *boundary;
+    double fill_value = 0.0f;
+    size_t size = 1;
+    int imode = 0, iboundary = 0;
+    ZEND_PARSE_PARAMETERS_START(4, 5)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
+        Z_PARAM_STRING(mode, size)
+        Z_PARAM_STRING(boundary, size)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_DOUBLE(fill_value)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL || ndb == NULL) {
+        return;
+    }
+    switch(mode[0]) {
+        case 'v':
+            imode = VALID;
+            break;
+        case 's':
+            imode = SAME;
+            break;
+        case 'f':
+            imode = FULL;
+            break;
+    }
+    switch(boundary[0]) {
+        case 'f':
+            iboundary = PAD;
+            break;
+        case 'w':
+            iboundary = CIRCULAR;
+            break;
+        case 's':
+            iboundary = REFLECT;
+            break;
+    }
+    rtn = NDArray_Correlate2D(nda, ndb, imode, iboundary, NULL, 0);
     if (rtn == NULL) {
         return;
     }
@@ -4089,13 +4197,14 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, full, arginfo_ndarray_full, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, fill, arginfo_fill, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, array, arginfo_ndarray_array, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, fromImage, arginfo_ndarray_fromimage, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // RANDOM
     ZEND_ME(NDArray, normal, arginfo_ndarray_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, standard_normal, arginfo_ndarray_standard_normal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, poisson, arginfo_ndarray_poisson, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, uniform, arginfo_ndarray_uniform, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
-    ZEND_ME(NDArray, random_binominal, arginfo_ndarray_binominal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, random_binomial, arginfo_ndarray_binomial, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LINALG
     ZEND_ME(NDArray, matmul, arginfo_ndarray_matmul, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4116,6 +4225,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, lu, arginfo_ndarray_lu, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, matrix_rank, arginfo_ndarray_matrix_rank, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, convolve2d, arginfo_ndarray_convolve2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, correlate2d, arginfo_ndarray_correlate2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LOGIC
     ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4246,9 +4356,9 @@ PHP_MSHUTDOWN_FUNCTION(ndarray) {
 }
 
 PHP_RSHUTDOWN_FUNCTION(ndarray) {
-    char *envvar = "NDARRAY_FREEBUFFER";
+    char *envvar = "NDARRAY_BUFFERLEAK";
     char *envvar_vcheck = "NDARRAY_VCHECK";
-    if(getenv(envvar)) {
+    if(!getenv(envvar)) {
         buffer_free();
     }
 #ifdef HAVE_CUBLAS
