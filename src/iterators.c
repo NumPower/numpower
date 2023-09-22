@@ -121,57 +121,35 @@ NDArrayIterator_FREE(NDArray* array) {
     }
 }
 
-/**
- * Initialize Axis Iterator
- *
- * @param array
- * @return
- */
-NDArrayAxisIterator*
-NDArrayAxisIterator_INIT(NDArray *array, int axis) {
-    NDArrayAxisIterator *it;
-    it = emalloc(sizeof(NDArrayAxisIterator));
-    it->array = array;
-    it->axis = axis;
-    it->current_index = 0;
+NDArrayIter*
+NDArray_NewElementWiseIter(NDArray *target) {
+    NDArrayIter *it;
+    int i, nd;
+    NDArray *ao = target;
+
+    it = emalloc(sizeof(NDArrayIter));
+    if (it == NULL) {
+        return NULL;
+    }
+
+    nd = NDArray_NDIM(ao);
+    it->contiguous = 1;
+    if (NDArray_CHKFLAGS(target, NDARRAY_ARRAY_F_CONTIGUOUS)) {
+        it->contiguous = 0;
+    }
+    it->ao = ao;
+    it->size = NDArray_NUMELEMENTS(ao);
+    it->nd_m1 = nd - 1;
+    it->factors[nd-1] = 1;
+    for (i = 0; i < nd; i++) {
+        it->dims_m1[i] = NDArray_SHAPE(it->ao)[i] - 1;
+        it->strides[i] = NDArray_STRIDES(it->ao)[i];
+        it->backstrides[i] = it->strides[i] * it->dims_m1[i];
+        if (i > 0) {
+            it->factors[nd-i-1] = it->factors[nd-i] * it->ao->dimensions[nd-i];
+        }
+    }
+    NDArray_ITER_RESET(it);
     return it;
 }
 
-int
-NDArrayAxisIterator_ISDONE(NDArrayAxisIterator *it) {
-    if (it->current_index < NDArray_SHAPE(it->array)[it->axis]) {
-        return 0;
-    }
-    return 1;
-}
-
-void
-NDArrayAxisIterator_REWIND(NDArrayAxisIterator *it) {
-    it->current_index = 0;
-}
-
-void
-NDArrayAxisIterator_NEXT(NDArrayAxisIterator *it) {
-    it->current_index = it->current_index + 1;
-}
-
-NDArray*
-NDArrayAxisIterator_GET(NDArrayAxisIterator *it) {
-    int new_ndim = NDArray_NDIM(it->array) - 1;
-    int *new_shape = emalloc(sizeof(int) * (NDArray_NDIM(it->array) - 1));
-    int *new_strides = emalloc(sizeof(int) * (NDArray_NDIM(it->array) - 1));
-    if ((NDArray_NDIM(it->array) - 1) > 0) {
-        for(int i = 0; i < (NDArray_NDIM(it->array) - 1); i++) {
-            new_shape[i] = NDArray_SHAPE(it->array)[i + 1];
-            new_strides[i] = NDArray_STRIDES(it->array)[(NDArray_NDIM(it->array) - 1) - i];
-            new_strides[0] = NDArray_STRIDES(it->array)[it->axis];
-        }
-    }
-    return NDArray_FromNDArray(it->array, it->current_index * NDArray_STRIDES(it->array)[it->axis + 1], new_shape, new_strides,
-                               &new_ndim);
-}
-
-void
-NDArrayAxisIterator_FREE(NDArrayAxisIterator *it) {
-    efree(it);
-}

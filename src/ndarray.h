@@ -9,11 +9,13 @@ extern "C" {
 #include <Zend/zend_types.h>
 #include <stdbool.h>
 
+#define NDARRAY_MAX_DIMS 128
 #define NDARRAY_ARRAY_C_CONTIGUOUS    0x0001
 #define NDARRAY_ARRAY_F_CONTIGUOUS    0x0002
 
 #define NDARRAY_UNLIKELY(x) (x)
 #define NDArray_DATA(a) ((void *)((a)->data))
+#define NDArray_DESCRIPTOR(a) ((NDArrayDescriptor *)((a)->descriptor))
 #define NDArray_DDATA(a) ((double *)((a)->data))
 #define NDArray_FDATA(a) ((float *)((a)->data))
 #define NDArray_NDIM(a) ((int)((a)->ndim))
@@ -103,6 +105,12 @@ NDArray_ENABLEFLAGS(NDArray * arr, int flags) {
     (arr)->flags |= flags;
 }
 
+static inline int
+NDArray_CHKFLAGS(const NDArray *arr, int flags)
+{
+    return ((arr)->flags & flags) == flags;
+}
+
 /*
  * Clears the specified array flags. Does no checking,
  * assumes you know what you're doing.
@@ -134,6 +142,7 @@ void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);
 NDArray* NDArray_FromGD(zval *a, bool channel_last);
 void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
+int NDArray_CompareList(int const *l1, int const *l2, int n);
 #ifdef __cplusplus
 }
 #endif

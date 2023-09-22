@@ -12,5 +12,5 @@ NDArray* NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int r
 void *linearize_FLOAT_matrix(float *dst_in, float *src_in, NDArray * a);
 NDArray* NDArray_Append(NDArray *a, NDArray *b);
 NDArray* NDArray_ExpandDim(NDArray *a, int axis);
-
+NDArray* NDArray_ToContiguous(NDArray *a);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H

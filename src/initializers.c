@@ -249,7 +249,6 @@ NDArray* Create_NDArray_FromZval(zval* php_object) {
  */
 NDArray*
 Create_NDArray(int* shape, int ndim, const char* type, const int device) {
-    char* new_buffer;
     NDArray* rtn;
     NDArrayDescriptor* descriptor;
     int type_size = get_type_size(type);

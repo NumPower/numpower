@@ -8,6 +8,7 @@
 #include "buffer.h"
 #include "types.h"
 #include <cblas.h>
+#include "iterators.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -56,37 +57,29 @@ transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
  * @param permute
  * @return
  */
-/**
- * @param a
- * @param permute
- * @return
- */
 NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
     NDArray *ret = NULL;
-
+    NDArray *contiguous_ret = NULL;
     if (NDArray_NDIM(a) < 2) {
         int ndim = NDArray_NDIM(a);
         return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
     }
 
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+    int *new_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
     reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
-    ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+    reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
 
-    // @todo Implement N-dimensinal permutation
-    if (NDArray_NDIM(a) != 2) {
-        zend_throw_error(NULL, "must be a 2-d array");
-        return NULL;
-    }
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        cuda_float_transpose(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
-#endif
-    } else {
-        transposeMatrixFloat(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
-    }
-    return ret;
+    ret = NDArray_Copy(a, NDArray_DEVICE(a));
+    efree(ret->strides);
+    efree(ret->dimensions);
+    ret->strides = new_strides;
+    ret->dimensions = new_shape;
+    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+    contiguous_ret = NDArray_ToContiguous(ret);
+    NDArray_FREE(ret);
+    return contiguous_ret;
 }
 
 /**
@@ -190,11 +183,6 @@ linearize_FLOAT_matrix(float *dst_in,
                 }
             } else {
                 if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-                    /*
-                     * Zero stride has undefined behavior in some BLAS
-                     * implementations (e.g. OSX Accelerate), so do it
-                     * manually
-                     */
                     for (j = 0; j < columns; ++j) {
                         memcpy((float *) dst + j, (float *) src, sizeof(float));
                     }
@@ -289,6 +277,10 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_vie
         NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
     }
 #endif
+    linearize_FLOAT_matrix(rtn_data, NDArray_FDATA(slice), slice);
+    slice->data = (char*)rtn_data;
+    slice->strides = Generate_Strides(slice_shape, slice_ndim, NDArray_ELSIZE(slice));
+    slice->base = NULL;
     NDArray_FREE(array);
     efree(slice_strides);
     return slice;
@@ -333,6 +325,40 @@ NDArray_Append(NDArray *a, NDArray *b) {
     return rtn;
 }
 
+/**
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_ToContiguous(NDArray *a) {
+    float *val;
+    NDArray *ret = NDArray_EmptyLike(a);
+    efree(ret->strides);
+    ret->strides = Generate_Strides(NDArray_SHAPE(a), NDArray_NDIM(a), NDArray_ELSIZE(a));
+
+    int i = 0, index;
+    int elsize = NDArray_ELSIZE(a);
+    int ret_size = NDArray_NUMELEMENTS(ret);
+    int a_size = NDArray_NUMELEMENTS(a);
+
+    int ncopies = (ret_size / a_size);
+
+    NDArrayIter *a_it = NDArray_NewElementWiseIter(a);
+    NDArrayIter *ret_it = NDArray_NewElementWiseIter(ret);
+
+    while(ncopies--) {
+        index = a_size;
+        while(index--) {
+            memmove(ret_it->dataptr, a_it->dataptr, elsize);
+            NDArray_ITER_NEXT(a_it);
+            NDArray_ITER_NEXT(ret_it);
+        }
+        NDArray_ITER_RESET(a_it);
+    }
+    efree(a_it);
+    efree(ret_it);
+    return ret;
+}
 
 /**
  * @param a
