@@ -320,7 +320,7 @@ void apply_single_reduce(NDArray *result, NDArray *target, float (*operation)(ND
     float tmp_result;
     int *tmp_shape = emalloc(sizeof(int));
     tmp_shape[0] = 2;
-    NDArray_Print(target, 0);
+
     NDArray *tmp = NDArray_Zeros(tmp_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(result));
     if (NDArray_NDIM(target) >= 1) {
         temp = operation(target);
@@ -636,6 +636,7 @@ NDArray_FREEDATA(NDArray *target) {
  */
 char *
 NDArray_Print(NDArray *array, int do_return) {
+    assert(array != NULL);
     char *str;
     if (is_type(NDArray_TYPE(array), NDARRAY_TYPE_DOUBLE64)) {
         str = print_matrix(NDArray_DDATA(array), NDArray_NDIM(array), NDArray_SHAPE(array),
@@ -1351,4 +1352,22 @@ NDArray_Overwrite(NDArray *target, NDArray *values) {
     }
 #endif
     return 0;
+}
+
+/**
+ * @param l1
+ * @param l2
+ * @param n
+ * @return
+ */
+int
+NDArray_CompareList(int const *l1, int const *l2, int n) {
+    int i;
+
+    for (i = 0; i < n; i++) {
+        if (l1[i] != l2[i]) {
+            return 0;
+        }
+    }
+    return 1;
 }

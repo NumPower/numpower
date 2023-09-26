@@ -8,6 +8,8 @@
 #include "buffer.h"
 #include "types.h"
 #include <cblas.h>
+#include "iterators.h"
+#include "indexing.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -56,37 +58,29 @@ transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
  * @param permute
  * @return
  */
-/**
- * @param a
- * @param permute
- * @return
- */
 NDArray*
 NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
     NDArray *ret = NULL;
-
+    NDArray *contiguous_ret = NULL;
     if (NDArray_NDIM(a) < 2) {
         int ndim = NDArray_NDIM(a);
         return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
     }
 
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+    int *new_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
     reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
-    ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
+    reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
 
-    // @todo Implement N-dimensinal permutation
-    if (NDArray_NDIM(a) != 2) {
-        zend_throw_error(NULL, "must be a 2-d array");
-        return NULL;
-    }
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        cuda_float_transpose(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
-#endif
-    } else {
-        transposeMatrixFloat(NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[0], NDArray_SHAPE(a)[1]);
-    }
-    return ret;
+    ret = NDArray_Copy(a, NDArray_DEVICE(a));
+    efree(ret->strides);
+    efree(ret->dimensions);
+    ret->strides = new_strides;
+    ret->dimensions = new_shape;
+    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+    contiguous_ret = NDArray_ToContiguous(ret);
+    NDArray_FREE(ret);
+    return contiguous_ret;
 }
 
 /**
@@ -190,11 +184,6 @@ linearize_FLOAT_matrix(float *dst_in,
                 }
             } else {
                 if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-                    /*
-                     * Zero stride has undefined behavior in some BLAS
-                     * implementations (e.g. OSX Accelerate), so do it
-                     * manually
-                     */
                     for (j = 0; j < columns; ++j) {
                         memcpy((float *) dst + j, (float *) src, sizeof(float));
                     }
@@ -210,88 +199,97 @@ linearize_FLOAT_matrix(float *dst_in,
     }
 }
 
+/**
+ * @param array
+ * @param indexes
+ * @param num_indices
+ * @param return_view
+ * @return
+ */
 NDArray*
 NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view) {
     if (num_indices > NDArray_NDIM(array)) {
-        zend_throw_error(NULL, "too many indices for array");
+        zend_throw_error(NULL, "too many indices for array.");
         return NULL;
     }
 
-    NDArray *slice, *rtn;
-    int slice_ndim = NDArray_NDIM(array);
-    int *slice_shape = emalloc(sizeof(int) * slice_ndim);
-    int *slice_strides = emalloc(sizeof(int) * slice_ndim);
-    int i, offset = 0;
-    int start = 0, stop = 0, step = 0;
-    if (NDArray_NDIM(array) == 1) {
-        int out_ndim = NDArray_NDIM(array);
-        if (NDArray_NUMELEMENTS(indexes[0]) >= 1) {
-            start = (int) NDArray_FDATA(indexes[0])[0];
-        } else {
-            start = 0;
-        }
-        if (NDArray_NUMELEMENTS(indexes[0]) >= 2) {
-            stop  = (int)NDArray_FDATA(indexes[0])[1];
-        } else {
-            stop = NDArray_SHAPE(array)[0];
-        }
-        if (NDArray_NUMELEMENTS(indexes[0]) == 3) {
-            step  = (int)NDArray_FDATA(indexes[0])[2];
-        } else {
-            step = 1;
-        }
-        slice_shape[0] = (int)floorf(((float)stop - (float)start) / (float)step);
-        slice_strides[0] = NDArray_STRIDES(array)[0];
-        offset = start * NDArray_STRIDES(array)[0];
-        slice = NDArray_FromNDArray(array, offset, slice_shape, slice_strides, &out_ndim);
-        return slice;
-    }
+    int new_strides[NDARRAY_MAX_DIMS];
+    int new_shape[NDARRAY_MAX_DIMS];
+    int i, start = 0, stop = 0, step = 0, n_steps = 0, new_dim = 0, orig_dim = 0;
+    char *data_ptr = NDArray_DATA(array);
+
+    SliceObject sliceobj;
+
 
     for (i = 0; i < num_indices; i++) {
+        sliceobj.start = NULL;
+        sliceobj.stop = NULL;
+        sliceobj.step = NULL;
         if (NDArray_NUMELEMENTS(indexes[i]) >= 1) {
-            start = (int) NDArray_FDATA(indexes[i])[0];
-        } else {
-            start = 0;
+            sliceobj.start = emalloc(sizeof(int));
+            sliceobj.start[0] = (int) NDArray_FDATA(indexes[i])[0];
         }
         if (NDArray_NUMELEMENTS(indexes[i]) >= 2) {
-            stop  = (int)NDArray_FDATA(indexes[i])[1];
-            if (stop > NDArray_SHAPE(array)[i]) {
-                stop = NDArray_SHAPE(array)[i];
-            }
-        } else {
-            stop = NDArray_SHAPE(array)[i];
+            sliceobj.stop = emalloc(sizeof(int));
+            sliceobj.stop[0] = (int) NDArray_FDATA(indexes[i])[1];
         }
         if (NDArray_NUMELEMENTS(indexes[i]) == 3) {
-            step  = (int)NDArray_FDATA(indexes[i])[2];
-        } else {
+            sliceobj.step = emalloc(sizeof(int));
+            sliceobj.step[0] = (int) NDArray_FDATA(indexes[i])[2];
+        }
+        if(Slice_GetIndices(&sliceobj, NDArray_SHAPE(array)[orig_dim], &start, &stop, &step, &n_steps) < 0) {
+            zend_throw_error(NULL, "Slicing error");
+            goto failure;
+        }
+        if (n_steps <= 0) {
+            n_steps = 0;
             step = 1;
+            start = 0;
         }
-        if (NDArray_NUMELEMENTS(indexes[i]) > 3) {
-            zend_throw_error(NULL, "Too many arguments for slicing indexes");
-            return NULL;
+        data_ptr += NDArray_STRIDES(array)[orig_dim] * start;
+        new_strides[new_dim] = NDArray_STRIDES(array)[orig_dim] * step;
+        new_shape[new_dim] = n_steps;
+        new_dim += 1;
+        orig_dim += 1;
+        if (sliceobj.start != NULL) {
+            efree(sliceobj.start);
         }
-        slice_shape[i] = (int)floorf(((float)stop - (float)start) / (float)step);
-        offset += start * NDArray_STRIDES(array)[i];
-    }
-    for (; i < slice_ndim; i++) {
-        slice_shape[i] = NDArray_SHAPE(array)[i];
-    }
-    memcpy(slice_strides, NDArray_STRIDES(array), slice_ndim * sizeof(int));
-    slice = NDArray_FromNDArray(array, offset, slice_shape, slice_strides, &slice_ndim);
-
-    float *rtn_data;
-    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_CPU) {
-        rtn_data = emalloc(NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
+        if (sliceobj.stop != NULL) {
+            efree(sliceobj.stop);
+        }
+        if (sliceobj.step != NULL) {
+            efree(sliceobj.step);
+        }
     }
 
-#ifdef HAVE_CUBLAS
-    if (NDArray_DEVICE(array) == NDARRAY_DEVICE_GPU) {
-        NDArray_VMALLOC((void**)&rtn_data, NDArray_ELSIZE(array) * NDArray_NUMELEMENTS(slice));
+    int *strides_ptr = emalloc(sizeof(int) * new_dim);
+    memcpy(strides_ptr, NDArray_STRIDES(array), sizeof(int) * NDArray_NDIM(array));
+    for (i = 0; i < new_dim; i++) {
+        strides_ptr[i] = new_strides[i];
     }
-#endif
-    NDArray_FREE(array);
-    efree(slice_strides);
-    return slice;
+    int *shape_ptr = emalloc(sizeof(int) * new_dim);
+    memcpy(shape_ptr, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
+    for (i = 0; i < new_dim; i++) {
+        shape_ptr[i] = new_shape[i];
+    }
+
+    if (num_indices < NDArray_NDIM(array)) {
+        new_dim = NDArray_NDIM(array);
+    }
+
+    NDArray *ret = NDArray_FromNDArrayBase(array, data_ptr, shape_ptr, strides_ptr, new_dim);
+    return ret;
+failure:
+    if (sliceobj.start != NULL) {
+        efree(sliceobj.start);
+    }
+    if (sliceobj.stop != NULL) {
+        efree(sliceobj.stop);
+    }
+    if (sliceobj.step != NULL) {
+        efree(sliceobj.step);
+    }
+    return NULL;
 }
 
 /**
@@ -333,6 +331,40 @@ NDArray_Append(NDArray *a, NDArray *b) {
     return rtn;
 }
 
+/**
+ * @param a
+ * @return
+ */
+NDArray*
+NDArray_ToContiguous(NDArray *a) {
+    float *val;
+    NDArray *ret = NDArray_EmptyLike(a);
+    efree(ret->strides);
+    ret->strides = Generate_Strides(NDArray_SHAPE(a), NDArray_NDIM(a), NDArray_ELSIZE(a));
+
+    int i = 0, index;
+    int elsize = NDArray_ELSIZE(a);
+    int ret_size = NDArray_NUMELEMENTS(ret);
+    int a_size = NDArray_NUMELEMENTS(a);
+
+    int ncopies = (ret_size / a_size);
+
+    NDArrayIter *a_it = NDArray_NewElementWiseIter(a);
+    NDArrayIter *ret_it = NDArray_NewElementWiseIter(ret);
+
+    while(ncopies--) {
+        index = a_size;
+        while(index--) {
+            memmove(ret_it->dataptr, a_it->dataptr, elsize);
+            NDArray_ITER_NEXT(a_it);
+            NDArray_ITER_NEXT(ret_it);
+        }
+        NDArray_ITER_RESET(a_it);
+    }
+    efree(a_it);
+    efree(ret_it);
+    return ret;
+}
 
 /**
  * @param a

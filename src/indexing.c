@@ -44,3 +44,62 @@ NDArray_Diagonal(NDArray *target, int offset) {
 #endif
     return rtn;
 }
+
+/**
+ * @param r
+ * @param length
+ * @param start
+ * @param stop
+ * @param step
+ * @param slicelength
+ * @return
+ */
+int
+Slice_GetIndices(SliceObject *r, int length, int *start, int *stop, int *step, int *slicelength)
+{
+    int defstop;
+
+    if (r->step == NULL) {
+        *step = 1;
+    } else {
+        *step = r->step[0];
+        if (*step == 0) {
+            zend_throw_error(NULL,
+                            "slice step cannot be zero");
+            return -1;
+        }
+    }
+
+    defstop = *step < 0 ? -1 : length;
+
+    if (r->start == NULL) {
+        *start = *step < 0 ? length-1 : 0;
+    } else {
+        *start = *(r->start);
+        if (*start < 0) *start += length;
+        if (*start < 0) *start = (*step < 0) ? -1 : 0;
+        if (*start >= length) {
+            *start = (*step < 0) ? length - 1 : length;
+        }
+    }
+
+    if (r->stop == NULL) {
+        *stop = defstop;
+    } else {
+        *stop = r->stop[0];
+        if (*stop < 0) *stop += length;
+        if (*stop < 0) *stop = -1;
+        if (*stop > length) *stop = length;
+    }
+
+    if ((*step < 0 && *stop >= *start) || \
+            (*step > 0 && *start >= *stop)) {
+        *slicelength = 0;
+    } else if (*step < 0) {
+        *slicelength = (*stop - *start + 1) / (*step) + 1;
+    } else {
+        *slicelength = (*stop - *start - 1) / (*step) + 1;
+    }
+
+    return 0;
+}

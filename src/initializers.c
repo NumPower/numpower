@@ -249,7 +249,6 @@ NDArray* Create_NDArray_FromZval(zval* php_object) {
  */
 NDArray*
 Create_NDArray(int* shape, int ndim, const char* type, const int device) {
-    char* new_buffer;
     NDArray* rtn;
     NDArrayDescriptor* descriptor;
     int type_size = get_type_size(type);
@@ -278,6 +277,42 @@ Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     rtn->device = device;
     rtn->strides = Generate_Strides(shape, ndim, type_size);
     NDArrayIterator_INIT(rtn);
+    return rtn;
+}
+
+/**
+ * Create an NDArray View from another NDArray with
+ * a custom data pointer
+ *
+ * @param target
+ * @param buffer_offset
+ * @param shape
+ * @param strides
+ * @param ndim
+ * @return
+ */
+NDArray*
+NDArray_FromNDArrayBase(NDArray *target, char *data_ptr, int* shape, int* strides, const int ndim) {
+    NDArray* rtn = emalloc(sizeof(NDArray));
+    int total_num_elements = 1;
+
+    rtn->strides = strides;
+    rtn->dimensions = shape;
+
+    // Calculate number of elements
+    for (int i = 0; i < ndim; i++) {
+        total_num_elements = total_num_elements * NDArray_SHAPE(rtn)[i];
+    }
+
+    rtn->flags = 0;
+    rtn->data = data_ptr;
+    rtn->base = target;
+    rtn->ndim = ndim;
+    rtn->refcount = 1;
+    rtn->device = NDArray_DEVICE(target);
+    rtn->descriptor = Create_Descriptor(total_num_elements, sizeof(float), NDARRAY_TYPE_FLOAT32);
+    NDArrayIterator_INIT(rtn);
+    NDArray_ADDREF(target);
     return rtn;
 }
 
