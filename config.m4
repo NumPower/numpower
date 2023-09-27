@@ -110,6 +110,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/logic.c \
       src/gpu_alloc.c \
       src/ndmath/linalg.c \
+      src/ndmath/calculation.c \
       src/manipulation.c \
       src/iterators.c \
       src/indexing.c \
