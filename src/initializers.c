@@ -116,7 +116,6 @@ int* Generate_Strides(int* dimensions, int dimensions_size, int elsize) {
     }
 
     int i;
-    int * strides;
     int * target_stride;
     target_stride = safe_emalloc(dimensions_size, sizeof(int), 0);
 
@@ -149,7 +148,6 @@ NDArray_CreateBuffer(NDArray* array, int numElements, int elsize) {
  */
 void
 NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_index) {
-    float tmp;
     zval * element;
     float * data_double;
 
@@ -250,9 +248,7 @@ NDArray* Create_NDArray_FromZval(zval* php_object) {
 NDArray*
 Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     NDArray* rtn;
-    NDArrayDescriptor* descriptor;
     int type_size = get_type_size(type);
-    int total_size = 0;
     int total_num_elements = shape[0];
 
     if (ndim == 0) {
@@ -263,9 +259,6 @@ Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     for (int i = 1; i < ndim; i++) {
         total_num_elements = total_num_elements * shape[i];
     }
-
-    // Calculate total size in bytes
-    total_size = type_size * total_num_elements;
 
     rtn = emalloc(sizeof(NDArray));
     rtn->descriptor = Create_Descriptor(total_num_elements, type_size, type);
@@ -567,7 +560,7 @@ NDArray_Uniform(double low, double high, int* shape, int ndim) {
     rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        float u = (float)rand() / RAND_MAX;
+        float u = (float)rand() / (float)RAND_MAX;
         NDArray_FDATA(rtn)[i] = (float)low + u * ((float)high - (float)low);
     }
     return rtn;
@@ -839,7 +832,7 @@ NDArray_Binomial(int *shape, int ndim, int n, float p) {
         int successes = 0;
         for (int j = 0; j < n; j++) {
             // Generate a random number between 0 and 1
-            float random_value = (float)rand() / RAND_MAX;
+            float random_value = (float)rand() / (float)RAND_MAX;
             if (random_value < p) {
                 successes++;
             }
@@ -867,7 +860,7 @@ NDArray_Create(char *data, int ndim, int *shape, int device, const char* type) {
     int num_elements = 1;
     for (int i = 0; i < ndim; i++) {
         num_elements = num_elements * shape[i];
-        strides[i] = shape[i] * sizeof(float);
+        strides[i] = shape[i] * (int)sizeof(float);
     }
 
     if (device == NDARRAY_DEVICE_GPU) {
