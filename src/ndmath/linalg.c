@@ -492,7 +492,7 @@ matrixFloatInverse(float* matrix, int n) {
  */
 int
 matrixFloatLU(float* matrix, int n, float *p, float *l, float *u) {
-    int i, j, k, maxIndex, tempIndex;
+    int i, j, k, maxIndex;
     float maxVal, tempVal;
 
     // Initialize L, U, and P matrices
@@ -650,7 +650,6 @@ NDArray_MatrixRank(NDArray *target, float *tol) {
     int rank = 0, i;
     NDArray *rtn;
     NDArray **svd = NDArray_SVD(target);
-    int smallest_dim = -1;
     float *singular_values;
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
@@ -745,70 +744,6 @@ NDArray_Trace(NDArray *a) {
     float result = NDArray_Sum_Float(diagonal);
     NDArray_FREE(diagonal);
     return NDArray_CreateFromFloatScalar(result);
-}
-
-void convolve2d_full_float(const float* a, const float* b, const int* shape_a,
-                           const int* shape_b, const int* strides_a,
-                           const int* strides_b, char boundary, float* output,
-                           float fill_value) {
-    int a_height = shape_a[0];
-    int a_width = shape_a[1];
-    int b_height = shape_b[0];
-    int b_width = shape_b[1];
-    int stride_a_y = strides_a[0]/sizeof(float);
-    int stride_a_x = strides_a[1]/sizeof(float);
-    int stride_b_y = strides_b[0]/sizeof(float);
-    int stride_b_x = strides_b[1]/sizeof(float);
-
-    int output_height = a_height + b_height - 1;
-    int output_width = a_width + b_width - 1;
-
-    for (int y = 0; y < output_height; y++) {
-        for (int x = 0; x < output_width; x++) {
-            float sum = 0.0f;
-
-            for (int i = 0; i < b_height; i++) {
-                for (int j = 0; j < b_width; j++) {
-                    int a_y = y - i;
-                    int a_x = x - j;
-
-                    if (boundary == 'f') {
-                        if (a_y >= 0 && a_y < a_height && a_x >= 0 &&
-                                a_x < a_width) {
-                            sum += a[a_y * stride_a_y + a_x * stride_a_x] *
-                                   b[i * stride_b_y + j * stride_b_x];
-                        } else {
-                            sum += fill_value * b[i * stride_b_y +
-                                                  j * stride_b_x];
-                        }
-                    } else if (boundary == 'w') {
-                        int wrapped_y = (a_y + a_height) % a_height;
-                        int wrapped_x = (a_x + a_width) % a_width;
-                        sum += a[wrapped_y * stride_a_y + wrapped_x *
-                                 stride_a_x] *
-                               b[i * stride_b_y + j * stride_b_x];
-                    } else if (boundary == 's') {
-                        int symm_y =
-                            (a_y < 0) ? -a_y - 1 : (a_y >= a_height) ? 2 *
-                            a_height -
-                            1 -
-                            a_y
-                            : a_y;
-                        int symm_x =
-                            (a_x < 0) ? -a_x - 1 : (a_x >= a_width) ? 2 *
-                            a_width -
-                            1 -
-                            a_x
-                            : a_x;
-                        sum += a[symm_y * stride_a_y + symm_x * stride_a_x] *
-                               b[i * stride_b_y + j * stride_b_x];
-                    }
-                }
-            }
-
-            output[y * output_width + x] = sum;
-        }
-    }
 }
 
 int
