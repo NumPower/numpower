@@ -43,16 +43,6 @@ void copy(const int* src, int* dest, unsigned int size) {
     }
 }
 
-void
-transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
-    int i, j;
-    for ( i = 0; i < rows; i++) {
-        for ( j = 0; j < cols; j++) {
-            output[j * rows + i] = matrix[i * cols + j];
-        }
-    }
-}
-
 /**
  * @param a
  * @param permute
@@ -337,12 +327,11 @@ NDArray_Append(NDArray *a, NDArray *b) {
  */
 NDArray*
 NDArray_ToContiguous(NDArray *a) {
-    float *val;
     NDArray *ret = NDArray_EmptyLike(a);
     efree(ret->strides);
     ret->strides = Generate_Strides(NDArray_SHAPE(a), NDArray_NDIM(a), NDArray_ELSIZE(a));
 
-    int i = 0, index;
+    int index;
     int elsize = NDArray_ELSIZE(a);
     int ret_size = NDArray_NUMELEMENTS(ret);
     int a_size = NDArray_NUMELEMENTS(a);
