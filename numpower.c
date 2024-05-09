@@ -834,7 +834,7 @@ PHP_METHOD(NDArray, random_binomial) {
     for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
         ishape[i] = (int) NDArray_FDATA(nda)[i];
     }
-    rtn = NDArray_Binomial(ishape, NDArray_NUMELEMENTS(nda), (int)n, p);
+    rtn = NDArray_Binomial(ishape, NDArray_NUMELEMENTS(nda), (int)n, (float)p);
     NDArray_FREE(nda);
     RETURN_NDARRAY(rtn, return_value);
 }

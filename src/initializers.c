@@ -18,6 +18,9 @@
 #include "gpu_alloc.h"
 #endif
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
+#pragma ide diagnostic ignored "NullDereference"
 /**
  *
  * @param arr
@@ -26,6 +29,10 @@
  */
 void get_zend_array_shape(zend_array* arr, int* shape, int ndim) {
     int i;
+
+    if (shape == NULL && ndim != 0) {
+        return;
+    }
 
     if (zend_array_count(arr) == 0) {
         return;
@@ -48,6 +55,7 @@ void get_zend_array_shape(zend_array* arr, int* shape, int ndim) {
     }
     ZEND_HASH_FOREACH_END();
 }
+#pragma clang diagnostic pop
 
 /**
  *
@@ -104,8 +112,8 @@ NDArrayDescriptor* Create_Descriptor(int numElements, int elsize, const char* ty
  *
  * @return
  */
-int* Generate_Strides(int* dimensions, int dimensions_size, int elsize) {
-    if (dimensions_size == 0) {
+int* Generate_Strides(const int* dimensions, int dimensions_size, int elsize) {
+    if (dimensions_size == 0 || dimensions == NULL) {
         return NULL;
     }
 
@@ -137,12 +145,13 @@ NDArray_CreateBuffer(NDArray* array, int numElements, int elsize) {
     array->data = emalloc(numElements * elsize);
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 /**
  * @param target_carray
  */
 void
 NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_index) {
-    float tmp;
     zval * element;
     float * data_double;
 
@@ -183,6 +192,7 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
     }
     ZEND_HASH_FOREACH_END();
 }
+#pragma clang diagnostic pop
 
 /**
  * Create NDArray from zend_array
@@ -243,9 +253,12 @@ NDArray* Create_NDArray_FromZval(zval* php_object) {
 NDArray*
 Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     NDArray* rtn;
-    NDArrayDescriptor* descriptor;
     int type_size = get_type_size(type);
-    int total_size = 0;
+
+    if (shape == NULL) {
+        return NULL;
+    }
+
     int total_num_elements = shape[0];
 
     if (ndim == 0) {
@@ -256,9 +269,6 @@ Create_NDArray(int* shape, int ndim, const char* type, const int device) {
     for (int i = 1; i < ndim; i++) {
         total_num_elements = total_num_elements * shape[i];
     }
-
-    // Calculate total size in bytes
-    total_size = type_size * total_num_elements;
 
     rtn = emalloc(sizeof(NDArray));
     rtn->descriptor = Create_Descriptor(total_num_elements, type_size, type);
@@ -292,7 +302,6 @@ NDArray_FromNDArrayBase(NDArray *target, char *data_ptr, int* shape, int* stride
     rtn->strides = strides;
     rtn->dimensions = shape;
 
-    // Calculate number of elements
     for (int i = 0; i < ndim; i++) {
         total_num_elements = total_num_elements * NDArray_SHAPE(rtn)[i];
     }
@@ -323,7 +332,7 @@ NDArray*
 NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides, const int* ndim) {
     NDArray* rtn = emalloc(sizeof(NDArray));
     int total_num_elements = 1;
-    int out_ndim = -1;
+    int out_ndim;
 
     if (strides == NULL) {
         rtn->strides = emalloc(sizeof(int) * NDArray_NDIM(target));
@@ -338,9 +347,7 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
     if (shape != NULL) {
         rtn->dimensions = shape;
         rtn->strides = strides;
-        if (out_ndim == -1) {
-            out_ndim = *ndim;
-        }
+        out_ndim = *ndim;
     }
 
     // Calculate number of elements
@@ -370,6 +377,11 @@ NDArray_FromNDArray(NDArray *target, int buffer_offset, int* shape, int* strides
 NDArray*
 NDArray_Empty(int *shape, int ndim, const char *type, int device) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
+
+    if (rtn == NULL) {
+        return rtn;
+    }
+
     if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
         if (device == NDARRAY_DEVICE_CPU) {
             rtn->device = NDARRAY_DEVICE_CPU;
@@ -405,6 +417,11 @@ NDArray_EmptyLike(NDArray *a) {
 NDArray*
 NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, device);
+
+    if (rtn == NULL) {
+        return rtn;
+    }
+
     if (device == NDARRAY_DEVICE_CPU) {
         if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
             rtn->data = ecalloc(rtn->descriptor->numElements, sizeof(double));
@@ -438,6 +455,11 @@ NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
 NDArray*
 NDArray_Ones(int *shape, int ndim, const char *type) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
+
+    if (rtn == NULL) {
+        return NULL;
+    }
+
     int i;
     rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
     for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
@@ -455,7 +477,7 @@ NDArray_Ones(int *shape, int ndim, const char *type) {
 NDArray*
 NDArray_Identity(int size) {
     NDArray *rtn;
-    int index;
+    unsigned long index;
     int *shape;
     float *buffer_ptr;
 
@@ -479,7 +501,7 @@ NDArray_Identity(int size) {
     // Set the diagonal elements to one with the specified stride
     for (int i = 0; i < size; i++) {
         index = ((i * size * sizeof(float)) + (i * sizeof(float))) / sizeof(float);
-        buffer_ptr[index] = 1.0f;
+        buffer_ptr[(int)index] = 1.0f;
     }
     return rtn;
 }
@@ -560,7 +582,7 @@ NDArray_Uniform(double low, double high, int* shape, int ndim) {
     rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     // Generate random samples from the normal distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
-        float u = (float)rand() / RAND_MAX;
+        float u = (float)rand() / (float)RAND_MAX;
         NDArray_FDATA(rtn)[i] = (float)low + u * ((float)high - (float)low);
     }
     return rtn;
@@ -772,7 +794,7 @@ NDArray_Copy(NDArray *a, int device) {
  *
  * Return 0 on success, -1 on failure
  */
-static int _safe_ceil_to_int(double value, int* ret) {
+static int safe_ceil_to_int(double value, int* ret) {
     double ivalue;
 
     ivalue = ceil(value);
@@ -798,7 +820,7 @@ NDArray_Arange(double start, double stop, double step) {
     int i;
     int length;
 
-    if (_safe_ceil_to_int((stop - start) / step, &length)) {
+    if (safe_ceil_to_int((stop - start) / step, &length)) {
         zend_throw_error(NULL, "arange: overflow while computing length");
         return NULL;
     }
@@ -832,7 +854,7 @@ NDArray_Binomial(int *shape, int ndim, int n, float p) {
         int successes = 0;
         for (int j = 0; j < n; j++) {
             // Generate a random number between 0 and 1
-            float random_value = (float)rand() / RAND_MAX;
+            float random_value = (float)rand() / (float)RAND_MAX;
             if (random_value < p) {
                 successes++;
             }
