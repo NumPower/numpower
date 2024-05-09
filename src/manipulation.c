@@ -331,3 +331,47 @@ NDArray_ExpandDim(NDArray *a, int axis) {
     }
     return rtn;
 }
+
+/**
+ * @param arr
+ * @param axis
+ * @param flags
+ * @return
+ */
+NDArray*
+NDArray_CheckAxis(NDArray *arr, int *axis, int flags)
+{
+    NDArray *temp1, *temp2;
+    int n = NDArray_NDIM(arr);
+
+    if (*axis == NDARRAY_MAX_DIMS || n == 0) {
+        if (n != 1) {
+            temp1 = NDArray_Flatten(arr);
+            if (temp1 == NULL) {
+                *axis = 0;
+                return NULL;
+            }
+            if (*axis == NDARRAY_MAX_DIMS) {
+                *axis = NDArray_NDIM(temp1)-1;
+            }
+        }
+        else {
+            temp1 = arr;
+            NDArray_ADDREF(temp1);
+            *axis = 0;
+        }
+        if (!flags && *axis == 0) {
+            return temp1;
+        }
+    }
+    else {
+        temp1 = arr;
+        NDArray_ADDREF(temp1);
+    }
+    temp2 = temp1;
+    n = NDArray_NDIM(temp2);
+    if (check_and_adjust_axis(axis, n) < 0) {
+        return NULL;
+    }
+    return temp2;
+}
