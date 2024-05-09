@@ -51,4 +51,5 @@ add_executable(numpower
         php_numpower.h
         src/ndmath/signal.c
         src/ndmath/signal.h
+        src/ndmath/calculation.c
 )

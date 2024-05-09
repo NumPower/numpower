@@ -1,9 +1,8 @@
 #include <string.h>
-#include <zend.h>
-#include "calculation.h"
 #include "../manipulation.h"
 #include "../initializers.h"
-#include "../debug.h"
+#include "calculation.h"
+#include <Zend/zend.h>
 
 static int
 float_argmax(float *ip, int n, float *max_ind)
@@ -24,7 +23,6 @@ float_argmax(float *ip, int n, float *max_ind)
         /*
         * Propagate nans, similarly as max() and min()
         */
-
         if (!(*ip <= mp)) {  /* negated, for correct nan handling */
             mp = *ip;
             *max_ind = i;

@@ -115,6 +115,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/iterators.c \
       src/indexing.c \
       src/ndmath/arithmetics.c \
+      src/ndmath/calculation.c \
       src/ndmath/statistics.c \
       src/ndmath/signal.c \
       src/types.c,
