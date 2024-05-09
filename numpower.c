@@ -2141,7 +2141,9 @@ PHP_METHOD(NDArray, clip) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    CHECK_INPUT_AND_FREE(array, nda);
+    if (Z_TYPE_P(array) != IS_ARRAY) {
+        CHECK_INPUT_AND_FREE(array, nda);
+    }
     RETURN_NDARRAY(rtn, return_value);
 }
 
