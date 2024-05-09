@@ -3,6 +3,7 @@
 #include "../config.h"
 #include "initializers.h"
 #include <Zend/zend.h>
+#include <php.h>
 
 #ifdef HAVE_CUBLAS
 #include "ndmath/cuda/cuda_math.h"
@@ -46,7 +47,7 @@ NDArray_All(NDArray *a) {
 
     return 1;  // All elements are non-zero
 #else
-    for (; i < NDArray_NUMELEMENTS(a); i++) {
+    for (i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         if (array[i] == 0.0) {
             return 0;  // Element is zero
         }
