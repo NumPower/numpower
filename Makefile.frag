@@ -1,5 +1,3 @@
-
-
 ################################## nvcc ###################################
 
 # Location of the CUDA Toolkit
@@ -89,9 +87,4 @@ install-cuda:
 	cp ./.libs/ndarray.so $(phplibdir)/ndarray.so
 	cp ./.libs/ndarray.so $(EXTENSION_DIR)/ndarray.so
 
-temp:
-	echo $(COMMON_FLAGS)
-	echo $(CFLAGS_CLEAN)
-	echo $(EXTRA_CFLAGS)
-	echo $(GENCODE_FLAGS)
-	echo $(INCLUDES)
+
