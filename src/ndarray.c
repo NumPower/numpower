@@ -2,10 +2,8 @@
 #include "ndarray.h"
 #include "debug.h"
 #include "iterators.h"
-#include "ndmath/arithmetics.h"
 #include "initializers.h"
 #include "types.h"
-#include "logic.h"
 #include <php.h>
 #include "../config.h"
 #include "Zend/zend_alloc.h"
@@ -569,7 +567,7 @@ NDArray_FREE(NDArray *array) {
 
     // Decrement the reference count
     if (array->refcount > 0) {
-        array->refcount--;
+        NDArray_DELREF(array);
     }
 
     // If the reference count reaches zero, free the memory
@@ -648,91 +646,10 @@ NDArray_Print(NDArray *array, int do_return) {
     }
     if (do_return == 0) {
         printf("%s", str);
+        efree(str);
         return NULL;
     }
     return str;
-}
-
-/**
- * Compare two NDArrays
- *
- * @param a
- * @param b
- * @return
- */
-NDArray *
-NDArray_Compare(NDArray *a, NDArray *b) {
-    int i;
-    int *rtn_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    memcpy(rtn_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
-    NDArray *rtn = NDArray_Zeros(rtn_shape, NDArray_NDIM(a), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
-
-    // Check if arrays have the same dimension
-    if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
-        zend_throw_error(NULL, "Can't compare two different shape arrays");
-        return NULL;
-    }
-
-    // Check if arrays are equal
-    for (i = 0; i < NDArray_NDIM(a); i++) {
-        if (NDArray_SHAPE(a)[i] != NDArray_SHAPE(b)[i]) {
-            zend_throw_error(NULL, "Can't compare two different shape arrays");
-            return NULL;
-        }
-    }
-
-#ifdef HAVE_AVX2
-    NDArrayIterator_REWIND(a);
-    NDArrayIterator_REWIND(b);
-    while (!NDArrayIterator_ISDONE(a)) {
-        NDArrayIterator_NEXT(a);
-        NDArrayIterator_NEXT(b);
-    }
-#else
-
-#endif
-    return rtn;
-}
-
-/**
- * Check whether the given array is stored contiguously
- **/
-static void
-_UpdateContiguousFlags(NDArray *array) {
-    int sd;
-    int dim;
-    int i;
-    int is_c_contig = 1;
-
-    sd = NDArray_ELSIZE(array);
-    for (i = NDArray_NDIM(array) - 1; i >= 0; --i) {
-        dim = NDArray_SHAPE(array)[i];
-
-        if (NDArray_STRIDES(array)[i] != sd) {
-            is_c_contig = 0;
-            break;
-        }
-        /* contiguous, if it got this far */
-        if (dim == 0) {
-            break;
-        }
-        sd *= dim;
-    }
-    if (is_c_contig) {
-        NDArray_ENABLEFLAGS(array, NDARRAY_ARRAY_C_CONTIGUOUS);
-    } else {
-        NDArray_CLEARFLAGS(array, NDARRAY_ARRAY_C_CONTIGUOUS);
-    }
-}
-
-/**
- * Update CArray flags
- **/
-void
-NDArray_UpdateFlags(NDArray *array, int flagmask) {
-    if (flagmask & (NDARRAY_ARRAY_F_CONTIGUOUS | NDARRAY_ARRAY_C_CONTIGUOUS)) {
-        _UpdateContiguousFlags(array);
-    }
 }
 
 /**
@@ -1352,22 +1269,4 @@ NDArray_Overwrite(NDArray *target, NDArray *values) {
     }
 #endif
     return 0;
-}
-
-/**
- * @param l1
- * @param l2
- * @param n
- * @return
- */
-int
-NDArray_CompareList(int const *l1, int const *l2, int n) {
-    int i;
-
-    for (i = 0; i < n; i++) {
-        if (l1[i] != l2[i]) {
-            return 0;
-        }
-    }
-    return 1;
 }

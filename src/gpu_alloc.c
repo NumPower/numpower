@@ -1,5 +1,4 @@
 #include "../config.h"
-#include <Zend/zend.h>
 
 #ifdef HAVE_CUBLAS
 #include "gpu_alloc.h"

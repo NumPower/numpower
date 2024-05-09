@@ -57,11 +57,8 @@ void cuda_float_trunc(int nblocks, float *d_array);
 void cuda_float_negate(int nblocks, float *d_array);
 void cuda_float_sign(int nblocks, float *d_array);
 void cuda_float_clip(int nblocks, float *d_array, float minVal, float maxVal);
-void cuda_float_transpose(float *target, float *rtn, int rows, int cols);
 void cuda_float_multiply_matrix_vector(int nblocks, float *a_array, float *b_array, float *result, int rows, int cols);
 void cuda_float_compare_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
-void cuda_matrix_float_l1norm(float *target, float *rtn, int rows, int cols);
-int cuda_matrix_float_l2norm(float *target, float *rtn, int rows, int cols);
 void cuda_matrix_float_inverse(float* matrix, int n);
 void cuda_float_lu(float *matrix, float *L, float *U, float *P, int size);
 void cuda_prod_float(int nblocks, float *a, float *rtn, int nelements);
@@ -72,16 +69,9 @@ void cuda_float_compare_greater_equal(int nblocks, float *a_array, float *b_arra
 void cuda_float_compare_less(int nblocks, float *a_array, float *b_array, float *result, int n);
 void cuda_float_compare_less_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
 void cuda_float_compare_not_equal(int nblocks, float *a_array, float *b_array, float *result, int n);
-void cuda_matrix_eig_float(float* d_matrix, int n, float* rightEigenvectors);
 void cuda_lstsq_float(float* A, int m, int n, float* B, int k, float* X);
-float cuda_float_median_float(int nblocks, float *a_array, int n);
 NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
-void cuda_convolve2d_same_float(const float* a, const float* b,
-                                const int* shape_a, const int* shape_b,
-                                const int* strides_a, const int* strides_b,
-                                char boundary, float* output,
-                                float fill_value);
 
 #ifdef __cplusplus
 }

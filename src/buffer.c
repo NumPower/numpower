@@ -1,11 +1,9 @@
 #include <stdlib.h>
 #include <php.h>
 #include "Zend/zend_alloc.h"
-#include "Zend/zend_API.h"
 #include "buffer.h"
 #include "string.h"
 #include "ndarray.h"
-#include "debug.h"
 
 /**
  * MEMORY STACK
@@ -90,7 +88,7 @@ NDArray* buffer_get(int uuid) {
  * @param array CArray CArray to add into the stack
  * @param size  size_t Size of CArray in bytes
  */
-void add_to_buffer(NDArray* ndarray, size_t size) {
+void add_to_buffer(NDArray* ndarray) {
     if (MAIN_MEM_STACK.buffer == NULL) {
         buffer_init(1);
     }
@@ -106,7 +104,6 @@ void add_to_buffer(NDArray* ndarray, size_t size) {
         int newSize = (MAIN_MEM_STACK.bufferSize == 0) ? 1 : (MAIN_MEM_STACK.bufferSize * 2);
         NDArray** newBuffer = (NDArray**)erealloc(MAIN_MEM_STACK.buffer, newSize * sizeof(NDArray*));
         if (newBuffer == NULL) {
-            // Error handling: Failed to allocate memory for the buffer
             php_printf("Failed to allocate memory for the buffer");
             return;
         }

@@ -1,6 +1,5 @@
 #include "logic.h"
 #include "ndarray.h"
-#include "iterators.h"
 #include "../config.h"
 #include "initializers.h"
 #include <Zend/zend.h>

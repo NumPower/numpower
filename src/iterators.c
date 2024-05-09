@@ -1,11 +1,9 @@
 #include <string.h>
 #include <php.h>
 #include "Zend/zend_alloc.h"
-#include "Zend/zend_API.h"
 #include "iterators.h"
 #include "ndarray.h"
 #include "initializers.h"
-#include "debug.h"
 
 /**
  * @param iterator

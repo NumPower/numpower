@@ -6,7 +6,6 @@
 #include "initializers.h"
 #include "types.h"
 #include "../config.h"
-#include "gpu_alloc.h"
 
 /**
  * NDArray diagonal

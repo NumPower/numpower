@@ -198,37 +198,6 @@ __global__ void roundToDecimalsFloatKernel(float* numbers, int decimals, int siz
     }
 }
 
-__global__ void l2NormFloatKernel(const float* input, const int size, float* result)
-{
-    __shared__ float sdata[1024];  // Shared memory for intermediate results
-    const int tid = threadIdx.x;
-    const int idx = blockIdx.x * blockDim.x + tid;
-
-    // Each thread loads one element from global memory to shared memory
-    if (idx < size)
-        sdata[tid] = input[idx];
-    else
-        sdata[tid] = 0.0f;
-
-    __syncthreads();
-
-    // Perform parallel reduction in shared memory
-    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
-    {
-        if (tid < s)
-        {
-            sdata[tid] += sdata[tid + s];
-        }
-        __syncthreads();
-    }
-
-    // Store the final result in global memory
-    if (tid == 0)
-    {
-        atomicAdd(result, sdata[0] * sdata[0]);
-    }
-}
-
 __global__ void matrixL1NormFloatKernel(const float* matrix, float* result, int rows, int cols) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     float sum = 0.0f;

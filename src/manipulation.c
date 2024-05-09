@@ -43,16 +43,6 @@ void copy(const int* src, int* dest, unsigned int size) {
     }
 }
 
-void
-transposeMatrixFloat(float* matrix, float* output, int rows, int cols) {
-    int i, j;
-    for ( i = 0; i < rows; i++) {
-        for ( j = 0; j < cols; j++) {
-            output[j * rows + i] = matrix[i * cols + j];
-        }
-    }
-}
-
 /**
  * @param a
  * @param permute
@@ -132,71 +122,6 @@ NDArray_Flatten(NDArray *target) {
     rtn->dimensions[0] = multiply_int_vector(NDArray_SHAPE(target), NDArray_NDIM(target));
     rtn->strides[0] = NDArray_ELSIZE(target);
     return rtn;
-}
-
-void *
-linearize_FLOAT_matrix(float *dst_in,
-                       float *src_in,
-                       NDArray * a) {
-    float *src = (float *) src_in;
-    float *dst = (float *) dst_in;
-
-    if (dst) {
-        int i, j;
-        float* rv = dst;
-        int columns = (int)NDArray_SHAPE(a)[1];
-        int column_strides = NDArray_STRIDES(a)[1] / NDArray_ELSIZE(a);
-        int one = 1;
-        for (i = 0; i < NDArray_SHAPE(a)[0]; i++) {
-            if (column_strides > 0) {
-                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-#ifdef HAVE_CBLAS
-                    cblas_scopy(columns,
-                                (float *) src, column_strides,
-                                (float *) dst, one);
-#endif
-                }
-                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-                    cublasHandle_t handle;
-                    cublasCreate(&handle);
-                    cublasScopy(handle, columns,
-                                (const float*)src,
-                                column_strides, dst, one);
-#endif
-                }
-            } else if (column_strides < 0) {
-                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-#ifdef HAVE_CBLAS
-                    cblas_scopy(columns,
-                                (float *) ((float *) src + (columns - 1) * column_strides),
-                                column_strides,
-                                (float *) dst, one);
-#endif
-                }
-                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-                    cublasHandle_t handle;
-                    cublasCreate(&handle);
-                    cublasScopy(handle, columns, (const float*)src,
-                                column_strides / sizeof(float), dst, one);
-#endif
-                }
-            } else {
-                if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-                    for (j = 0; j < columns; ++j) {
-                        memcpy((float *) dst + j, (float *) src, sizeof(float));
-                    }
-                }
-            }
-
-            src += NDArray_STRIDES(a)[0]/sizeof(float);
-            dst += NDArray_SHAPE(a)[1];
-        }
-        return rv;
-    } else {
-        return src;
-    }
 }
 
 /**

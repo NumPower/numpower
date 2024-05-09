@@ -3,13 +3,10 @@
 #include "Zend/zend_API.h"
 #include <string.h>
 #include "arithmetics.h"
-#include "../ndarray.h"
 #include "../../config.h"
 #include "../initializers.h"
 #include "../iterators.h"
 #include "../types.h"
-#include "../debug.h"
-#include "linalg.h"
 #include "../manipulation.h"
 #include "double_math.h"
 
@@ -28,27 +25,6 @@
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
-
-/**
- * Add elements of a and b element-wise
- *
- * @param a
- * @param b
- * @return
- */
-double
-NDArray_Sum_Double(NDArray* a) {
-    double value = 0;
-
-#ifdef HAVE_CBLAS
-    value = cblas_dasum(NDArray_NUMELEMENTS(a), NDArray_DDATA(a), 1);
-#else
-    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        value += NDArray_DDATA(a)[i];
-    }
-#endif
-    return value;
-}
 
 /**
  * Product of array element-wise

@@ -101,7 +101,7 @@ void RETURN_NDARRAY(NDArray* array, zval* return_value) {
         return;
     }
     if (NDArray_NDIM(array) > 0) {
-        add_to_buffer(array, sizeof(NDArray));
+        add_to_buffer(array);
         object_init_ex(return_value, phpsci_ce_NDArray);
         ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
     } else {
@@ -175,8 +175,6 @@ static void ndarray_destructor(zend_object* object) {
     if (GC_REFCOUNT(object) <= 1) {
         zval *obj_uuid = OBJ_PROP_NUM(object, 0);
         buffer_ndarray_free(Z_LVAL_P(obj_uuid));
-        //php_printf("\n\n%d\n\n", GC_REFCOUNT(object));
-        // Call the default object destructor
         zend_object_std_dtor(object);
     }
 }
@@ -186,7 +184,6 @@ static void ndarray_objects_init(zend_class_entry *class_type) {
     ndarray_object_handlers.compare = ndarray_objects_compare;
     ndarray_object_handlers.do_operation = ndarray_do_operation;
     ndarray_object_handlers.free_obj = ndarray_destructor;
-    //ndarray_object_handlers.compare = ndarray_objects_compare;
 }
 
 static zend_object *ndarray_create_object(zend_class_entry *class_type) {
@@ -209,15 +206,6 @@ NDArray* ZVALUUID_TO_NDARRAY(zval* obj) {
     return NULL;
 }
 
-void RETURN_NDARRAY_NOBUFFER(NDArray* array, zval* return_value) {
-    if (array == NULL) {
-        RETURN_THROWS();
-        return;
-    }
-    object_init_ex(return_value, phpsci_ce_NDArray);
-    ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
-}
-
 void RETURN_2NDARRAY(NDArray* array1, NDArray* array2, zval* return_value) {
     zval a, b;
     if (array1 == NULL) {
@@ -229,8 +217,8 @@ void RETURN_2NDARRAY(NDArray* array1, NDArray* array2, zval* return_value) {
         return;
     }
 
-    add_to_buffer(array1, sizeof(NDArray));
-    add_to_buffer(array2, sizeof(NDArray));
+    add_to_buffer(array1);
+    add_to_buffer(array2);
 
     RETURN_NDARRAY(array1, &a);
     RETURN_NDARRAY(array2, &b);
@@ -254,9 +242,9 @@ void RETURN_3NDARRAY(NDArray* array1, NDArray* array2, NDArray* array3, zval* re
         return;
     }
 
-    add_to_buffer(array1, sizeof(NDArray));
-    add_to_buffer(array2, sizeof(NDArray));
-    add_to_buffer(array3, sizeof(NDArray));
+    add_to_buffer(array1);
+    add_to_buffer(array2);
+    add_to_buffer(array3);
 
     object_init_ex(&a, phpsci_ce_NDArray);
     object_init_ex(&b, phpsci_ce_NDArray);
@@ -302,7 +290,7 @@ PHP_METHOD(NDArray, __construct) {
     if (array == NULL) {
         return;
     }
-    add_to_buffer(array, sizeof(NDArray));
+    add_to_buffer(array);
     ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(array));
 }
 
@@ -1201,7 +1189,7 @@ PHP_METHOD(NDArray, transpose) {
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
+        add_to_buffer(rtn);
         CHECK_INPUT_AND_FREE(array, nda);
         RETURN_NDARRAY(rtn, return_value);
     } else {
@@ -1277,7 +1265,7 @@ PHP_METHOD(NDArray, atleast_1d) {
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
+        add_to_buffer(rtn);
         RETURN_NDARRAY(rtn, return_value);
     } else {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
@@ -1342,7 +1330,7 @@ PHP_METHOD(NDArray, atleast_3d) {
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
         rtn = NDArray_Transpose(nda, NULL);
-        add_to_buffer(rtn, sizeof(NDArray));
+        add_to_buffer(rtn);
         RETURN_NDARRAY(rtn, return_value);
     } else {
         if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
@@ -3977,7 +3965,7 @@ PHP_METHOD(NDArray, current) {
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
     NDArray* result  = NDArrayIteratorPHP_GET(ndarray);
-    add_to_buffer(result, sizeof(NDArray));
+    add_to_buffer(result);
     RETURN_NDARRAY(result, return_value);
 }
 
@@ -4117,7 +4105,7 @@ PHP_METHOD(NDArray, __unserialize) {
         Z_PARAM_ZVAL(data)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(data);
-    add_to_buffer(nda, sizeof(NDArray));
+    add_to_buffer(nda);
     ZVAL_LONG(OBJ_PROP_NUM(obj, 0), NDArray_UUID(nda));
 }
 
@@ -4129,7 +4117,6 @@ PHP_METHOD(NDArray, offsetUnset) {
     Z_PARAM_LONG(offset)
     ZEND_PARSE_PARAMETERS_END();
     zend_throw_error(NULL, "Cannot unset values of NDArrays");
-    return;
 }
 
 PHP_METHOD(NDArray, valid) {
@@ -4154,7 +4141,9 @@ PHP_METHOD(NDArray, __toString) {
     ZEND_PARSE_PARAMETERS_END();
     zval *obj_uuid = OBJ_PROP_NUM(obj, 0);
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
-    RETURN_STRING(NDArray_Print(ndarray, 1));
+    char *result = NDArray_Print(ndarray, 1);
+    RETVAL_STRING(result);
+    efree(result);
 }
 static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
@@ -4331,12 +4320,12 @@ static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_It
  */
 PHP_MINIT_FUNCTION(ndarray) {
     phpsci_ce_NDArray = register_class_NDArray(zend_ce_iterator, zend_ce_countable, zend_ce_arrayaccess);
-    //memcpy(&phpsci_ce_NDArray, &std_object_handlers, sizeof(zend_object_handlers));
     return SUCCESS;
 }
 
 PHP_RINIT_FUNCTION(ndarray) {
-    srand(time(NULL));
+    unsigned int seed = time(NULL) ^ getpid() ^ clock();
+    srand(seed);
     bypass_printr();
     buffer_init(2);
 #if defined(ZTS) && defined(COMPILE_DL_NDARRAY)
