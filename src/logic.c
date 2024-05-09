@@ -27,7 +27,7 @@ NDArray_All(NDArray *a) {
     float *array = NDArray_FDATA(a);
 #ifdef HAVE_AVX2
     __m256 zero = _mm256_set1_ps(0.0f);
-    for (i = 0; i < NDArray_NUMELEMENTS(a) - 3; i += 4) {
+    for (i = 0; i < NDArray_NUMELEMENTS(a) - 7; i += 8) {
         __m256 elements = _mm256_loadu_ps(&array[i]);
         __m256 comparison = _mm256_cmp_ps(elements, zero, _CMP_NEQ_OQ);
 
