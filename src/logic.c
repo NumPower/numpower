@@ -94,7 +94,7 @@ NDArray_Greater(NDArray* nda, NDArray* ndb) {
 
     NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(a_broad), NDArray_TYPE(a_broad), NDArray_DEVICE(a_broad));
 
-    if (b_broad == NULL || a_broad == NULL) {
+    if (b_broad == NULL) {
         zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
     }
@@ -238,7 +238,7 @@ NDArray_LessEqual(NDArray* nda, NDArray* ndb) {
 
     NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(a_broad), NDArray_TYPE(a_broad), NDArray_DEVICE(a_broad));
 
-    if (b_broad == NULL || a_broad == NULL) {
+    if (b_broad == NULL) {
         zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
     }
@@ -322,7 +322,7 @@ NDArray_GreaterEqual(NDArray* nda, NDArray* ndb) {
 
     NDArray *result = NDArray_Empty(rtn_shape, NDArray_NDIM(a_broad), NDArray_TYPE(a_broad), NDArray_DEVICE(a_broad));
 
-    if (b_broad == NULL || a_broad == NULL) {
+    if (b_broad == NULL) {
         zend_throw_error(NULL, "Can't broadcast arrays.");
         return NULL;
     }
@@ -502,7 +502,7 @@ NDArray_NotEqual(NDArray* nda, NDArray* ndb) {
  * @return
  */
 int
-_compare_ndarrays(NDArray *a, NDArray *b, int current_axis) {
+compare_ndarrays(NDArray *a, NDArray *b) {
     int diff = 1;
 
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
@@ -539,20 +539,22 @@ NDArray_ArrayEqual(NDArray *a, NDArray *b) {
         }
     }
 
-    return _compare_ndarrays(a, b, 0);
+    return compare_ndarrays(a, b);
 }
 
 int
-float_allclose(float* arr1, float* arr2, int* shape, int* strides_a, int* strided_b, int ndim, float atol, float rtol) {
+float_allclose(float* arr1, float* arr2, const int* shape,
+               const int* strides_a, const int* strided_b,
+               int ndim, float atol, float rtol) {
     int totalElements = 1;
     for (int i = 0; i < ndim; i++) {
         totalElements *= shape[i];
     }
-    int index_a, index_b;
+    unsigned long index_a, index_b;
     for (int i = 0; i < totalElements; i++) {
         index_a = (i * sizeof(float)) + (i * strides_a[0]/sizeof(float));
         index_b = (i * sizeof(float)) + (i * strided_b[0]/sizeof(float));
-        float diff = fabsf(arr1[index_a] - arr2[index_b]);
+        float diff = fabsf(arr1[(int)index_a] - arr2[(int)index_b]);
         float tolerance = atol + rtol * fabsf(arr2[index_b]);
         if (diff > tolerance) {
             return false;
@@ -573,6 +575,11 @@ float_allclose(float* arr1, float* arr2, int* shape, int* strides_a, int* stride
  */
 int
 NDArray_AllClose(NDArray* a, NDArray *b, float rtol, float atol) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU)
+    {
+        zend_throw_error(NULL, "`allclose` is not compatible with GPU operations.");
+    }
+
     if (NDArray_ShapeCompare(a, b) == 0) {
         zend_throw_error(NULL, "Shape mismatch");
         return -1;
@@ -587,9 +594,6 @@ NDArray_AllClose(NDArray* a, NDArray *b, float rtol, float atol) {
         return float_allclose(NDArray_FDATA(a), NDArray_FDATA(b), NDArray_SHAPE(a),
                               NDArray_STRIDES(a), NDArray_STRIDES(b),
                               NDArray_NDIM(a), atol, rtol);
-    } else {
-#ifdef HAVE_CUBLAS
-
-#endif
     }
+    return -1;
 }
