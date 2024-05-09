@@ -1,11 +1,8 @@
 #include <Zend/zend.h>
 #include "manipulation.h"
 #include "ndarray.h"
-#include "php.h"
 #include "initializers.h"
-#include "debug.h"
 #include "../config.h"
-#include "buffer.h"
 #include "types.h"
 #include <cblas.h>
 #include "iterators.h"
@@ -16,10 +13,6 @@
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
 #include "gpu_alloc.h"
-#endif
-
-#ifdef HAVE_AVX2
-#include <immintrin.h>
 #endif
 
 int
@@ -49,7 +42,7 @@ void copy(const int* src, int* dest, unsigned int size) {
  * @return
  */
 NDArray*
-NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
+NDArray_Transpose(NDArray *a) {
     NDArray *ret = NULL;
     NDArray *contiguous_ret = NULL;
     if (NDArray_NDIM(a) < 2) {
@@ -59,6 +52,12 @@ NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
 
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
     int *new_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+
+    if (new_shape == NULL || new_strides == NULL) {
+        zend_throw_error(NULL, "failed to allocate memory for new_shape and new_strides.");
+        return NULL;
+    }
+
     reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
     reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
 
@@ -132,7 +131,7 @@ NDArray_Flatten(NDArray *target) {
  * @return
  */
 NDArray*
-NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int return_view) {
+NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
     if (num_indices > NDArray_NDIM(array)) {
         zend_throw_error(NULL, "too many indices for array.");
         return NULL;
@@ -360,11 +359,11 @@ check_and_adjust_axis(int *axis, int ndim) {
 /**
  * @param arr
  * @param axis
- * @param flags
+ * @param _flags
  * @return
  */
 NDArray*
-NDArray_CheckAxis(NDArray *arr, int *axis, int flags)
+NDArray_CheckAxis(NDArray *arr, int *axis, int _flags)
 {
     NDArray *temp1, *temp2;
     int n = NDArray_NDIM(arr);
@@ -372,10 +371,6 @@ NDArray_CheckAxis(NDArray *arr, int *axis, int flags)
     if (*axis == NDARRAY_MAX_DIMS || n == 0) {
         if (n != 1) {
             temp1 = NDArray_Flatten(arr);
-            if (temp1 == NULL) {
-                *axis = 0;
-                return NULL;
-            }
             if (*axis == NDARRAY_MAX_DIMS) {
                 *axis = NDArray_NDIM(temp1)-1;
             }
@@ -385,7 +380,7 @@ NDArray_CheckAxis(NDArray *arr, int *axis, int flags)
             NDArray_ADDREF(temp1);
             *axis = 0;
         }
-        if (!flags && *axis == 0) {
+        if (!_flags && *axis == 0) {
             return temp1;
         }
     }

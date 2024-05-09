@@ -1189,7 +1189,7 @@ PHP_METHOD(NDArray, transpose) {
     }
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
+        rtn = NDArray_Transpose(nda);
         add_to_buffer(rtn);
         CHECK_INPUT_AND_FREE(array, nda);
         RETURN_NDARRAY(rtn, return_value);
@@ -1265,7 +1265,7 @@ PHP_METHOD(NDArray, atleast_1d) {
     }
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
+        rtn = NDArray_Transpose(nda);
         add_to_buffer(rtn);
         RETURN_NDARRAY(rtn, return_value);
     } else {
@@ -1330,7 +1330,7 @@ PHP_METHOD(NDArray, atleast_3d) {
     }
     axis_i = (int)axis;
     if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda, NULL);
+        rtn = NDArray_Transpose(nda);
         add_to_buffer(rtn);
         RETURN_NDARRAY(rtn, return_value);
     } else {
@@ -3977,7 +3977,7 @@ PHP_METHOD(NDArray, slice) {
         // ...
         indices_axis[j] = ZVAL_TO_NDARRAY(current_arg);
     }
-    rtn = NDArray_Slice(ndarray, indices_axis, num_inputed_args, 0);
+    rtn = NDArray_Slice(ndarray, indices_axis, num_inputed_args);
 
     for (j = 0; j < num_inputed_args; j++) {
         NDArray_FREE(indices_axis[j]);

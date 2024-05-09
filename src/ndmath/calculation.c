@@ -84,7 +84,7 @@ NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
     float *rptr;
     int i, n, m;
     int elsize;
-    // Keep a copy because axis changes via call to PyArray_CheckAxis
+    // Keep a copy because axis changes via call to NDArray_CheckAxis
     int axis_copy = axis;
     int _shape_buf[NDARRAY_MAX_DIMS];
     int *out_shape;
@@ -113,7 +113,10 @@ NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
             dims[j] = j + 1;
         }
         dims[NDArray_NDIM(ap) - 1] = axis;
-        op = NDArray_Transpose(ap, &newaxes);
+        //@todo Use transpose permutation
+        //op = NDArray_Transpose(ap, &newaxes);
+        op = NDArray_Transpose(ap);
+
         NDArray_FREE(ap);
         if (op == NULL) {
             return NULL;

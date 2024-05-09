@@ -403,7 +403,7 @@ NDArray_L1Norm(NDArray* target) {
     NDArray *rtn = NULL;
     float max_value = FLT_MIN;
     float *results = emalloc(sizeof(float) * NDArray_SHAPE(target)[NDArray_NDIM(target) - 2]);
-    NDArray *transposed = NDArray_Transpose(target, NULL);
+    NDArray *transposed = NDArray_Transpose(target);
     NDArray *ab = NDArray_Abs(transposed);
     NDArray_FREE(transposed);
     NDArray *slice;
