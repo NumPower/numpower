@@ -186,10 +186,10 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
     int color_index, i, j;
     int offset_green, offset_red, offset_blue, offset_alpha;
     int red, green, blue, alpha;
-    char *tmp_red, *tmp_blue, *tmp_green;
     gdImagePtr im = gdImageCreateTrueColor_(NDArray_SHAPE(a)[2], NDArray_SHAPE(a)[1]);
 
 #ifdef HAVE_AVX2
+    __m256i alpha_values;
     int elsize = NDArray_ELSIZE(a);
     __m256i alpha_mask = _mm256_set_epi32(0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF);
 
@@ -211,16 +211,6 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
             __m256 green_values = _mm256_loadu_ps(&NDArray_FDATA(a)[offset_green]);
             __m256 blue_values = _mm256_loadu_ps(&NDArray_FDATA(a)[offset_blue]);
 
-            if (n_alpha != NULL) {
-                __m256i alpha_values = _mm256_cvtps_epi32(_mm256_loadu_ps(&NDArray_FDATA(n_alpha)[offset_alpha]));
-                alpha_values = _mm256_and_si256(alpha_values, alpha_mask);
-            } else {
-                // Handle the case when n_alpha is NULL (no alpha channel)
-                // Set alpha_values to a default value or do appropriate handling
-                // For example, you can set alpha_values to all 255 (fully opaque).
-                __m256i alpha_values = _mm256_set1_epi32(255);
-            }
-
             __m256i red_int = _mm256_cvtps_epi32(red_values);
             __m256i green_int = _mm256_cvtps_epi32(green_values);
             __m256i blue_int = _mm256_cvtps_epi32(blue_values);
@@ -228,7 +218,7 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
             __m256i color_indices;
 
             if (n_alpha != NULL) {
-                __m256i alpha_values = _mm256_cvtps_epi32(_mm256_loadu_ps(&NDArray_FDATA(n_alpha)[offset_alpha]));
+                alpha_values = _mm256_cvtps_epi32(_mm256_loadu_ps(&NDArray_FDATA(n_alpha)[offset_alpha]));
                 alpha_values = _mm256_and_si256(alpha_values, alpha_mask);
 
                 color_indices = _mm256_or_si256(_mm256_or_si256(_mm256_slli_epi32(alpha_values, 24),
