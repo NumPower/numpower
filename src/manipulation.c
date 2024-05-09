@@ -332,6 +332,31 @@ NDArray_ExpandDim(NDArray *a, int axis) {
     return rtn;
 }
 
+
+static inline int
+check_and_adjust_axis_msg(int *axis, int ndim) {
+    if (axis == NULL) {
+        return 0;
+    }
+
+    /* Check that index is valid, taking into account negative indices */
+    if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
+        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
+        return -1;
+    }
+
+    /* adjust negative indices */
+    if (*axis < 0) {
+        *axis += ndim;
+    }
+    return 0;
+}
+
+static inline int
+check_and_adjust_axis(int *axis, int ndim) {
+    return check_and_adjust_axis_msg(axis, ndim);
+}
+
 /**
  * @param arr
  * @param axis
