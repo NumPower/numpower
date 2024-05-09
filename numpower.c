@@ -1057,7 +1057,7 @@ PHP_METHOD(NDArray, ones) {
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_arange, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arange, 0, 0, 1)
 ZEND_ARG_INFO(0, stop)
 ZEND_ARG_INFO(0, start)
 ZEND_ARG_INFO(0, step)
