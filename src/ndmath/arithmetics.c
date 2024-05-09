@@ -127,7 +127,7 @@ float calculate_median(float* matrix, int size) {
     float median;
     if (size % 2 == 0) {
         // If the number of elements is even, average the two middle values
-        median = (temp[size / 2 - 1] + temp[size / 2]) / 2.0;
+        median = (temp[size / 2 - 1] + temp[size / 2]) / 2.0f;
     } else {
         // If the number of elements is odd, take the middle value
         median = temp[size / 2];

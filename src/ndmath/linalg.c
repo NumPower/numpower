@@ -491,7 +491,7 @@ matrixFloatInverse(float* matrix, int n) {
  */
 int
 matrixFloatLU(float* matrix, int n, float *p, float *l, float *u) {
-    int i, j, k, maxIndex, tempIndex;
+    int i, j, k, maxIndex;
     float maxVal, tempVal;
 
     // Initialize L, U, and P matrices
@@ -649,7 +649,6 @@ NDArray_MatrixRank(NDArray *target, float *tol) {
     int rank = 0, i;
     NDArray *rtn;
     NDArray **svd = NDArray_SVD(target);
-    int smallest_dim = -1;
     float *singular_values;
 
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {

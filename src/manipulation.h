@@ -12,4 +12,5 @@ NDArray* NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices, int r
 NDArray* NDArray_Append(NDArray *a, NDArray *b);
 NDArray* NDArray_ExpandDim(NDArray *a, int axis);
 NDArray* NDArray_ToContiguous(NDArray *a);
+NDArray* NDArray_CheckAxis(NDArray *arr, int *axis, int flags);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H

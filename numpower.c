@@ -24,6 +24,7 @@
 #include "src/indexing.h"
 #include "src/ndmath/statistics.h"
 #include "src/ndmath/signal.h"
+#include "src/ndmath/calculation.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -2175,6 +2176,62 @@ PHP_METHOD(NDArray, maximum) {
 }
 
 /**
+ * NDArray::argmax
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_argmax, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, argmax) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 1);
+    if (rtn == NULL) return;
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::argmin
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_argmin, 0, 0, 1)
+        ZEND_ARG_INFO(0, a)
+        ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, argmin) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 0);
+    if (rtn == NULL) return;
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::mean
  *
  * @param execute_data
@@ -4158,6 +4215,8 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, maximum, arginfo_ndarray_maximum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, argmax, arginfo_ndarray_argmax, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, argmin, arginfo_ndarray_argmin, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // MANIPULATION
     ZEND_ME(NDArray, reshape, arginfo_reshape, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

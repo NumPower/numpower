@@ -29,14 +29,14 @@ float calculate_quantile(float* vector, int num_elements, int stride, float quan
     qsort(temp, num_elements, sizeof(float), compare_quantile);
 
     // Calculate the index of the desired quantile
-    float index = (num_elements - 1) * quantile;
+    float index = (float)(num_elements - 1) * quantile;
 
     // Calculate the lower and upper indices for interpolation
     int lower_index = (int)index;
     int upper_index = lower_index + 1;
 
     // Calculate the weight for interpolation
-    float weight = index - lower_index;
+    float weight =index - (float)lower_index;
 
     // Perform linear interpolation between the two adjacent values
     float lower_value = temp[lower_index];
