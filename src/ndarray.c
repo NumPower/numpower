@@ -110,7 +110,6 @@ NDArray_FromGD(zval *a, bool channel_last) {
         i_shape[2] = 3;
     }
     rtn = NDArray_Zeros(i_shape, 3, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
-    int elsize = NDArray_ELSIZE(rtn);
     for (i = 0; i < img_ptr->sy; i++) {
         for (j = 0; j < img_ptr->sx; j++) {
             if (img_ptr->trueColor) {
@@ -400,50 +399,38 @@ void _single_reduce(int current_axis, int rtn_init, int *axis, NDArray *target, 
 NDArray *
 single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *)) {
     char *exception_buffer[256];
-    int null_axis = 0;
 
     if (axis == NULL) {
-        null_axis = 1;
         axis = emalloc(sizeof(int));
         *axis = 0;
     }
 
-    if (axis != NULL) {
-        if (*axis >= NDArray_NDIM(array)) {
-            sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
-                    NDArray_NDIM(array));
-            zend_throw_error(NULL, "%s", (const char *) exception_buffer);
-            return NULL;
-        }
+    if (*axis >= NDArray_NDIM(array)) {
+        sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
+                NDArray_NDIM(array));
+        zend_throw_error(NULL, "%s", (const char *) exception_buffer);
+        return NULL;
     }
 
     // Calculate the size and strides of the reduced output
     int out_dim = 0;
-    int out_ndim = 0;
+    int out_ndim;
 
-    if (axis != NULL) {
-        for (int i = 0; i < NDArray_NDIM(array); i++) {
-            if (i != *axis) {
-                out_dim++;
-            }
+    for (int i = 0; i < NDArray_NDIM(array); i++) {
+        if (i != *axis) {
+            out_dim++;
         }
-    } else {
-        out_dim = 0;
     }
 
     out_ndim = out_dim;
     int *out_shape = emalloc(sizeof(int) * out_ndim);
 
-    if (axis != NULL) {
-        int j = 0;
-        for (int i = 0; i < NDArray_NDIM(array); i++) {
-            if (i != *axis) {
-                out_shape[j] = NDArray_SHAPE(array)[i];
-                j++;
-            }
+    int j = 0;
+    for (int i = 0; i < NDArray_NDIM(array); i++) {
+        if (i != *axis) {
+            out_shape[j] = NDArray_SHAPE(array)[i];
+            j++;
         }
-    } else {
-        out_shape[0] = 1;
     }
 
     // Calculate the size of the reduced buffer
@@ -454,10 +441,6 @@ single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *)) {
 
     // Allocate memory for the reduced buffer
     NDArray *rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
-    //if (reduced_buffer == NULL) {
-    //    fprintf(stderr, "Memory allocation failed.\n");
-    //    return;
-    //}
     _single_reduce(0, 0, axis, array, rtn, operation);
     return rtn;
 }
@@ -483,42 +466,32 @@ reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *)) {
         *axis = 0;
     }
 
-    if (axis != NULL) {
-        if (*axis >= NDArray_NDIM(array)) {
-            sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
-                    NDArray_NDIM(array));
-            zend_throw_error(NULL, "%s", (const char *) exception_buffer);
-            return NULL;
-        }
+    if (*axis >= NDArray_NDIM(array)) {
+        sprintf((char *) exception_buffer, "axis %d is out of bounds for array of dimension %d", *axis,
+                NDArray_NDIM(array));
+        zend_throw_error(NULL, "%s", (const char *) exception_buffer);
+        return NULL;
     }
 
     // Calculate the size and strides of the reduced output
     int out_dim = 0;
-    int out_ndim = 0;
+    int out_ndim;
 
-    if (axis != NULL) {
-        for (int i = 0; i < NDArray_NDIM(array); i++) {
-            if (i != *axis) {
-                out_dim++;
-            }
+    for (int i = 0; i < NDArray_NDIM(array); i++) {
+        if (i != *axis) {
+            out_dim++;
         }
-    } else {
-        out_dim = 0;
     }
 
     out_ndim = out_dim;
     int *out_shape = emalloc(sizeof(int) * out_ndim);
 
-    if (axis != NULL) {
-        int j = 0;
-        for (int i = 0; i < NDArray_NDIM(array); i++) {
-            if (i != *axis) {
-                out_shape[j] = NDArray_SHAPE(array)[i];
-                j++;
-            }
+    int j = 0;
+    for (int i = 0; i < NDArray_NDIM(array); i++) {
+        if (i != *axis) {
+            out_shape[j] = NDArray_SHAPE(array)[i];
+            j++;
         }
-    } else {
-        out_shape[0] = 1;
     }
 
     // Calculate the size of the reduced buffer
@@ -529,11 +502,6 @@ reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *)) {
 
     // Allocate memory for the reduced buffer
     NDArray *rtn = NDArray_Zeros(out_shape, out_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
-
-    //if (reduced_buffer == NULL) {
-    //    fprintf(stderr, "Memory allocation failed.\n");
-    //    return;
-    //}
     _reduce(0, 0, axis, array, rtn, operation);
 
     if (null_axis == 1) {
@@ -544,6 +512,8 @@ reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *)) {
     return rtn;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 /**
  * Free NDArray
  *
@@ -596,6 +566,7 @@ NDArray_FREE(NDArray *array) {
         array = NULL;
     }
 }
+#pragma clang diagnostic pop
 
 /**
  * Free NDArray data buffer regardless of references
@@ -702,7 +673,7 @@ float
 NDArray_Min(NDArray *target) {
     float *array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
-    float min = 0.f;
+    float min;
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         return cuda_min_float(array, NDArray_NUMELEMENTS(target));
@@ -759,7 +730,7 @@ NDArray_MaxAxis(NDArray *target, int axis) {
 
     NDArray *rtn = NDArray_Empty(output_shape, NDArray_NDIM(target) - 1, NDArray_TYPE(target), NDArray_DEVICE(target));
 
-    int axis_first_element_index, j = 0, i = 0, axis_step = 0;
+    int axis_first_element_index, j, i, axis_step;
     if (axis == 0) {
         for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
             axis_step = (NDArray_STRIDES(target)[axis] / NDArray_ELSIZE(target));
@@ -844,7 +815,7 @@ NDArray_Maximum(NDArray *a, NDArray *b) {
  */
 float
 NDArray_Max(NDArray *target) {
-    float max = 0.f;
+    float max;
     float *array = NDArray_FDATA(target);
     int length = NDArray_NUMELEMENTS(target);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
@@ -864,6 +835,8 @@ NDArray_Max(NDArray *target) {
     return max;
 }
 
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "misc-no-recursion"
 /**
  * @param data
  * @param strides
@@ -876,34 +849,27 @@ convertToStridedArrayToPHPArray(float *data, int *strides, int *dimensions, int 
     zval phpArray;
     int i;
 
-    // Create a new PHP array
-    //phpArray = (zval*)emalloc(sizeof(zval));
     array_init_size(&phpArray, ndim);
 
     for (i = 0; i < dimensions[0]; i++) {
-        // If it's not the innermost dimension, recursively convert the sub-array
         if (ndim > 1) {
             int j;
             zval subArray;
 
-            // Calculate the pointer and strides for the sub-array
             float *subData = data + (i * (strides[0] / elsize));
             int *subStrides = strides + 1;
             int *subDimensions = dimensions + 1;
 
-            // Convert the sub-array to a PHP array
             subArray = convertToStridedArrayToPHPArray(subData, subStrides, subDimensions, ndim - 1, elsize);
 
-            // Add the sub-array to the main array
             add_index_zval(&phpArray, i, &subArray);
         } else {
-            //printf("\nNDIM: %d\n", *strides);
-            // Add the scalar values to the main array
             add_index_double(&phpArray, i, *(data + (i * (*strides / elsize))));
         }
     }
     return phpArray;
 }
+#pragma clang diagnostic pop
 
 /**
  * Convert a NDArray to PHP Array
@@ -1086,7 +1052,6 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
     NDArray *src, *dst, *rtn;
     src = a;
     dst = b;
-    char *tmp_p;
     if (NDArray_NDIM(a) == NDArray_NDIM(b)) {
         int all_equal = 1;
         for (i = 0; i < NDArray_NDIM(a); i++) {
@@ -1155,6 +1120,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                 }
             }
 #ifdef HAVE_CUBLAS
+            char *tmp_p;
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 if (NDArray_NUMELEMENTS(src) != 1) {
                     for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
