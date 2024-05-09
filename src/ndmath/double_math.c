@@ -209,12 +209,12 @@ float float_trunc(float val) {
 }
 
 float float_sinc(float val) {
-    float pi = 22.0f/7.0f;
+    float pi = 3.1415927f;
     if (val == 0.0) {
-        return 1.0f;
-    } else {
-        return sinf(pi * val) / (pi * val);
+        val = 1.0e-20f;
     }
+    val = pi * val;
+    return float_sin(val) / val;
 }
 
 float float_negate(float val) {

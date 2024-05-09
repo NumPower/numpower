@@ -662,7 +662,6 @@ NDArray_Map(NDArray *array, ElementWiseDoubleOperation op) {
     int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
     memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
     rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
-
     for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
         NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i]);
     }
