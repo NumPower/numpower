@@ -13,4 +13,5 @@ NDArray* NDArray_Append(NDArray *a, NDArray *b);
 NDArray* NDArray_ExpandDim(NDArray *a, NDArray *axis);
 NDArray* NDArray_ToContiguous(NDArray *a);
 NDArray* NDArray_CheckAxis(NDArray *arr, int *axis, int _flags);
+NDArray* NDArray_AtLeast1D(NDArray *a);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H

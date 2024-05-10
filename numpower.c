@@ -1255,7 +1255,6 @@ PHP_METHOD(NDArray, copy) {
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_atleast_1d, 0, 0, 1)
 ZEND_ARG_INFO(0, array)
-ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, atleast_1d) {
     NDArray *rtn = NULL;
@@ -1263,27 +1262,16 @@ PHP_METHOD(NDArray, atleast_1d) {
     long axis;
     int axis_i;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(array)
-    Z_PARAM_OPTIONAL
-    Z_PARAM_LONG(axis)
+        Z_PARAM_ZVAL(array)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
     if (nda == NULL) {
         return;
     }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda);
-        add_to_buffer(rtn);
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
-        return;
-    }
+    NDArray *output = NDArray_AtLeast1D(nda);
+
+    CHECK_INPUT_AND_FREE(array, nda);
+    RETURN_NDARRAY(output, return_value);
 }
 
 /**
@@ -3177,12 +3165,11 @@ PHP_METHOD(NDArray, expand_dims) {
     }
     rtn = NDArray_ExpandDim(nda, ndaxis);
 
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(axis, ndaxis);
     if (rtn == NULL) {
         return;
     }
-
-    CHECK_INPUT_AND_FREE(a, nda);
-    CHECK_INPUT_AND_FREE(axis, ndaxis);
     RETURN_NDARRAY(rtn, return_value);
 }
 

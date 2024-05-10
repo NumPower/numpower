@@ -110,12 +110,17 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     int total_new_elements = 1;
     int i;
 
+    if (new_shape == NULL) {
+        zend_throw_error(NULL, "new shape cannot be null.");
+        return NULL;
+    }
+
     for (i = 0; i < ndim; i++) {
         total_new_elements = total_new_elements * new_shape[i];
     }
 
     if (total_new_elements != NDArray_NUMELEMENTS(target)) {
-        zend_throw_error(NULL, "NDArray Reshape: Incompatible shape");
+        zend_throw_error(NULL, "incompatible shape during reshape call.");
         return NULL;
     }
     NDArray *rtn = NDArray_Empty(new_shape, ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
@@ -342,6 +347,14 @@ normalize_axis_vector(NDArray *axis, int ndim) {
  */
 NDArray*
 NDArray_ExpandDim(NDArray *a, NDArray *axis) {
+    NDArray *temp;
+    bool free_axis = false;
+
+    if (NDArray_NDIM(axis) == 0) {
+        axis = NDArray_AtLeast1D(axis);
+        free_axis = true;
+    }
+
     int output_ndim = NDArray_NUMELEMENTS(axis) + NDArray_NDIM(a);
     int *output_shape = emalloc(sizeof(int) * output_ndim);
     if (NDArray_NDIM(axis) > 1) {
@@ -350,6 +363,11 @@ NDArray_ExpandDim(NDArray *a, NDArray *axis) {
     }
 
     NDArray *normalized_axis = normalize_axis_vector(axis, output_ndim);
+
+    if (normalized_axis == NULL) {
+        efree(output_shape);
+        return NULL;
+    }
 
     int found;
     int *a_shape = NDArray_SHAPE(a);
@@ -371,6 +389,16 @@ NDArray_ExpandDim(NDArray *a, NDArray *axis) {
 
     NDArray_FREE(normalized_axis);
     NDArray *output = NDArray_Reshape(a, output_shape, output_ndim);
+
+    if (output == NULL) {
+        efree(output_shape);
+        return NULL;
+    }
+
+    if (free_axis) {
+        NDArray_FREE(axis);
+    }
+
     return output;
 }
 
@@ -412,4 +440,23 @@ NDArray_CheckAxis(NDArray *arr, int *axis, int _flags)
         return NULL;
     }
     return temp2;
+}
+
+NDArray*
+NDArray_AtLeast1D(NDArray *a) {
+    NDArray *output = NULL;
+    if (NDArray_NDIM(a) == 0) {
+        int *new_shape = emalloc(sizeof(int));
+        new_shape[0] = 1;
+        output = NDArray_Reshape(a, new_shape, 1);
+    } else {
+        int *strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+        int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+
+        memcpy(strides, NDArray_STRIDES(a), sizeof(int) * NDArray_NDIM(a));
+        memcpy(new_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+
+        output = NDArray_FromNDArrayBase(a, NDArray_DATA(a), new_shape, strides, NDArray_NDIM(a));
+    }
+    return output;
 }
