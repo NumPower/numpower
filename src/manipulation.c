@@ -460,3 +460,47 @@ NDArray_AtLeast1D(NDArray *a) {
     }
     return output;
 }
+
+NDArray*
+NDArray_AtLeast2D(NDArray *a) {
+    NDArray *output = NULL;
+    if (NDArray_NDIM(a) < 2) {
+        int *new_shape = emalloc(sizeof(int) * 2);
+        new_shape[0] = 1;
+        new_shape[1] = NDArray_NUMELEMENTS(a);
+        output = NDArray_Reshape(a, new_shape, 2);
+    } else {
+        int *strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+        int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(strides, NDArray_STRIDES(a), sizeof(int) * NDArray_NDIM(a));
+        memcpy(new_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+        output = NDArray_FromNDArrayBase(a, NDArray_DATA(a), new_shape, strides, NDArray_NDIM(a));
+    }
+    return output;
+}
+
+NDArray*
+NDArray_AtLeast3D(NDArray *a) {
+    NDArray *output = NULL;
+    if (NDArray_NDIM(a) < 3) {
+        int *new_shape = emalloc(sizeof(int) * 2);
+        new_shape[0] = 1;
+        if (NDArray_NDIM(a) < 2) {
+            new_shape[1] = 1;
+            new_shape[2] = NDArray_NUMELEMENTS(a);
+        }
+        if (NDArray_NDIM(a) == 2) {
+            new_shape[1] = NDArray_SHAPE(a)[0];
+            new_shape[2] = NDArray_SHAPE(a)[1];
+        }
+        output = NDArray_Reshape(a, new_shape, 3);
+    } else {
+        int *strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+        int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+        memcpy(strides, NDArray_STRIDES(a), sizeof(int) * NDArray_NDIM(a));
+        memcpy(new_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+        output = NDArray_FromNDArrayBase(a, NDArray_DATA(a), new_shape, strides, NDArray_NDIM(a));
+    }
+    return output;
+}
+
