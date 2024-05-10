@@ -77,7 +77,7 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
         }
 #endif
     }
-    zend_throw_error(NULL, "Invalid object type");
+    zend_throw_error(NULL, "argument must be an array, long, double, gdimage or ndarray.");
     return NULL;
 }
 
@@ -1150,6 +1150,11 @@ PHP_METHOD(NDArray, allclose) {
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     NDArray *ndb = ZVAL_TO_NDARRAY(b);
 
+    if (nda == ndb) {
+        CHECK_INPUT_AND_FREE(a, nda);
+        RETURN_BOOL(true);
+    }
+
     if (nda == NULL) {
         return;
     }
@@ -1158,6 +1163,9 @@ PHP_METHOD(NDArray, allclose) {
         return;
     }
     rtn = NDArray_AllClose(nda, ndb, (float)rtol, (float)atol);
+    if (rtn == -1) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_BOOL(rtn);
@@ -3152,17 +3160,29 @@ ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, expand_dims) {
     NDArray *rtn = NULL;
     zval *a;
-    long axis;
+    zval *axis;
     ZEND_PARSE_PARAMETERS_START(2, 2)
         Z_PARAM_ZVAL(a)
-        Z_PARAM_LONG(axis)
+        Z_PARAM_ZVAL(axis)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(a);
-    if (nda == NULL) {
+
+    if (Z_TYPE_P(axis) != IS_ARRAY && Z_TYPE_P(axis) != IS_LONG && Z_TYPE_P(axis) != IS_OBJECT) {
+        zend_throw_error(NULL, "expected array, integer or ndarray");
         return;
     }
-    rtn = NDArray_ExpandDim(nda, (int)axis);
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndaxis = ZVAL_TO_NDARRAY(axis);
+    if (nda == NULL || ndaxis == NULL) {
+        return;
+    }
+    rtn = NDArray_ExpandDim(nda, ndaxis);
+
+    if (rtn == NULL) {
+        return;
+    }
+
     CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(axis, ndaxis);
     RETURN_NDARRAY(rtn, return_value);
 }
 

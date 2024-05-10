@@ -7,6 +7,7 @@
 #include <cblas.h>
 #include "iterators.h"
 #include "indexing.h"
+#include "debug.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -35,6 +36,31 @@ void copy(const int* src, int* dest, unsigned int size) {
         dest[i] = src[i];
     }
 }
+
+static inline int
+check_and_adjust_axis_msg(int *axis, int ndim) {
+    if (axis == NULL) {
+        return 0;
+    }
+
+    /* Check that index is valid, taking into account negative indices */
+    if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
+        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
+        return -1;
+    }
+
+    /* adjust negative indices */
+    if (*axis < 0) {
+        *axis += ndim;
+    }
+    return 0;
+}
+
+static inline int
+check_and_adjust_axis(int *axis, int ndim) {
+    return check_and_adjust_axis_msg(axis, ndim);
+}
+
 
 /**
  * @param a
@@ -289,71 +315,63 @@ NDArray_ToContiguous(NDArray *a) {
     return ret;
 }
 
+static inline NDArray*
+normalize_axis_vector(NDArray *axis, int ndim) {
+    NDArray *output = NDArray_EmptyLike(axis);
+    NDArray *axis_val;
+    NDArrayIterator_REWIND(axis);
+    int i = 0;
+    while(!NDArrayIterator_ISDONE(axis)) {
+        axis_val = NDArrayIterator_GET(axis);
+        int axis_int_val = (int)(NDArray_FDATA(axis_val)[0]);
+        if (check_and_adjust_axis(&axis_int_val, ndim) < 0) {
+            return NULL;
+        }
+        NDArray_FDATA(output)[i] = (float)axis_int_val;
+        NDArrayIterator_NEXT(axis);
+        NDArray_FREE(axis_val);
+        i++;
+    }
+    return output;
+}
+
 /**
  * @param a
  * @param axis
  * @return
  */
 NDArray*
-NDArray_ExpandDim(NDArray *a, int axis) {
-    int *output_shape = emalloc(sizeof(int) * (NDArray_NDIM(a) + 1));
-    int output_ndim = NDArray_NDIM(a) + 1;
-
-    // Calculate the total size of the input and output arrays in bytes
-    size_t input_size = sizeof(float);
-    size_t output_size = sizeof(float);
-
-    for (int i = 0; i < NDArray_NDIM(a); i++) {
-        input_size *= NDArray_SHAPE(a)[i];
-        output_size *= (i < axis) ? NDArray_SHAPE(a)[i] : (i == axis) ? 1 : NDArray_SHAPE(a)[i - 1];
+NDArray_ExpandDim(NDArray *a, NDArray *axis) {
+    int output_ndim = NDArray_NUMELEMENTS(axis) + NDArray_NDIM(a);
+    int *output_shape = emalloc(sizeof(int) * output_ndim);
+    if (NDArray_NDIM(axis) > 1) {
+        zend_throw_error(NULL, "axis must be either a scalar or a vector. Found matrix with %d dimensions.",
+                         NDArray_NDIM(axis));
     }
 
-    // Initialize the output shape and strides
-    for (int i = 0; i <= NDArray_NDIM(a); i++) {
-        if (i < axis) {
-            output_shape[i] = NDArray_SHAPE(a)[i];
-        } else if (i == axis) {
-            output_shape[i] = 1; // Expand along this axis
-        } else {
-            output_shape[i] = NDArray_SHAPE(a)[i - 1];
+    NDArray *normalized_axis = normalize_axis_vector(axis, output_ndim);
+
+    int found;
+    int *a_shape = NDArray_SHAPE(a);
+    int shape_it = 0;
+    for (int ax = 0; ax < output_ndim; ax++) {
+        found  = 0;
+        for (int i = 0; i < NDArray_NUMELEMENTS(normalized_axis); i++) {
+            if ((int)(NDArray_FDATA(normalized_axis)[i]) == ax) {
+                found = 1;
+                output_shape[ax] = 1;
+                break;
+            }
+        }
+        if (!found) {
+            output_shape[ax] = a_shape[shape_it];
+            shape_it++;
         }
     }
-    NDArray *rtn = NDArray_Empty(output_shape, output_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
 
-    // Copy data to the expanded output array
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-        memcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), input_size);
-    } else {
-#ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_DATA(a), NDArray_DATA(rtn), input_size);
-#endif
-    }
-    return rtn;
-}
-
-
-static inline int
-check_and_adjust_axis_msg(int *axis, int ndim) {
-    if (axis == NULL) {
-        return 0;
-    }
-
-    /* Check that index is valid, taking into account negative indices */
-    if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
-        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
-        return -1;
-    }
-
-    /* adjust negative indices */
-    if (*axis < 0) {
-        *axis += ndim;
-    }
-    return 0;
-}
-
-static inline int
-check_and_adjust_axis(int *axis, int ndim) {
-    return check_and_adjust_axis_msg(axis, ndim);
+    NDArray_FREE(normalized_axis);
+    NDArray *output = NDArray_Reshape(a, output_shape, output_ndim);
+    return output;
 }
 
 /**
