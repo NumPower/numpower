@@ -556,7 +556,7 @@ float_allclose(float* arr1, float* arr2, const int* shape,
         index_a = (i * sizeof(float)) + (i * strides_a[0]/sizeof(float));
         index_b = (i * sizeof(float)) + (i * strided_b[0]/sizeof(float));
         float diff = fabsf(arr1[(int)index_a] - arr2[(int)index_b]);
-        float tolerance = atol + rtol * fabsf(arr2[index_b]);
+        float tolerance = atol + rtol * fabsf(arr2[(int)index_b]);
         if (diff > tolerance) {
             return false;
         }
