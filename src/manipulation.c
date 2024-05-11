@@ -325,14 +325,27 @@ NDArray_ToContiguous(NDArray *a) {
     NDArrayIter *a_it = NDArray_NewElementWiseIter(a);
     NDArrayIter *ret_it = NDArray_NewElementWiseIter(ret);
 
-    while(ncopies--) {
-        index = a_size;
-        while(index--) {
-            memmove(ret_it->dataptr, a_it->dataptr, elsize);
-            NDArray_ITER_NEXT(a_it);
-            NDArray_ITER_NEXT(ret_it);
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
+        while (ncopies--) {
+            index = a_size;
+            while (index--) {
+                memmove(ret_it->dataptr, a_it->dataptr, elsize);
+                NDArray_ITER_NEXT(a_it);
+                NDArray_ITER_NEXT(ret_it);
+            }
+            NDArray_ITER_RESET(a_it);
         }
-        NDArray_ITER_RESET(a_it);
+    }
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
+        while (ncopies--) {
+            index = a_size;
+            while (index--) {
+                vmemcpyd2d(a_it->dataptr, ret_it->dataptr, elsize);
+                NDArray_ITER_NEXT(a_it);
+                NDArray_ITER_NEXT(ret_it);
+            }
+            NDArray_ITER_RESET(a_it);
+        }
     }
     efree(a_it);
     efree(ret_it);
