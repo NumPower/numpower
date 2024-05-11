@@ -4371,7 +4371,7 @@ static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_It
     zval property_id_default_value;
     ZVAL_UNDEF(&property_id_default_value);
     zend_string *property_id_name = zend_string_init("id", sizeof("id") - 1, 1);
-    zend_declare_typed_property(class_entry, property_id_name, &property_id_default_value, ZEND_ACC_PUBLIC, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
+    zend_declare_typed_property(class_entry, property_id_name, &property_id_default_value, ZEND_ACC_PRIVATE, NULL, (zend_type) ZEND_TYPE_INIT_MASK(MAY_BE_LONG));
     zend_string_release(property_id_name);
 
     return class_entry;
