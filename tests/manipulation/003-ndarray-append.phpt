@@ -7,9 +7,9 @@ use \NDArray as nd;
 $a = nd::array([1, 2, 3, 4]);
 $b = nd::array([5, 6, 7, 8]);
 
-print_r(nd::append($a, $b)->toArray());
-print_r(nd::append($a, $a)->toArray());
-print_r(nd::append([1, 2, 3, 4], [1, 2, 3, 4])->toArray());
+print_r(nd::append([$a, $b])->toArray());
+print_r(nd::append([$a, $a])->toArray());
+print_r(nd::append([[1, 2, 3, 4], [1, 2, 3, 4]])->toArray());
 ?>
 --EXPECT--
 Array
