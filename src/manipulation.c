@@ -247,43 +247,63 @@ failure:
     return NULL;
 }
 
+NDArray*
+NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
+{
+    NDArray *rtn;
+    int iarrays;
+    int *shape = emalloc(sizeof(int));
+    int device;
+
+    *shape = 0;
+    if (num_arrays <= 0) {
+        zend_throw_error(NULL,
+                        "need at least one array to concatenate");
+        return NULL;
+    }
+
+    for (iarrays = 0; iarrays < num_arrays; ++iarrays) {
+        *shape += NDArray_NUMELEMENTS(arrays[iarrays]);
+        if (*shape < 0) {
+            zend_throw_error(NULL,
+                            "total number of elements "
+                            "too large to concatenate");
+            return NULL;
+        }
+    }
+    rtn = NDArray_Zeros(shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
+    device = NDArray_DEVICE(rtn);
+
+    int extra_bytes = 0;
+    char *tmp_data = NULL;
+    for (int i_array = 0; i_array < num_arrays; i_array++) {
+        extra_bytes = i_array * (NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[0]));
+        tmp_data = NDArray_DATA(rtn) + extra_bytes;
+
+        switch (NDArray_DEVICE(rtn)) {
+            case NDARRAY_DEVICE_GPU:
+#ifdef HAVE_CUBLAS
+
+#endif
+                break;
+            default:
+                memcpy(tmp_data, NDArray_DATA(arrays[i_array]), NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[i_array]));
+        }
+    }
+    return rtn;
+}
+
 /**
  * @param target
- * @todo Append all dimensions with axis
  * @return
  */
 NDArray*
-NDArray_Append(NDArray *a, NDArray *b) {
-    char *tmp_ptr;
-    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
-        zend_throw_error(NULL, "NDArrays must be on the same device.");
-        return NULL;
+NDArray_Append(NDArray **arrays, int axis, int num_arrays) {
+    NDArray *output = NULL;
+    if (axis == -1) {
+        output = NDArray_ConcatenateFlat(arrays, num_arrays);
     }
-
-    if (NDArray_NDIM(a) != 1 || NDArray_NDIM(b) != 1) {
-        zend_throw_error(NULL, "You can only append vectors.");
-        return NULL;
-    }
-
-    int *shape = emalloc(sizeof(int));
-    shape[0] = NDArray_NUMELEMENTS(a) + NDArray_NUMELEMENTS(b);
-    NDArray* rtn = NDArray_Empty(shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
-
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-#ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_DATA(a), NDArray_DATA(rtn), NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a));
-        tmp_ptr = NDArray_DATA(rtn) + NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a);
-        NDArray_VMEMCPY_D2D(NDArray_DATA(b), tmp_ptr, NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
-#endif
-    }
-
-    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU) {
-        memcpy(NDArray_DATA(rtn), NDArray_DATA(a), NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a));
-        tmp_ptr = NDArray_DATA(rtn) + NDArray_ELSIZE(a) * NDArray_NUMELEMENTS(a);
-        memcpy(tmp_ptr, NDArray_DATA(b), NDArray_ELSIZE(b) * NDArray_NUMELEMENTS(b));
-    }
-
-    return rtn;
+    return output;
 }
 
 /**

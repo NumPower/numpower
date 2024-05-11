@@ -3158,34 +3158,44 @@ PHP_METHOD(NDArray, expand_dims) {
 }
 
 /**
- * NDArray::inner
+ * NDArray::append
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_append, 0)
-ZEND_ARG_INFO(0, a)
-ZEND_ARG_INFO(0, b)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_append, 0, 0, 1)
+ZEND_ARG_INFO(0, arrays)
+ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, append) {
     NDArray *rtn = NULL;
-    zval *a, *b;
+    zval *arrays;
     long axis;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
-        Z_PARAM_ZVAL(a)
-        Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ARRAY(arrays)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(a);
-    NDArray *ndb = ZVAL_TO_NDARRAY(b);
-    if (nda == NULL) {
-    return;
-    }
-    if (ndb == NULL) {
-    CHECK_INPUT_AND_FREE(a, nda);
-    return;
-    }
-    rtn = NDArray_Append(nda, ndb);
 
-    CHECK_INPUT_AND_FREE(a, nda);
-    CHECK_INPUT_AND_FREE(b, ndb);
+    HashTable *ht = Z_ARRVAL_P(arrays);
+    zval* arr_val;
+    NDArray **ndarrays = emalloc(sizeof(NDArray*) * 128);
+    zval **input_zvals = emalloc(sizeof(zval*) * 128);
+    int num_arrays = 0;
+    ZEND_HASH_FOREACH_VAL(ht, arr_val) {
+        ndarrays[num_arrays] = ZVAL_TO_NDARRAY(arr_val);
+                input_zvals[num_arrays] = arr_val;
+        if (ndarrays[num_arrays] == NULL) {
+            goto fail;
+        }
+        num_arrays++;
+    } ZEND_HASH_FOREACH_END();
+    rtn = NDArray_Append(ndarrays, -1, num_arrays);
+
+    for (int i = 0; i < num_arrays; i++) {
+        CHECK_INPUT_AND_FREE(input_zvals[i], ndarrays[i]);
+    }
     RETURN_NDARRAY(rtn, return_value);
+fail:
+    efree(input_zvals);
+    efree(ndarrays);
 }
 
 /**
