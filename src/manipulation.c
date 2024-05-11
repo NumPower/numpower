@@ -120,7 +120,7 @@ NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     }
 
     if (total_new_elements != NDArray_NUMELEMENTS(target)) {
-        zend_throw_error(NULL, "incompatible shape during reshape call.");
+        zend_throw_error(NULL, "incompatible shape in reshape call.");
         return NULL;
     }
     NDArray *rtn = NDArray_Empty(new_shape, ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
@@ -336,6 +336,7 @@ NDArray_ToContiguous(NDArray *a) {
             NDArray_ITER_RESET(a_it);
         }
     }
+#ifdef HAVE_CUBLAS
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
         while (ncopies--) {
             index = a_size;
@@ -347,6 +348,7 @@ NDArray_ToContiguous(NDArray *a) {
             NDArray_ITER_RESET(a_it);
         }
     }
+#endif
     efree(a_it);
     efree(ret_it);
     return ret;
@@ -362,6 +364,8 @@ normalize_axis_vector(NDArray *axis, int ndim) {
         axis_val = NDArrayIterator_GET(axis);
         int axis_int_val = (int)(NDArray_FDATA(axis_val)[0]);
         if (check_and_adjust_axis(&axis_int_val, ndim) < 0) {
+            NDArray_FREE(axis_val);
+            NDArray_FREE(output);
             return NULL;
         }
         NDArray_FDATA(output)[i] = (float)axis_int_val;
@@ -398,6 +402,11 @@ NDArray_ExpandDim(NDArray *a, NDArray *axis) {
 
     if (normalized_axis == NULL) {
         efree(output_shape);
+        NDArray_FREE(normalized_axis);
+        if (free_axis) {
+            NDArray_FREE(axis);
+        }
+        zend_throw_error(NULL, "invalid axis or axes provided.");
         return NULL;
     }
 
