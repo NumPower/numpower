@@ -3158,6 +3158,41 @@ PHP_METHOD(NDArray, expand_dims) {
 }
 
 /**
+* NDArray::expand_dims
+*/
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_flip, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, flip) {
+    NDArray *rtn = NULL;
+    zval *a;
+    zval *axis = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(axis)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (Z_TYPE_P(axis) != IS_ARRAY && Z_TYPE_P(axis) != IS_LONG && Z_TYPE_P(axis) != IS_OBJECT) {
+        zend_throw_error(NULL, "expected array, integer or ndarray");
+        return;
+    }
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndaxis = ZVAL_TO_NDARRAY(axis);
+    if (nda == NULL || ndaxis == NULL) {
+        return;
+    }
+    rtn = NDArray_Flip(nda, ndaxis);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(axis, ndaxis);
+    if (rtn == NULL) {
+        return;
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::append
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_append, 0, 0, 1)

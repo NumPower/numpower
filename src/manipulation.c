@@ -545,3 +545,9 @@ NDArray_AtLeast3D(NDArray *a) {
     return output;
 }
 
+NDArray*
+NDArray_Flip(NDArray *a, NDArray *axis)
+{
+
+}
+
