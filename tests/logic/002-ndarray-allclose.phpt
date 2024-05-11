@@ -2,12 +2,16 @@
 NDArray::allclose
 --FILE--
 <?php
-$a = \NDArray::array([[1, 2], [3, 4]]);
-$b = \NDArray::array([[5, 6], [7, 8]]);
-$c = \NDArray::array([9, 10]);
-print_r(\NDArray::allclose($a, $b));
-print_r(\NDArray::allclose($a, $a));
-print_r(\NDArray::allclose($c, $c));
+use \NDArray as nd;
+
+$a = nd::array([[1, 2], [3, 4]]);
+$b = nd::array([[5, 6], [7, 8]]);
+$c = nd::array([9, 10]);
+var_dump(nd::allclose($a, $b));
+var_dump(nd::allclose($a, $a));
+var_dump(nd::allclose($c, $c));
 ?>
 --EXPECT--
-11
+bool(false)
+bool(true)
+bool(true)

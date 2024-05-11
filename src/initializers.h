@@ -19,13 +19,12 @@ NDArray* NDArray_Fill(NDArray *a, float fill_value);
 NDArray* NDArray_Full(int *shape, int ndim,  double fill_value);
 NDArray* NDArray_CreateFromDoubleScalar(double scalar);
 NDArray* NDArray_CreateFromLongScalar(long scalar);
-int* Generate_Strides(int* dimensions, int dimensions_size, int elsize);
+int* Generate_Strides(const int* dimensions, int dimensions_size, int elsize);
 NDArray* NDArray_CreateFromFloatScalar(float scalar);
 NDArray* NDArray_Empty(int *shape, int ndim, const char *type, int device);
 NDArray* NDArray_Arange(double start, double stop, double step);
 NDArray* NDArray_Binomial(int *shape, int ndim, int n, float p);
 NDArray* NDArray_EmptyLike(NDArray *a);
-NDArray* NDArray_Create(char *data, int ndim, int *shape, int device, const char* type);
 NDArray* NDArray_FromNDArrayBase(NDArray *target, char *data_ptr, int* shape, int* strides, const int ndim);
 #ifdef __cplusplus
 extern "C" {

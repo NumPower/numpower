@@ -198,37 +198,6 @@ __global__ void roundToDecimalsFloatKernel(float* numbers, int decimals, int siz
     }
 }
 
-__global__ void l2NormFloatKernel(const float* input, const int size, float* result)
-{
-    __shared__ float sdata[1024];  // Shared memory for intermediate results
-    const int tid = threadIdx.x;
-    const int idx = blockIdx.x * blockDim.x + tid;
-
-    // Each thread loads one element from global memory to shared memory
-    if (idx < size)
-        sdata[tid] = input[idx];
-    else
-        sdata[tid] = 0.0f;
-
-    __syncthreads();
-
-    // Perform parallel reduction in shared memory
-    for (unsigned int s = blockDim.x / 2; s > 0; s >>= 1)
-    {
-        if (tid < s)
-        {
-            sdata[tid] += sdata[tid + s];
-        }
-        __syncthreads();
-    }
-
-    // Store the final result in global memory
-    if (tid == 0)
-    {
-        atomicAdd(result, sdata[0] * sdata[0]);
-    }
-}
-
 __global__ void matrixL1NormFloatKernel(const float* matrix, float* result, int rows, int cols) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
     float sum = 0.0f;
@@ -1502,23 +1471,23 @@ extern "C" {
 
         int *d_shape_a, *d_shape_b, *d_strides_a, *d_strides_b;
 
-        NDArray_VMALLOC((void**)&d_shape_a, sizeof(int) * 2);
-        NDArray_VMALLOC((void**)&d_shape_b, sizeof(int) * 2);
-        NDArray_VMALLOC((void**)&d_strides_a, sizeof(int) * 2);
-        NDArray_VMALLOC((void**)&d_strides_b, sizeof(int) * 2);
+        vmalloc((void**)&d_shape_a, sizeof(int) * 2);
+        vmalloc((void**)&d_shape_b, sizeof(int) * 2);
+        vmalloc((void**)&d_strides_a, sizeof(int) * 2);
+        vmalloc((void**)&d_strides_b, sizeof(int) * 2);
 
-        NDArray_VMEMCPY_H2D((char*)shape_a, (char*)d_shape_a, sizeof(int) * 2);
-        NDArray_VMEMCPY_H2D((char*)shape_b, (char*)d_shape_b, sizeof(int) * 2);
-        NDArray_VMEMCPY_H2D((char*)strides_a, (char*)d_strides_a, sizeof(int) * 2);
-        NDArray_VMEMCPY_H2D((char*)strides_b, (char*)d_strides_b, sizeof(int) * 2);
+        vmemcpyh2d((char*)shape_a, (char*)d_shape_a, sizeof(int) * 2);
+        vmemcpyh2d((char*)shape_b, (char*)d_shape_b, sizeof(int) * 2);
+        vmemcpyh2d((char*)strides_a, (char*)d_strides_a, sizeof(int) * 2);
+        vmemcpyh2d((char*)strides_b, (char*)d_strides_b, sizeof(int) * 2);
         // Launch the CUDA kernel
         convolve2dSameFloatKernel<<<gridDim, blockDim>>>(a, b, d_shape_a, d_shape_b,
                                                          d_strides_a, d_strides_b, boundary,
                                                          output, fill_value);
-        NDArray_VFREE(d_shape_a);
-        NDArray_VFREE(d_shape_b);
-        NDArray_VFREE(d_strides_a);
-        NDArray_VFREE(d_strides_b);
+        vfree(d_shape_a);
+        vfree(d_shape_b);
+        vfree(d_strides_a);
+        vfree(d_strides_b);
     }
 
     NDArray*
@@ -1603,21 +1572,21 @@ extern "C" {
         float* d_matrix = matrix;
 
         int* d_info;
-        NDArray_VMALLOC((void**)&d_info, sizeof(int));
+        vmalloc((void**)&d_info, sizeof(int));
 
         int lwork;
         cusolverDnSgetrf_bufferSize(cusolverH, n, n, d_matrix, n, &lwork);
 
         float* d_work;
-        NDArray_VMALLOC((void**)&d_work, lwork * sizeof(float));
+        vmalloc((void**)&d_work, lwork * sizeof(float));
 
         int* d_pivot;
-        NDArray_VMALLOC((void**)&d_pivot, n * sizeof(int));
+        vmalloc((void**)&d_pivot, n * sizeof(int));
 
         cusolverDnSgetrf(cusolverH, n, n, d_matrix, n, d_work, d_pivot, d_info);
 
         float* d_identity;
-        NDArray_VMALLOC((void**)&d_identity, n * n * sizeof(float));
+        vmalloc((void**)&d_identity, n * n * sizeof(float));
         cudaMemset(d_identity, 0, n * n * sizeof(float));
         float onef = 1.0f;
         for (int i = 0; i < n; ++i)
@@ -1627,10 +1596,10 @@ extern "C" {
 
         cudaMemcpy(matrix, d_identity, n * n * sizeof(float), cudaMemcpyDeviceToHost);
 
-        NDArray_VFREE(d_info);
-        NDArray_VFREE(d_work);
-        NDArray_VFREE(d_pivot);
-        NDArray_VFREE(d_identity);
+        vfree(d_info);
+        vfree(d_work);
+        vfree(d_pivot);
+        vfree(d_identity);
 
         cusolverDnDestroy(cusolverH);
     }

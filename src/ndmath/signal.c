@@ -36,13 +36,9 @@
  * OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include <zend.h>
-#include <php.h>
+#include <Zend/zend.h>
 #include "signal.h"
-#include "../ndarray.h"
-#include "../types.h"
 #include "../initializers.h"
-#include "../debug.h"
 
 typedef void (OneMultAddFunction) (char *, char *, int64_t, char **, int64_t);
 

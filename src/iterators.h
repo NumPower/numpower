@@ -86,5 +86,4 @@ NDArrayIter* NDArray_NewElementWiseIter(NDArray *target);
                 } \
         } \
 } while (0)
-#define NDArray_ITER_DATA(it) ((void *)((it)->dataptr))
 #endif //PHPSCI_NDARRAY_ITERATORS_H

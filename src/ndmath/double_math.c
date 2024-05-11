@@ -185,11 +185,11 @@ float float_rint(float val) {
     int floorInt = (int)floorf(val);
 
     // Check if the rounded value is halfway between two integers
-    if (rounded - floorInt == 0.5f && ((int)rounded % 2 != 0)) {
+    if (rounded - (float)floorInt == 0.5f && ((int)rounded % 2 != 0)) {
         rounded -= 1.0f;
     }
 
-    return (int)rounded;
+    return rounded;
 }
 
 float float_fix(float val) {
@@ -209,11 +209,12 @@ float float_trunc(float val) {
 }
 
 float float_sinc(float val) {
+    float pi = 3.1415927f;
     if (val == 0.0) {
-        return 1.0;
-    } else {
-        return sinf(M_PI * val) / (M_PI * val);
+        val = 1.0e-20f;
     }
+    val = pi * val;
+    return float_sin(val) / val;
 }
 
 float float_negate(float val) {
@@ -221,7 +222,7 @@ float float_negate(float val) {
 }
 
 float float_sign(float val) {
-    return (val > 0) - (val < 0);
+    return (float)((val > 0.0f) - (val < 0.0f));
 }
 
 float float_clip(float val, float min, float max) {

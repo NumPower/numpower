@@ -1,12 +1,14 @@
 #include "indexing.h"
-#include <php.h>
 #include "Zend/zend_alloc.h"
 #include "Zend/zend_API.h"
 #include "ndarray.h"
 #include "initializers.h"
 #include "types.h"
 #include "../config.h"
-#include "gpu_alloc.h"
+
+#ifdef HAVE_CUBLAS
+#include "src/gpu_alloc.h"
+#endif
 
 /**
  * NDArray diagonal
@@ -38,7 +40,7 @@ NDArray_Diagonal(NDArray *target, int offset) {
         new_shape[0] = NDArray_SHAPE(target)[NDArray_NDIM(target) - 1];
         rtn = NDArray_Empty(new_shape, 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_GPU);
         for (i = 0; i < NDArray_SHAPE(target)[NDArray_NDIM(target) - 1]; i++) {
-            NDArray_VMEMCPY_D2D((NDArray_DATA(target) + (i * NDArray_STRIDES(target)[NDArray_NDIM(target) - 2]) + (i * NDArray_STRIDES(target)[NDArray_NDIM(target) - 1])), NDArray_DATA(rtn) + (i * sizeof(float)), sizeof(float));
+            vmemcpyd2d((NDArray_DATA(target) + (i * NDArray_STRIDES(target)[NDArray_NDIM(target) - 2]) + (i * NDArray_STRIDES(target)[NDArray_NDIM(target) - 1])), NDArray_DATA(rtn) + (i * sizeof(float)), sizeof(float));
         }
     }
 #endif

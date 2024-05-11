@@ -1,5 +1,3 @@
-
-
 ################################## nvcc ###################################
 
 # Location of the CUDA Toolkit
@@ -81,6 +79,7 @@ install-cuda:
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/double_math.c -shared -Xcompiler -fPIC -o .libs/double_math.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/linalg.c -shared -fPIC -o .libs/linalg.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/signal.c -shared -fPIC -o .libs/signal.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/calculation.c -shared -fPIC -o .libs/calculation.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/gpu_alloc.c -shared -Xcompiler -fPIC -o .libs/gpu_alloc.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/cuda/cuda_math.cu -shared -Xcompiler -fPIC -o .libs/cuda_math.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/statistics.c -shared -Xcompiler -fPIC -o .libs/statistics.o
@@ -88,9 +87,4 @@ install-cuda:
 	cp ./.libs/ndarray.so $(phplibdir)/ndarray.so
 	cp ./.libs/ndarray.so $(EXTENSION_DIR)/ndarray.so
 
-temp:
-	echo $(COMMON_FLAGS)
-	echo $(CFLAGS_CLEAN)
-	echo $(EXTRA_CFLAGS)
-	echo $(GENCODE_FLAGS)
-	echo $(INCLUDES)
+

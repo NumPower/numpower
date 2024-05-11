@@ -3,13 +3,10 @@
 #include "Zend/zend_API.h"
 #include <string.h>
 #include "arithmetics.h"
-#include "../ndarray.h"
 #include "../../config.h"
 #include "../initializers.h"
 #include "../iterators.h"
 #include "../types.h"
-#include "../debug.h"
-#include "linalg.h"
 #include "../manipulation.h"
 #include "double_math.h"
 
@@ -28,27 +25,6 @@
 #ifdef HAVE_AVX2
 #include <immintrin.h>
 #endif
-
-/**
- * Add elements of a and b element-wise
- *
- * @param a
- * @param b
- * @return
- */
-double
-NDArray_Sum_Double(NDArray* a) {
-    double value = 0;
-
-#ifdef HAVE_CBLAS
-    value = cblas_dasum(NDArray_NUMELEMENTS(a), NDArray_DDATA(a), 1);
-#else
-    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
-        value += NDArray_DDATA(a)[i];
-    }
-#endif
-    return value;
-}
 
 /**
  * Product of array element-wise
@@ -151,7 +127,7 @@ float calculate_median(float* matrix, int size) {
     float median;
     if (size % 2 == 0) {
         // If the number of elements is even, average the two middle values
-        median = (temp[size / 2 - 1] + temp[size / 2]) / 2.0;
+        median = (temp[size / 2 - 1] + temp[size / 2]) / 2.0f;
     } else {
         // If the number of elements is odd, take the middle value
         median = temp[size / 2];
@@ -239,7 +215,7 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
     result->ndim = a_broad->ndim;
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
         result->device = NDARRAY_DEVICE_GPU;
 #endif
     } else {
@@ -385,7 +361,7 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
     result->device = NDArray_DEVICE(a_broad);
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
         result->device = NDARRAY_DEVICE_GPU;
 #endif
     } else {
@@ -511,7 +487,7 @@ NDArray_Subtract_Float(NDArray* a, NDArray* b) {
     result->ndim = a_broad->ndim;
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -647,7 +623,7 @@ NDArray_Divide_Float(NDArray* a, NDArray* b) {
     result->ndim = a_broad->ndim;
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -778,7 +754,7 @@ NDArray_Mod_Float(NDArray* a, NDArray* b) {
     result->ndim = a_broad->ndim;
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a_broad) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif
@@ -894,7 +870,7 @@ NDArray_Pow_Float(NDArray* a, NDArray* b) {
     result->ndim = a_broad->ndim;
     if (NDArray_DEVICE(a_broad) == NDARRAY_DEVICE_GPU) {
 #if HAVE_CUBLAS
-        NDArray_VMALLOC((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        vmalloc((void **) &result->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaDeviceSynchronize();
         result->device = NDARRAY_DEVICE_GPU;
 #endif

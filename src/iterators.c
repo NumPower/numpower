@@ -1,11 +1,9 @@
 #include <string.h>
 #include <php.h>
 #include "Zend/zend_alloc.h"
-#include "Zend/zend_API.h"
 #include "iterators.h"
 #include "ndarray.h"
 #include "initializers.h"
-#include "debug.h"
 
 /**
  * @param iterator
@@ -97,7 +95,13 @@ NDArray*
 NDArrayIterator_GET(NDArray* array) {
     NDArray_ADDREF(array);
     int output_ndim = array->ndim - 1;
-    int* output_shape = emalloc(sizeof(int) * output_ndim);
+    int* output_shape;
+
+    if (output_ndim >= 1) {
+         output_shape = emalloc(sizeof(int) * output_ndim);
+    } else {
+        output_shape = emalloc(sizeof(int));
+    }
     memcpy(output_shape, NDArray_SHAPE(array) + 1, sizeof(int) * output_ndim);
     NDArray* rtn = Create_NDArray(output_shape, output_ndim, NDArray_TYPE(array), NDArray_DEVICE(array));
     rtn->device = NDArray_DEVICE(array);

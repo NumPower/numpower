@@ -1,14 +1,15 @@
 #include "../config.h"
-#include <Zend/zend.h>
 
 #ifdef HAVE_CUBLAS
 #include "gpu_alloc.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "buffer.h"
+#include "Zend/zend_alloc.h"
+#include "Zend/zend.h"
 
 void
-NDArray_VMALLOC(void** target, unsigned int size) {
+vmalloc(void** target, unsigned int size) {
     MAIN_MEM_STACK.totalGPUAllocated++;
     cublasStatus_t stat = cudaMalloc(target, size);
     if (stat != cudaSuccess) {
@@ -17,23 +18,23 @@ NDArray_VMALLOC(void** target, unsigned int size) {
 }
 
 void
-NDArray_VMEMCPY_D2D(char* target, char* dst, unsigned int size) {
+vmemcpyd2d(char* target, char* dst, unsigned int size) {
     cudaMemcpy(dst, target, size, cudaMemcpyDeviceToDevice);
 }
 
 void
-NDArray_VMEMCPY_H2D(char* target, char* dst, unsigned int size) {
+vmemcpyh2d(char* target, char* dst, unsigned int size) {
     cudaMemcpy(dst, target, size, cudaMemcpyHostToDevice);
 }
 
 void
-NDArray_VFREE(void* target) {
+vfree(void* target) {
     MAIN_MEM_STACK.totalGPUAllocated--;
     cudaFree(target);
 }
 
 void
-NDArray_VCHECK() {
+vmemcheck() {
     if (MAIN_MEM_STACK.totalGPUAllocated != 0) {
         printf("\nVRAM MEMORY LEAK: Unallocated %d arrays\n", MAIN_MEM_STACK.totalGPUAllocated);
     }
