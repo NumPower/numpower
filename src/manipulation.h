@@ -17,4 +17,5 @@ NDArray* NDArray_AtLeast1D(NDArray *a);
 NDArray* NDArray_AtLeast2D(NDArray *a);
 NDArray* NDArray_AtLeast3D(NDArray *a);
 NDArray* NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays);
+NDArray* NDArray_Flip(NDArray *a, NDArray *axis);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H
