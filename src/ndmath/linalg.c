@@ -121,11 +121,11 @@ NDArray_SVD(NDArray *target) {
     }
     if(NDArray_DEVICE(target_ptr) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        target_ptr = NDArray_Transpose(target, NULL);
-        NDArray_VMALLOC((void**)&Sf, sizeof(float) * smallest_dim);
-        NDArray_VMALLOC((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
-        NDArray_VMALLOC((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
-        NDArray_VMALLOC((void**)&output_data, sizeof(float) * NDArray_NUMELEMENTS(target));
+        target_ptr = NDArray_Transpose(target);
+        vmalloc((void**)&Sf, sizeof(float) * smallest_dim);
+        vmalloc((void**)&Uf, sizeof(float) * NDArray_SHAPE(target)[0] * NDArray_SHAPE(target)[0]);
+        vmalloc((void**)&Vf, sizeof(float) * NDArray_SHAPE(target)[1] * NDArray_SHAPE(target)[1]);
+        vmalloc((void**)&output_data, sizeof(float) * NDArray_NUMELEMENTS(target));
         cudaMemcpy(output_data, NDArray_FDATA(target_ptr), sizeof(float) * NDArray_NUMELEMENTS(target), cudaMemcpyDeviceToDevice);
         cudaDeviceSynchronize();
 #else
@@ -185,7 +185,7 @@ NDArray_SVD(NDArray *target) {
         rtn_u->device = NDARRAY_DEVICE_GPU;
         rtn_s->device = NDARRAY_DEVICE_GPU;
         rtn_v->device = NDARRAY_DEVICE_GPU;
-        NDArray_VFREE(output_data);
+        vfree(output_data);
         NDArray_FREE(target_ptr);
     }
 
@@ -235,7 +235,7 @@ NDArray_Det(NDArray *a) {
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
         rtn->device = NDARRAY_DEVICE_GPU;
-        NDArray_VMALLOC((void **)&rtn->data, sizeof(float));
+        vmalloc((void **)&rtn->data, sizeof(float));
         cuda_det_float(NDArray_FDATA(a), NDArray_FDATA(rtn), NDArray_SHAPE(a)[0]);
 #endif
     } else {

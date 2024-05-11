@@ -4414,7 +4414,7 @@ PHP_RSHUTDOWN_FUNCTION(ndarray) {
     }
 #ifdef HAVE_CUBLAS
     if(getenv(envvar_vcheck)) {
-        NDArray_VCHECK();
+        vmemcheck();
     }
 #endif
     return SUCCESS;

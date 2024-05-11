@@ -253,7 +253,6 @@ NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
     NDArray *rtn;
     int iarrays;
     int *shape = emalloc(sizeof(int));
-    int device;
 
     *shape = 0;
     if (num_arrays <= 0) {
@@ -272,7 +271,7 @@ NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
         }
     }
     rtn = NDArray_Zeros(shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
-    device = NDArray_DEVICE(rtn);
+    int device = NDArray_DEVICE(rtn);
 
     int extra_bytes = 0;
     char *tmp_data = NULL;

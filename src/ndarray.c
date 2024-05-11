@@ -295,7 +295,7 @@ void apply_reduce(NDArray *result, NDArray *target, NDArray *(*operation)(NDArra
         memcpy(result->data, temp->data, result->descriptor->numElements * sizeof(float));
     } else {
 #ifdef HAVE_CUBLAS
-        NDArray_VMEMCPY_D2D(NDArray_DATA(temp), NDArray_DATA(result), result->descriptor->numElements * sizeof(float));
+        vmemcpyd2d(NDArray_DATA(temp), NDArray_DATA(result), result->descriptor->numElements * sizeof(float));
 #endif
     }
     NDArray_FREE(temp);
@@ -349,7 +349,7 @@ void _reduce(int current_axis, int rtn_init, int *axis, NDArray *target, NDArray
             }
 #ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(rtn) == NDARRAY_DEVICE_GPU) {
-                NDArray_VMEMCPY_D2D(NDArray_DATA(slice), NDArray_DATA(rtn),
+                vmemcpyd2d(NDArray_DATA(slice), NDArray_DATA(rtn),
                                     rtn->descriptor->numElements * sizeof(float));
             }
 #endif
@@ -549,7 +549,7 @@ NDArray_FREE(NDArray *array) {
                 efree(array->data);
             } else {
 #ifdef HAVE_CUBLAS
-                NDArray_VFREE(array->data);
+                vfree(array->data);
 #endif
             }
         }
@@ -580,7 +580,7 @@ NDArray_FREEDATA(NDArray *target) {
     }
 #ifdef HAVE_CUBLAS
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-        NDArray_VFREE(target->data);
+        vfree(target->data);
     }
 #endif
     target->data = NULL;
@@ -928,7 +928,7 @@ NDArray_ToGPU(NDArray *target) {
     NDArray *rtn = NDArray_Zeros(new_shape, n_ndim, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(target));
     rtn->device = NDARRAY_DEVICE_GPU;
 
-    NDArray_VMALLOC((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
+    vmalloc((void **) &tmp_gpu, NDArray_NUMELEMENTS(target) * sizeof(float));
     cudaMemcpy(tmp_gpu, NDArray_FDATA(target), NDArray_NUMELEMENTS(target) * sizeof(float), cudaMemcpyHostToDevice);
     cudaError_t err = cudaDeviceSynchronize();
     if (err != cudaSuccess) {
@@ -1090,7 +1090,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
 #ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
-                    NDArray_VMEMCPY_D2D(NDArray_DATA(src), rtn_p,
+                    vmemcpyd2d(NDArray_DATA(src), rtn_p,
                                         sizeof(float) * NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]);
                     rtn_p = rtn_p + (sizeof(float) * NDArray_SHAPE(src)[0]);
                 }
@@ -1129,7 +1129,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                             rtn_p = (char *) (NDArray_FDATA(rtn) +
                                               (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) +
                                               j);
-                            NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
+                            vmemcpyd2d(tmp_p, rtn_p, sizeof(float));
                         }
                     }
                 } else {
@@ -1139,7 +1139,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
                             rtn_p = (char *) (NDArray_FDATA(rtn) +
                                               (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) +
                                               j);
-                            NDArray_VMEMCPY_D2D(tmp_p, rtn_p, sizeof(float));
+                            vmemcpyd2d(tmp_p, rtn_p, sizeof(float));
                         }
                     }
                     return rtn;
@@ -1158,7 +1158,7 @@ NDArray_Broadcast(NDArray *a, NDArray *b) {
 #ifdef HAVE_CUBLAS
             if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
                 for (i = 0; i < NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 2]; i++) {
-                    NDArray_VMEMCPY_D2D(NDArray_DATA(src), rtn_p,
+                    vmemcpyd2d(NDArray_DATA(src), rtn_p,
                                         sizeof(float) * NDArray_SHAPE(dst)[NDArray_NDIM(dst) - 1]);
                     rtn_p = (char *) (NDArray_FDATA(rtn) +
                                       (i * NDArray_STRIDES(rtn)[NDArray_NDIM(rtn) - 2] / NDArray_ELSIZE(rtn)) + j);
@@ -1218,7 +1218,7 @@ NDArray_Overwrite(NDArray *target, NDArray *values) {
     }
 #ifdef HAVE_CUBLAS
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_GPU) {
-        NDArray_VMEMCPY_D2D(values->data, target->data,
+        vmemcpyd2d(values->data, target->data,
                             sizeof(NDArray_ELSIZE(values)) * NDArray_NUMELEMENTS(values));
         return 1;
     }

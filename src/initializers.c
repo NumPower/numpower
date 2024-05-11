@@ -389,7 +389,7 @@ NDArray_Empty(int *shape, int ndim, const char *type, int device) {
         } else {
 #ifdef HAVE_CUBLAS
             rtn->device = NDARRAY_DEVICE_GPU;
-            NDArray_VMALLOC((void **) &rtn->data, NDArray_NUMELEMENTS(rtn) * sizeof(float));
+            vmalloc((void **) &rtn->data, NDArray_NUMELEMENTS(rtn) * sizeof(float));
 #endif
         }
     }
@@ -433,11 +433,11 @@ NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
 #ifdef HAVE_CUBLAS
     if (device == NDARRAY_DEVICE_GPU) {
         if (is_type(type, NDARRAY_TYPE_DOUBLE64)) {
-            NDArray_VMALLOC((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(double));
+            vmalloc((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(double));
             cudaMemset(rtn->data, 0, rtn->descriptor->numElements * sizeof(double));
         }
         if (is_type(type, NDARRAY_TYPE_FLOAT32)) {
-            NDArray_VMALLOC((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(float));
+            vmalloc((void**)(&rtn->data), rtn->descriptor->numElements * sizeof(float));
             cudaMemset(rtn->data, 0, rtn->descriptor->numElements * sizeof(float));
         }
     }
@@ -753,7 +753,7 @@ NDArray_Copy(NDArray *a, int device) {
         rtn->flags = 0;
         rtn->base = NULL;
         rtn->ndim = NDArray_NDIM(a);
-        NDArray_VMALLOC((void **) &rtn->data, NDArray_NUMELEMENTS(a) * sizeof(float));
+        vmalloc((void **) &rtn->data, NDArray_NUMELEMENTS(a) * sizeof(float));
         cudaMemcpy(NDArray_FDATA(rtn), NDArray_FDATA(a), NDArray_NUMELEMENTS(a) * sizeof(float), cudaMemcpyDeviceToDevice);
         rtn->descriptor = emalloc(sizeof(NDArrayDescriptor));
         rtn->descriptor->numElements = NDArray_NUMELEMENTS(a);
