@@ -1,5 +1,6 @@
 #include <php.h>
 #include "Zend/zend_alloc.h"
+#include "Zend/zend_API.h"
 #include "debug.h"
 #include "../config.h"
 #include "ndarray.h"
@@ -44,28 +45,6 @@ NDArray_Dump(NDArray* array) {
     printf("\n=================================================\n");
 }
 
-char*
-expand_str(char* str, unsigned int additional_size) {
-    if (str == NULL) {
-        return (char*)emalloc(additional_size * sizeof(char));
-    }
-    //reallocate memory for the string to accommodate extra characters
-    char *new_str_pointer = (char*)erealloc(str, (strlen(str) + additional_size) * sizeof(char));
-    return new_str_pointer;
-}
-
-int string_size_of_float(float number) {
-    char buf[32];
-    int size = snprintf(buf, sizeof(buf), "%f", number);
-    int actualSize = 0;
-    while (actualSize < size && buf[actualSize] != '\0') {
-        ++actualSize;
-    }
-    return actualSize;
-}
-
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "misc-no-recursion"
 /**
  * @param buffer
  * @param ndims
@@ -77,24 +56,23 @@ int string_size_of_float(float number) {
  */
 char*
 print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_dim, int* index, int num_elements, int* padded) {
-    char* str = NULL;
+    char* str;
     int i, j, t;
     int reverse_run = 0;
-
-    if (ndims == 0 && buffer != NULL) {
-        str = expand_str(str, string_size_of_float(buffer[0]));
-        sprintf(str, "%g", buffer[0]);
-        return str;
-    }
-
-    if (index == NULL) {
-        fprintf(stderr, "Error: print_array_float called with NULL index.\n");
+    // Allocate memory for the string
+    str = (char*)emalloc(10000000 * sizeof(char));
+    if (str == NULL) {
+        fprintf(stderr, "Error: Failed to allocate memory for string.\n");
         exit(1);
     }
 
-    if (cur_dim == ndims - 1 && buffer != NULL) {
+    if (ndims == 0) {
+        sprintf(str, "%g\n", buffer[0]);
+        return str;
+    }
+
+    if (cur_dim == ndims - 1) {
         // Print the opening bracket for this dimension
-        str = expand_str(str, 2);
         sprintf(str, "[");
         // Print the elements of the array
         for (i = 0; i < shape[cur_dim]; i++) {
@@ -107,60 +85,43 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
                 offset += index[k] * strides[k];
             }
             // Print the element
-            str = expand_str(str, string_size_of_float(buffer[offset / sizeof(float)]) + 1);
             sprintf(str + strlen(str), "%g", buffer[offset / sizeof(float)]);
 
             // Print a comma if this is not the last element in the dimension
             if (i < shape[cur_dim] - 1) {
-                str = expand_str(str, strlen(", ") + 1);
                 sprintf(str + strlen(str), ", ");
             }
 
             if ((i + 1) % 10 == 0 && i < shape[cur_dim] - 1) {
-                str = expand_str(str, 1);
                 sprintf(str + strlen(str), "\n");
                 for (t = 0; t < ndims; t++) {
-                    str = expand_str(str, strlen(" ") + 1);
                     sprintf(str + strlen(str), " ");
                 }
             }
 
-            if (shape[cur_dim] > 20 ) {
+            if (shape[cur_dim] > 20) {
                 if (i > 1 && reverse_run == 0) {
                     i = shape[cur_dim] - 4;
                     reverse_run = 1;
-                    str = expand_str(str, strlen("... ") + 1);
                     sprintf(str + strlen(str), "... ");
                 }
             }
         }
 
         // Print the closing bracket for this dimension
-        str = expand_str(str, 2);
         sprintf(str + strlen(str), "]");
-
-        if (ndims >= 2) {
-            if (index[cur_dim - 1] < shape[ndims - 2] - 1) {
-                str = expand_str(str, strlen("\n ") + 1);
-                sprintf(str + strlen(str), "\n ");
-            }
-        } else {
-            if (index[cur_dim] < shape[ndims - 1] - 1) {
-                str = expand_str(str, strlen("\n ") + 1);
-                sprintf(str + strlen(str), "\n ");
-            }
+        if (index[cur_dim-1] < shape[ndims - 2] - 1) {
+            sprintf(str + strlen(str), "\n ");
         }
     } else {
         if (cur_dim != 0) {
             if (cur_dim == index[cur_dim - 1]) {
                 for (t = cur_dim; t < ndims; t++) {
-                    str = expand_str(str, 2);
                     sprintf(str + strlen(str), " ");
                 }
             }
         }
         // Print the opening bracket for this dimension
-        str = expand_str(str, strlen("[") + 1);
         sprintf(str, "[");
 
         // Recursively print each element in the dimension
@@ -171,7 +132,6 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
             char* child_str = print_array_float(buffer, ndims, shape, strides, cur_dim + 1, index, num_elements, padded);
 
             // Add the child string to the parent string
-            str = expand_str(str, strlen(child_str) + 1);
             sprintf(str + strlen(str), "%s", child_str);
 
             // Free the child string
@@ -180,7 +140,6 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
             // Print a comma and newline if this is not the last element in the dimension
             if (i < shape[cur_dim] - 1) {
                 for (j = 0; j < cur_dim; j++) {
-                    str = expand_str(str, strlen(" ") + 1);
                     sprintf(str + strlen(str), " ");
                 }
             }
@@ -190,7 +149,6 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
                     if(i >= 2 && reverse_run == 0) {
                         i = shape[cur_dim] - 4;
                         reverse_run = 1;
-                        str = expand_str(str, strlen("...\n") + 1);
                         sprintf(str + strlen(str), "...\n");
                         if (i < shape[cur_dim] - 1) {
                             for (j = 1; j < ndims; j++) {
@@ -203,24 +161,20 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
             }
         }
         // Print the closing bracket for this dimension
-        str = expand_str(str, strlen("]") + 1);
         sprintf(str + strlen(str), "]");
 
         if (cur_dim != 0 && index[cur_dim-1] < shape[cur_dim-1] - 1) {
-            str = expand_str(str, strlen("\n") + 1);
             sprintf(str + strlen(str), "\n");
         }
     }
 
     // Add a newline if this is the outermost dimension
     if (cur_dim == 0) {
-        str = expand_str(str, strlen("\n") + 1);
         sprintf(str + strlen(str), "\n");
     }
 
     return str;
 }
-#pragma clang diagnostic pop
 
 /**
  * Print matrix to
@@ -232,7 +186,7 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
  */
 char*
 print_matrix_float(float* buffer, int ndims, int* shape, int* strides, int num_elements, int device) {
-    float *tmp_buffer = NULL;
+    float *tmp_buffer;
     int *index = emalloc(ndims * sizeof(int));
     if (device == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS

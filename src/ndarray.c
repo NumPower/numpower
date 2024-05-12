@@ -607,7 +607,6 @@ NDArray_Print(NDArray *array, int do_return) {
     }
     if (do_return == 0) {
         printf("%s", str);
-        efree(str);
         return NULL;
     }
     return str;
