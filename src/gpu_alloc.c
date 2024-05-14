@@ -1,12 +1,11 @@
 #include "../config.h"
+#include <Zend/zend.h>
 
 #ifdef HAVE_CUBLAS
 #include "gpu_alloc.h"
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "buffer.h"
-#include "Zend/zend_alloc.h"
-#include "Zend/zend.h"
 
 void
 vmalloc(void** target, unsigned int size) {

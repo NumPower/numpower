@@ -1,10 +1,10 @@
+#include <Zend/zend.h>
 #include "indexing.h"
-#include "Zend/zend_alloc.h"
-#include "Zend/zend_API.h"
 #include "ndarray.h"
 #include "initializers.h"
 #include "types.h"
 #include "../config.h"
+
 
 #ifdef HAVE_CUBLAS
 #include "src/gpu_alloc.h"
