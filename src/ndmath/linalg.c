@@ -15,6 +15,10 @@
 #include <lapacke.h>
 #endif
 
+#ifdef HAVE_LAPACKE_MKL
+#include <mkl.h>
+#endif
+
 #ifdef HAVE_CBLAS
 #include <cblas.h>
 #endif
