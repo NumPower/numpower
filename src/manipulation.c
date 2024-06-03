@@ -87,15 +87,24 @@ NDArray_Transpose(NDArray *a) {
     reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
     reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
 
-    ret = NDArray_Copy(a, NDArray_DEVICE(a));
-    efree(ret->strides);
-    efree(ret->dimensions);
-    ret->strides = new_strides;
-    ret->dimensions = new_shape;
-    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
-    contiguous_ret = NDArray_ToContiguous(ret);
-    NDArray_FREE(ret);
-    return contiguous_ret;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU || (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_NDIM(a) != 2)) {
+        ret = NDArray_Copy(a, NDArray_DEVICE(a));
+        efree(ret->strides);
+        efree(ret->dimensions);
+        ret->strides = new_strides;
+        ret->dimensions = new_shape;
+        NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        contiguous_ret = NDArray_ToContiguous(ret);
+        NDArray_FREE(ret);
+        return contiguous_ret;
+    } else {
+#ifdef HAVE_CUBLAS
+        efree(new_strides);
+        ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        cuda_float_transpose(32, 8, NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
+        return ret;
+#endif
+    }
 }
 
 /**
@@ -543,11 +552,5 @@ NDArray_AtLeast3D(NDArray *a) {
         output = NDArray_FromNDArrayBase(a, NDArray_DATA(a), new_shape, strides, NDArray_NDIM(a));
     }
     return output;
-}
-
-NDArray*
-NDArray_Flip(NDArray *a, NDArray *axis)
-{
-
 }
 
