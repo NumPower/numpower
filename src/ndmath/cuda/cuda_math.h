@@ -10,6 +10,8 @@ extern "C" {
 typedef void (*ElementWiseFloatGPUOperation)(int, float *);
 typedef void (*ElementWiseFloatGPUOperation2F)(int, float *, float, float);
 typedef void (*ElementWiseFloatGPUOperation1F)(int, float *, float);
+typedef void (*ElementWiseFloatGPUOperation1N)(int, float *, float *);
+NDArray* NDArrayMathGPU_ElementWise1N(NDArray* ndarray, ElementWiseFloatGPUOperation1N op, NDArray* val1);
 NDArray* NDArrayMathGPU_ElementWise(NDArray *ndarray, ElementWiseFloatGPUOperation op);
 void cuda_float_abs(int nblocks, float *d_array);
 void cuda_float_expm1(int nblocks, float *d_array);
@@ -40,6 +42,7 @@ void cuda_float_tan(int nblocks, float *d_array);
 void cuda_float_arcsin(int nblocks, float *d_array);
 void cuda_float_arccos(int nblocks, float *d_array);
 void cuda_float_arctan(int nblocks, float *d_array);
+void cuda_float_arctan2(int nblocks, float *d_array, float *y_array);
 void cuda_float_degrees(int nblocks, float *d_array);
 void cuda_float_radians(int nblocks, float *d_array);
 void cuda_float_sinh(int nblocks, float *d_array);
@@ -72,6 +75,7 @@ void cuda_float_compare_not_equal(int nblocks, float *a_array, float *b_array, f
 void cuda_lstsq_float(float* A, int m, int n, float* B, int k, float* X);
 NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
+void cuda_float_transpose(int tiledim, int blockrows, const float *d_in, float *d_out, int width, int height);
 
 #ifdef __cplusplus
 }

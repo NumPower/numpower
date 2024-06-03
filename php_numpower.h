@@ -62,8 +62,9 @@ ZEND_FUNCTION(print_r_);
 
 
 PHPAPI zend_class_entry *phpsci_ce_NDArray;
+PHPAPI zend_class_entry *phpsci_ce_ArithmeticOperand;
 
-# define PHP_NDARRAY_VERSION "0.1.0"
+# define PHP_NDARRAY_VERSION "0.5.0"
 
 # if defined(ZTS) && defined(COMPILE_DL_NDARRAY)
 ZEND_TSRMLS_CACHE_EXTERN()

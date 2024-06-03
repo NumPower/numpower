@@ -1,12 +1,14 @@
 cmake_minimum_required(VERSION 3.26)
+
 project(numpower)
+
 
 set(CMAKE_CXX_STANDARD 14)
 
+include_directories(/usr/include/)
 include_directories(/usr/local/include/php/main/)
 include_directories(/usr/local/include/php)
 include_directories(/usr/local/include)
-include_directories(/usr/include/)
 include_directories(.)
 include_directories(src)
 include_directories(src/ndmath)
@@ -52,4 +54,9 @@ add_executable(numpower
         src/ndmath/signal.c
         src/ndmath/signal.h
         src/ndmath/calculation.c
+        src/ndmath/calculation.h
+        src/dnn.c
+        src/dnn.h
+        src/ndmath/cuda/cuda_dnn.cu
+        src/ndmath/cuda/cuda_dnn.cuh
 )

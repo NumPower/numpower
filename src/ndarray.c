@@ -553,7 +553,6 @@ NDArray_FREE(NDArray *array) {
 #endif
             }
         }
-
         if (array->base != NULL) {
             NDArray_FREE(array->base);
         }
@@ -641,6 +640,23 @@ NDArray_Map1F(NDArray *array, ElementWiseFloatOperation1F op, float val1) {
 
     for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
         NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i], val1);
+    }
+    return rtn;
+}
+
+/**
+ * @param array
+ */
+NDArray *
+NDArray_Map1ND(NDArray *array, ElementWiseFloatOperation1F op, NDArray *val1) {
+    NDArray *rtn;
+    int i;
+    int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(array));
+    memcpy(new_shape, NDArray_SHAPE(array), sizeof(int) * NDArray_NDIM(array));
+    rtn = NDArray_Zeros(new_shape, NDArray_NDIM(array), NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(array));
+
+    for (i = 0; i < NDArray_NUMELEMENTS(array); i++) {
+        NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(array)[i], NDArray_FDATA(val1)[i]);
     }
     return rtn;
 }
@@ -798,6 +814,49 @@ NDArray_Maximum(NDArray *a, NDArray *b) {
     NDArray *rtn = NDArray_EmptyLike(a_broad);
     for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
         NDArray_FDATA(rtn)[i] = fmaxf(NDArray_FDATA(a_broad)[i], NDArray_FDATA(b_broad)[i]);
+    }
+
+    if (broadcasted != NULL) {
+        NDArray_FREE(broadcasted);
+    }
+    return rtn;
+}
+
+/**
+ * @param a
+ * @param b
+ * @return
+ */
+NDArray *
+NDArray_Minimum(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "NDArray_Minimum not implemented for GPU");
+        return NULL;
+    }
+
+    NDArray *broadcasted = NULL;
+    NDArray *a_broad = NULL, *b_broad = NULL;
+    if (NDArray_NUMELEMENTS(a) < NDArray_NUMELEMENTS(b)) {
+        broadcasted = NDArray_Broadcast(a, b);
+        a_broad = broadcasted;
+        b_broad = b;
+    } else if (NDArray_NUMELEMENTS(b) < NDArray_NUMELEMENTS(a)) {
+        broadcasted = NDArray_Broadcast(b, a);
+        b_broad = broadcasted;
+        a_broad = a;
+    } else {
+        b_broad = b;
+        a_broad = a;
+    }
+
+    if (b_broad == NULL || a_broad == NULL) {
+        zend_throw_error(NULL, "Can't broadcast arrays.");
+        return NULL;
+    }
+
+    NDArray *rtn = NDArray_EmptyLike(a_broad);
+    for (int i = 0; i < NDArray_NUMELEMENTS(a); i++) {
+        NDArray_FDATA(rtn)[i] = fminf(NDArray_FDATA(a_broad)[i], NDArray_FDATA(b_broad)[i]);
     }
 
     if (broadcasted != NULL) {

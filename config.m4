@@ -104,6 +104,18 @@ PHP_CHECK_LIBRARY(mkl_rt,LAPACKE_sgesdd,
     ])
 ])
 
+
+PHP_CHECK_LIBRARY(cudnn, cudnnCreate,
+    [
+      AC_DEFINE(HAVE_CUDNN,1,[ ])
+      PHP_ADD_LIBRARY(z,,NDARRAY_SHARED_LIBADD)
+      AC_MSG_RESULT([cuDNN detected, enabling GPU DNN capabilities.])
+      CFLAGS+=" -lz -lcudnn "
+    ],[
+    AC_MSG_RESULT([cuDNN not found. GPU DNN capabilities disabled.])
+])
+
+
 if test "$PHP_NDARRAY" != "no"; then
   AC_DEFINE(HAVE_NDARRAY, 1, [ Have ndarray support ])
   PHP_NEW_EXTENSION(ndarray,
@@ -117,6 +129,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/gpu_alloc.c \
       src/ndmath/linalg.c \
       src/manipulation.c \
+      src/dnn.c \
       src/iterators.c \
       src/indexing.c \
       src/ndmath/arithmetics.c \

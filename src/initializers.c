@@ -99,7 +99,7 @@ int get_num_dims_from_zval(zval *arr) {
  * @param type
  * @return
  */
-NDArrayDescriptor* Create_Descriptor(int numElements, int elsize, const char* type) {
+NDArrayDescriptor* Create_Descriptor(long numElements, int elsize, const char* type) {
     NDArrayDescriptor* ndArrayDescriptor = emalloc(sizeof(NDArrayDescriptor));
     ndArrayDescriptor->elsize = elsize;
     ndArrayDescriptor->numElements = numElements;
@@ -259,7 +259,7 @@ Create_NDArray(int* shape, int ndim, const char* type, const int device) {
         return NULL;
     }
 
-    int total_num_elements = shape[0];
+    long total_num_elements = shape[0];
 
     if (ndim == 0) {
         total_num_elements = 1;
@@ -455,12 +455,11 @@ NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
 NDArray*
 NDArray_Ones(int *shape, int ndim, const char *type) {
     NDArray* rtn = Create_NDArray(shape, ndim, type, NDARRAY_DEVICE_CPU);
-
     if (rtn == NULL) {
         return NULL;
     }
 
-    int i;
+    long i;
     rtn->data = emalloc(sizeof(float) * NDArray_NUMELEMENTS(rtn));
     for (i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         NDArray_FDATA(rtn)[i] = (float)1.0;
@@ -760,7 +759,6 @@ NDArray_Copy(NDArray *a, int device) {
         rtn->descriptor->elsize = NDArray_ELSIZE(a);
         rtn->descriptor->type = NDArray_TYPE(a);
         NDArrayIterator_INIT(rtn);
-
         return rtn;
 #else
         return NULL;

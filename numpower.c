@@ -25,6 +25,7 @@
 #include "src/ndmath/statistics.h"
 #include "src/ndmath/signal.h"
 #include "src/ndmath/calculation.h"
+#include "src/dnn.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
@@ -45,6 +46,7 @@
 #endif
 
 static zend_object_handlers ndarray_object_handlers;
+static zend_object_handlers arithmetic_object_handlers;
 
 int
 get_object_uuid(zval* obj) {
@@ -132,6 +134,9 @@ typedef struct {
 static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, zval *op2) { /* {{{ */
     NDArray *nda = ZVAL_TO_NDARRAY(op1);
     NDArray *ndb = ZVAL_TO_NDARRAY(op2);
+    if (nda == NULL | ndb == NULL) {
+        return FAILURE;
+    }
     NDArray *rtn = NULL;
     switch(opcode) {
     case ZEND_ADD:
@@ -164,12 +169,66 @@ static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, z
     return FAILURE;
 }
 
+static int arithmetic_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, zval *op2) { /* {{{ */
+    zval retval;
+    zval method_name;
+
+    switch(opcode) {
+        case ZEND_ADD:
+            ZVAL_STRING(&method_name, "__add");
+            break;
+        case ZEND_SUB:
+            ZVAL_STRING(&method_name, "__sub");
+            break;
+        case ZEND_MUL:
+            ZVAL_STRING(&method_name, "__mul");
+            break;
+        case ZEND_DIV:
+            ZVAL_STRING(&method_name, "__div");
+            break;
+        case ZEND_POW:
+            ZVAL_STRING(&method_name, "__pow");
+            break;
+        case ZEND_MOD:
+            ZVAL_STRING(&method_name, "__mod");
+            break;
+        default:
+            return FAILURE;
+    }
+
+    zval params[1];
+    ZVAL_COPY(&params[0], op2);
+
+    if (call_user_function(NULL, op1, &method_name, &retval, 1, params) == FAILURE) {
+        zval_ptr_dtor(&method_name);
+        return FAILURE;
+    }
+
+    // Copy the result to the result zval
+    ZVAL_COPY(result, &retval);
+
+    // Clean up
+    zval_ptr_dtor(&method_name);
+    zval_ptr_dtor(&retval);
+    zval_ptr_dtor(&params[0]);
+
+    return SUCCESS;
+}
+
 static
 int ndarray_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) { /* {{{ */
     int retval;
     retval = ndarray_do_operation_ex(opcode, result, op1, op2);
     return retval;
 }
+
+static
+int arithmetic_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op2) { /* {{{ */
+    int retval;
+    retval = arithmetic_do_operation_ex(opcode, result, op1, op2);
+    return retval;
+}
+
 
 static void ndarray_destructor(zend_object* object) {
     NDArrayObject* my_object = (NDArrayObject*)object;
@@ -187,6 +246,11 @@ static void ndarray_objects_init(zend_class_entry *class_type) {
     ndarray_object_handlers.free_obj = ndarray_destructor;
 }
 
+static void arithmetic_objects_init(zend_class_entry *class_type) {
+    memcpy(&arithmetic_object_handlers, &std_object_handlers, sizeof(zend_object_handlers));
+    arithmetic_object_handlers.do_operation = arithmetic_do_operation;
+}
+
 static zend_object *ndarray_create_object(zend_class_entry *class_type) {
     NDArrayObject *intern = zend_object_alloc(sizeof(NDArrayObject), class_type);
 
@@ -194,6 +258,14 @@ static zend_object *ndarray_create_object(zend_class_entry *class_type) {
     object_properties_init(&intern->std, class_type);
     intern->std.handlers = &ndarray_object_handlers;
 
+    return &intern->std;
+}
+
+static zend_object *arithmetic_create_object(zend_class_entry *class_type) {
+    NDArrayObject *intern = zend_object_alloc(sizeof(NDArrayObject), class_type);
+    zend_object_std_init(&intern->std, class_type);
+    object_properties_init(&intern->std, class_type);
+    intern->std.handlers = &arithmetic_object_handlers;
     return &intern->std;
 }
 
@@ -276,6 +348,15 @@ bypass_printr() {
     }
     zend_string_release_ex(functionToRename, 0);
 }
+
+ZEND_BEGIN_ARG_INFO(arginfo_ArithmeticOperand_construct, 0)
+ZEND_END_ARG_INFO();
+PHP_METHOD(ArithmeticOperand, __construct) {
+    zend_object *obj = Z_OBJ_P(ZEND_THIS);
+    ZEND_PARSE_PARAMETERS_START(0, 0)
+    ZEND_PARSE_PARAMETERS_END();
+}
+
 
 /* }}}*/
 ZEND_BEGIN_ARG_INFO(arginfo_construct, 1)
@@ -1171,6 +1252,8 @@ PHP_METHOD(NDArray, allclose) {
     RETURN_BOOL(rtn);
 }
 
+
+
 /**
  * NDArray::transpose
  *
@@ -1537,6 +1620,41 @@ PHP_METHOD(NDArray, arcsin) {
 }
 
 /**
+ * NDArray::rsqrt
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_rsqrt, 0, 0, 1)
+                ZEND_ARG_INFO(0, array)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, rsqrt) {
+    NDArray *rtn = NULL;
+    zval *array;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+            Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_rsqrt);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_arccos);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::arccos
  *
  * @param execute_data
@@ -1603,6 +1721,43 @@ PHP_METHOD(NDArray, arctan) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::arctan2
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_arctan2, 0, 0, 2)
+    ZEND_ARG_INFO(0, x)
+    ZEND_ARG_INFO(0, y)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, arctan2) {
+    NDArray *rtn = NULL;
+    zval *x, *y;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(x)
+            Z_PARAM_ZVAL(y)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *ndx = ZVAL_TO_NDARRAY(x);
+    NDArray *ndy = ZVAL_TO_NDARRAY(y);
+    if (x == NULL || y == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(ndx) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map1ND(ndx, float_arctan2, ndy);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise1N(ndx, cuda_float_arctan2, ndy);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    CHECK_INPUT_AND_FREE(x, ndx);
+    CHECK_INPUT_AND_FREE(y, ndy);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -2156,6 +2311,37 @@ PHP_METHOD(NDArray, maximum) {
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
 }
+
+/**
+ * NDArray::minimum
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_minimum, 0, 0, 1)
+        ZEND_ARG_INFO(0, a)
+        ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, minimum) {
+    NDArray *rtn = NULL;
+    zval *a, *b;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_ZVAL(b)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    NDArray *ndb = ZVAL_TO_NDARRAY(b);
+    if (nda == NULL || ndb == NULL) {
+        return;
+    }
+
+    rtn = NDArray_Minimum(nda, ndb);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(b, ndb);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
 
 /**
  * NDArray::argmax
@@ -3580,6 +3766,63 @@ PHP_METHOD(NDArray, matrix_rank) {
     RETURN_NDARRAY(rtn, return_value);
 }
 
+
+/**
+ * NDArray::dnn_conv2d_forward
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_dnn_conv2d_forward, 4, 0, 1)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, dnn_conv2d_forward) {
+    NDArray *rtn;
+    NDArray *ndb = NULL;
+    zval *input, *filters;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(input)
+        Z_PARAM_ZVAL(filters)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *ndinput = ZVAL_TO_NDARRAY(input);
+    NDArray *ndfilters = ZVAL_TO_NDARRAY(filters);
+
+    rtn = NDArrayDNN_Conv2D_Forward(ndinput, ndfilters, NULL, 'r', 1);
+    if (rtn == NULL) {
+        return;
+    }
+    CHECK_INPUT_AND_FREE(input, ndinput);
+    CHECK_INPUT_AND_FREE(filters, ndfilters);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::dnn_conv2d_backward
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_dnn_conv2d_backward, 3, 0, 1)
+ZEND_ARG_INFO(0, x)
+ZEND_ARG_INFO(0, y)
+ZEND_ARG_INFO(0, filters)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, dnn_conv2d_backward) {
+    NDArray **rtn;
+    zval *x, *y, *filters;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(x)
+        Z_PARAM_ZVAL(y)
+        Z_PARAM_ZVAL(filters)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *ndx = ZVAL_TO_NDARRAY(x);
+    NDArray *ndy = ZVAL_TO_NDARRAY(y);
+    NDArray *ndfilters = ZVAL_TO_NDARRAY(filters);
+
+    rtn = NDArrayDNN_Conv2D_Backward(ndx, ndy, ndfilters, 3, 'r', 1);
+
+    CHECK_INPUT_AND_FREE(x, ndx);
+    CHECK_INPUT_AND_FREE(y, ndy);
+    CHECK_INPUT_AND_FREE(filters, ndfilters);
+    RETURN_2NDARRAY(rtn[0], rtn[1], return_value);
+    efree(rtn);
+}
+
 /**
  * NDArray::convolve2d
  */
@@ -3705,7 +3948,7 @@ PHP_METHOD(NDArray, correlate2d) {
 /**
  * NDArray::norm
  */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_norm, 1)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_norm, 2, 0, 1)
 ZEND_ARG_INFO(0, a)
 ZEND_ARG_INFO(0, order)
 ZEND_END_ARG_INFO()
@@ -4240,6 +4483,11 @@ PHP_METHOD(NDArray, __toString) {
     RETVAL_STRING(result);
     efree(result);
 }
+static const zend_function_entry class_arithmetic_methods[] = {
+    ZEND_ME(ArithmeticOperand, __construct, arginfo_ArithmeticOperand_construct, ZEND_ACC_PUBLIC)
+    PHP_FE_END
+};
+
 static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, __construct, arginfo_construct, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, dump, arginfo_dump, ZEND_ACC_PUBLIC)
@@ -4253,6 +4501,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, max, arginfo_ndarray_max, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, maximum, arginfo_ndarray_maximum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, minimum, arginfo_ndarray_minimum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, argmax, arginfo_ndarray_argmax, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, argmin, arginfo_ndarray_argmin, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
@@ -4312,6 +4561,8 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, matrix_rank, arginfo_ndarray_matrix_rank, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, convolve2d, arginfo_ndarray_convolve2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, correlate2d, arginfo_ndarray_correlate2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, dnn_conv2d_forward, arginfo_ndarray_dnn_conv2d_forward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, dnn_conv2d_backward, arginfo_ndarray_dnn_conv2d_backward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LOGIC
     ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4341,6 +4592,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, arcsin, arginfo_ndarray_arcsin, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, arccos, arginfo_ndarray_arccos, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, arctan, arginfo_ndarray_arctan, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, arctan2, arginfo_ndarray_arctan2, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, degrees, arginfo_ndarray_degrees, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, radians, arginfo_ndarray_radians, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, sinh, arginfo_ndarray_sinh, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4359,6 +4611,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, sign, arginfo_ndarray_sign, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, clip, arginfo_ndarray_clip, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, round, arginfo_ndarray_round, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, rsqrt, arginfo_ndarray_rsqrt, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // STATISTICS
     ZEND_ME(NDArray, mean, arginfo_ndarray_mean, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4412,11 +4665,21 @@ static zend_class_entry *register_class_NDArray(zend_class_entry *class_entry_It
     return class_entry;
 }
 
+static zend_class_entry *register_class_ArithmeticOperand(zend_class_entry *class_entry_Iterator, zend_class_entry *class_entry_Countable, zend_class_entry *class_entry_ArrayAccess) {
+    zend_class_entry ce, *class_entry;
+    INIT_CLASS_ENTRY(ce, "ArithmeticOperand", class_arithmetic_methods);
+    arithmetic_objects_init(&ce);
+    ce.create_object = arithmetic_create_object;
+    class_entry = zend_register_internal_class(&ce);
+    return class_entry;
+}
+
 /**
  * MINIT
  */
 PHP_MINIT_FUNCTION(ndarray) {
     phpsci_ce_NDArray = register_class_NDArray(zend_ce_iterator, zend_ce_countable, zend_ce_arrayaccess);
+    phpsci_ce_ArithmeticOperand = register_class_ArithmeticOperand(zend_ce_iterator, zend_ce_countable, zend_ce_arrayaccess);
     return SUCCESS;
 }
 

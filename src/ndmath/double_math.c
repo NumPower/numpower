@@ -108,6 +108,23 @@ float float_cos(float val) {
     return cosf(val);
 }
 
+float float_rsqrt(float val) {
+    const float threehalfs = 1.5F;
+
+    float x2 = val * 0.5F;
+    float y = val;
+
+    // Evil floating-point bit level hacking
+    uint32_t i = *(uint32_t *)&y;  // Treat float's bits as an integer
+    i = 0x5f3759df - (i >> 1);     // Initial guess for Newton's method
+    y = *(float *)&i;              // Treat bits as float
+
+    // One iteration of Newton's method
+    y = y * (threehalfs - (x2 * y * y));
+
+    return y;
+}
+
 /**
  * @param val
  * @return
@@ -232,4 +249,9 @@ float float_clip(float val, float min, float max) {
 float float_round(float number, float decimals) {
     float factor = powf(10, decimals);
     return roundf(number * factor) / factor;
+}
+
+float float_arctan2(float x, float y)
+{
+    return atan2f(x, y);
 }
