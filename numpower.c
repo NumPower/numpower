@@ -84,6 +84,9 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
 }
 
 void CHECK_INPUT_AND_FREE(zval *a, NDArray *nda) {
+    if (nda == NULL || a == NULL) {
+        return;
+    }
     if (Z_TYPE_P(a) == IS_ARRAY || Z_TYPE_P(a) == IS_DOUBLE || Z_TYPE_P(a) == IS_LONG) {
         NDArray_FREE(nda);
     }
@@ -3344,7 +3347,44 @@ PHP_METHOD(NDArray, expand_dims) {
 }
 
 /**
-* NDArray::expand_dims
+* NDArray::squeeze
+*/
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_squeeze, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, squeeze) {
+    NDArray *rtn = NULL, *ndaxis = NULL;
+    zval *a;
+    zval *axis;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+            Z_PARAM_ZVAL(a)
+            Z_PARAM_OPTIONAL
+            Z_PARAM_ZVAL(axis)
+    ZEND_PARSE_PARAMETERS_END();
+
+    if (Z_TYPE_P(axis) != IS_ARRAY && Z_TYPE_P(axis) != IS_LONG && Z_TYPE_P(axis) != IS_OBJECT && ZEND_NUM_ARGS() > 1) {
+        zend_throw_error(NULL, "expected array, integer or ndarray");
+        return;
+    }
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (ZEND_NUM_ARGS() > 1) {
+        ndaxis = ZVAL_TO_NDARRAY(axis);
+    }
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_Squeeze(nda, ndaxis);
+    CHECK_INPUT_AND_FREE(a, nda);
+    CHECK_INPUT_AND_FREE(axis, ndaxis);
+    if (rtn == NULL) {
+        return;
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+* NDArray::flip
 */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_flip, 0)
     ZEND_ARG_INFO(0, a)
@@ -4519,6 +4559,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, slice, arginfo_slice, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, expand_dims, arginfo_ndarray_expand_dims, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, squeeze, arginfo_ndarray_squeeze, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
