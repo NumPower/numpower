@@ -277,6 +277,12 @@ NDArray_Add_Float(NDArray* a, NDArray* b) {
     return result;
 }
 
+__m256 fix_negative_zero(__m256 vec) {
+    __m256 zero = _mm256_set1_ps(-0.0f);
+    __m256 mask = _mm256_cmp_ps(vec, zero, _CMP_EQ_OQ);
+    return _mm256_blendv_ps(vec, zero, mask);
+}
+
 /**
  * Multiply elements of a and b element-wise
  *
@@ -394,12 +400,16 @@ NDArray_Multiply_Float(NDArray* a, NDArray* b) {
             vec1 = _mm256_loadu_ps(&aData[i]);
             vec2 = _mm256_loadu_ps(&bData[i]);
             mul = _mm256_mul_ps(vec1, vec2);
+            mul = fix_negative_zero(mul); // Fix any -0.0 results
             _mm256_storeu_ps(&resultData[i], mul);
         }
 
         // Handle remaining elements if the length is not a multiple of 4
         for (; i < numElements; i++) {
             resultData[i] = aData[i] * bData[i];
+            if (resultData[i] == 0.0f && signbit(resultData[i])) {
+                resultData[i] = 0.0f;
+            }
         }
 #else
         for (int i = 0; i < numElements; i++) {
