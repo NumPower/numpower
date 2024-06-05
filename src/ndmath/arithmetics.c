@@ -79,12 +79,10 @@ NDArray_Sum_Float(NDArray* a) {
  */
 float
 NDArray_Mean_Float(NDArray* a) {
+    NDArray_Print(a, 0);
     float value = 0;
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
 #ifdef HAVE_CUBLAS
-        //cublasHandle_t handle;
-        //cublasCreate(&handle);
-        //cublasSasum(handle, NDArray_NUMELEMENTS(a), NDArray_FDATA(a), 1, &value);
         cuda_sum_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), &value, NDArray_NUMELEMENTS(a));
         value = value / NDArray_NUMELEMENTS(a);
 #endif

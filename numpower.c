@@ -525,6 +525,35 @@ PHP_METHOD(NDArray, dumpDevices) {
     NDArray_DumpDevices();
 }
 
+ZEND_BEGIN_ARG_INFO(arginfo_save, 0)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, name)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, save) {
+    zval *a;
+    zend_string *name;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *array = ZVAL_TO_NDARRAY(a);
+    NDArray_Save(array, name->val, name->len);
+    CHECK_INPUT_AND_FREE(a, array);
+    RETURN_NULL();
+}
+
+ZEND_BEGIN_ARG_INFO(arginfo_load, 0)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO();
+PHP_METHOD(NDArray, load) {
+    zend_string *name;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_STR(name)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *rtn = NDArray_Load(name->val);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
 ZEND_BEGIN_ARG_INFO(arginfo_setdevice, 0)
 ZEND_ARG_INFO(0, deviceId)
 ZEND_END_ARG_INFO();
@@ -2417,8 +2446,10 @@ PHP_METHOD(NDArray, mean) {
     zval *array;
     long axis;
     int i_axis;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ZVAL(array)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     i_axis = (int)axis;
     NDArray *nda = ZVAL_TO_NDARRAY(array);
@@ -2427,7 +2458,19 @@ PHP_METHOD(NDArray, mean) {
     }
 
     if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
-        RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        if (ZEND_NUM_ARGS() == 1) {
+            RETURN_DOUBLE((NDArray_Sum_Float(nda) / NDArray_NUMELEMENTS(nda)));
+        } else {
+            NDArray *sum = reduce(nda, &i_axis, NDArray_Add_Float);
+            if (sum == NULL) {
+                CHECK_INPUT_AND_FREE(array, nda);
+                return;
+            }
+            NDArray *num_cols = NDArray_CreateFromLongScalar((long)NDArray_SHAPE(nda)[i_axis]);
+            rtn = NDArray_Divide_Float(sum, num_cols);
+            NDArray_FREE(sum);
+            NDArray_FREE(num_cols);
+        }
     } else {
 #ifdef HAVE_CUBLAS
         if (ZEND_NUM_ARGS() == 1) {
@@ -2442,6 +2485,7 @@ PHP_METHOD(NDArray, mean) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
+    CHECK_INPUT_AND_FREE(array, nda);
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -3835,6 +3879,33 @@ PHP_METHOD(NDArray, dnn_conv2d_forward) {
 }
 
 /**
+ * NDArray::dnn_conv1d_forward
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_dnn_conv1d_forward, 4, 0, 1)
+                ZEND_ARG_INFO(0, a)
+                ZEND_ARG_INFO(0, b)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, dnn_conv1d_forward) {
+    NDArray *rtn;
+    NDArray *ndb = NULL;
+    zval *input, *filters;
+    ZEND_PARSE_PARAMETERS_START(2, 2)
+            Z_PARAM_ZVAL(input)
+            Z_PARAM_ZVAL(filters)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *ndinput = ZVAL_TO_NDARRAY(input);
+    NDArray *ndfilters = ZVAL_TO_NDARRAY(filters);
+
+    rtn = NDArray_DNN_Conv1D(ndinput, ndfilters);
+    if (rtn == NULL) {
+        return;
+    }
+    CHECK_INPUT_AND_FREE(input, ndinput);
+    CHECK_INPUT_AND_FREE(filters, ndfilters);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::dnn_conv2d_backward
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_dnn_conv2d_backward, 3, 0, 1)
@@ -4536,6 +4607,8 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, cpu, arginfo_cpu, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, isGPU, arginfo_is_gpu, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, setDevice, arginfo_setdevice, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, save, arginfo_save, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, load, arginfo_load, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // EXTREMA
     ZEND_ME(NDArray, min, arginfo_ndarray_min, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
@@ -4602,8 +4675,11 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, matrix_rank, arginfo_ndarray_matrix_rank, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, convolve2d, arginfo_ndarray_convolve2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, correlate2d, arginfo_ndarray_correlate2d, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
+    // DNN
     ZEND_ME(NDArray, dnn_conv2d_forward, arginfo_ndarray_dnn_conv2d_forward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, dnn_conv2d_backward, arginfo_ndarray_dnn_conv2d_backward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, dnn_conv1d_forward, arginfo_ndarray_dnn_conv1d_forward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LOGIC
     ZEND_ME(NDArray, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
