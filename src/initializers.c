@@ -145,6 +145,8 @@ NDArray_CreateBuffer(NDArray* array, int numElements, int elsize) {
     array->data = emalloc(numElements * elsize);
 }
 
+int iteration = 0;
+
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "misc-no-recursion"
 /**
@@ -158,36 +160,36 @@ NDArray_CopyFromZendArray(NDArray* target, zend_array* target_zval, int * first_
     ZEND_HASH_FOREACH_VAL(target_zval, element) {
         ZVAL_DEREF(element);
         switch (Z_TYPE_P(element)) {
-        case IS_ARRAY:
-            NDArray_CopyFromZendArray(target, Z_ARRVAL_P(element), first_index);
-            break;
-        case IS_LONG:
-            convert_to_long(element);
-            data_double = NDArray_FDATA(target);
-            data_double[*first_index] = (float) zval_get_long(element);
-            *first_index = *first_index + 1;
-            break;
-        case IS_TRUE:
-            convert_to_long(element);
-            data_double = NDArray_FDATA(target);
-            data_double[*first_index] = (float) 1.0;
-            *first_index = *first_index + 1;
-            break;
-        case IS_FALSE:
-            convert_to_long(element);
-            data_double = NDArray_FDATA(target);
-            data_double[*first_index] = (float) 0.0;
-            *first_index = *first_index + 1;
-            break;
-        case IS_DOUBLE:
-            convert_to_double(element);
-            data_double = NDArray_FDATA(target);
-            data_double[*first_index] = (float) zval_get_double(element);
-            *first_index = *first_index + 1;
-            break;
-        default:
-            zend_throw_error(NULL, "an element with an invalid type was used at initialization");
-            return;
+            case IS_ARRAY:
+                NDArray_CopyFromZendArray(target, Z_ARRVAL_P(element), first_index);
+                break;
+            case IS_LONG:
+                convert_to_long(element);
+                data_double = NDArray_FDATA(target);
+                data_double[*first_index] = (float) zval_get_long(element);
+                *first_index = *first_index + 1;
+                break;
+            case IS_TRUE:
+                convert_to_long(element);
+                data_double = NDArray_FDATA(target);
+                data_double[*first_index] = (float) 1.0;
+                *first_index = *first_index + 1;
+                break;
+            case IS_FALSE:
+                convert_to_long(element);
+                data_double = NDArray_FDATA(target);
+                data_double[*first_index] = (float) 0.0;
+                *first_index = *first_index + 1;
+                break;
+            case IS_DOUBLE:
+                convert_to_double(element);
+                data_double = NDArray_FDATA(target);
+                data_double[*first_index] = (float) zval_get_double(element);
+                *first_index = *first_index + 1;
+                break;
+            default:
+                zend_throw_error(NULL, "an element with an invalid type was used at initialization");
+                return;
         }
     }
     ZEND_HASH_FOREACH_END();
