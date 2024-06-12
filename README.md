@@ -29,7 +29,8 @@ NumPower aims to manage memory more efficiently than a matrix in PHP arrays
 - PHP 8.x
 - LAPACKE
 - OpenBLAS
-- **Optional (GPU)**: CUBLAS, CUDA Build Toolkit
+- **Optional**: Intel MKL
+- **Optional (GPU)**: CUBLAS, CUDA Build Toolkit and cuDNN
 - **Optional (Image)**: PHP-GD
 
 ## GPU Support
@@ -58,3 +59,12 @@ $x_cpu = $x->cpu();
 
 > **You must explicitly copy the arrays you want to use in your devices**. Cross-array operations (like adding) will 
 > raise an exception if the arrays used are on different devices.
+
+## DNN Features
+When NumPower identifies the oneDNN or cuDNN libraries during compilation, 
+some resources for DNN will be available for use.
+
+This includes for example high performance feed forward and backward for convolutions and pooling 
+for both CPU (oneDNN) and GPU (cuDNN).
+
+If you do not have any of the libraries installed, all DNN API methods calls will raise a fatal error.
