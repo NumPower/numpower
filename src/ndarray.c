@@ -11,22 +11,17 @@
 #include <Zend/zend_types.h>
 
 #ifdef HAVE_AVX2
-
 #include <immintrin.h>
-
 #endif
 
 #ifdef HAVE_CUBLAS
-
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "ndmath/cuda/cuda_math.h"
 #include "gpu_alloc.h"
-
 #endif
 
 #ifdef HAVE_GD
-
 #include "gd.h"
 
 typedef struct _gd_ext_image_object {
@@ -320,7 +315,6 @@ void apply_single_reduce(NDArray *result, NDArray *target, float (*operation)(ND
     NDArray_FDATA(tmp)[1] = temp2;
 
     tmp_result = operation(tmp);
-    php_printf("\n\n%f\n\n", tmp_result);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
         memcpy(result->data, &tmp_result, sizeof(float));
     }
@@ -1282,4 +1276,58 @@ NDArray_Overwrite(NDArray *target, NDArray *values) {
     }
 #endif
     return 0;
+}
+
+/**
+ * @param a
+ */
+void
+NDArray_Save(NDArray *a, char * filename, int length)
+{
+    // Open file for writing
+    FILE *file = fopen(filename, "wb");
+    if (file == NULL) {
+        fprintf(stderr, "Error opening file %s\n", filename);
+        return;
+    }
+    fwrite(a, sizeof(NDArray), 1, file);
+    fwrite(a->strides, sizeof(int), NDArray_NDIM(a), file);
+    fwrite(a->dimensions, sizeof(int), NDArray_NDIM(a), file);
+    fwrite(a->iterator, sizeof(NDArrayIterator), 1, file);
+    fwrite(a->descriptor, sizeof(NDArrayDescriptor), 1, file);
+    fwrite(&a->descriptor->numElements, sizeof(long), 1, file);
+    fwrite(a->data, a->descriptor->elsize, a->descriptor->numElements, file);
+    fclose(file);
+}
+
+/**
+ * @param a
+ */
+NDArray*
+NDArray_Load(char * filename)
+{
+    NDArray *out = emalloc(sizeof(NDArray));
+    // Open file for writing
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        zend_throw_error(NULL, "Error opening file %s\n", filename);
+        return NULL;
+    }
+    fread(out, sizeof(NDArray), 1, file);
+
+    out->dimensions = emalloc(sizeof(int) * NDArray_NDIM(out));
+    out->strides = emalloc(sizeof(int) * NDArray_NDIM(out));
+    out->descriptor = emalloc(sizeof(NDArrayDescriptor));
+
+    fread(out->strides, sizeof(int), NDArray_NDIM(out), file);
+    fread(out->dimensions, sizeof(int), NDArray_NDIM(out), file);
+    fread(out->iterator, sizeof(NDArrayIterator), 1, file);
+    fread(out->descriptor, sizeof(NDArrayDescriptor), 1, file);
+    // Write size of data buffer
+    fread(&out->descriptor->numElements, sizeof(long), 1, file);
+    // Write data buffer
+    fread(out->data, out->descriptor->elsize, out->descriptor->numElements, file);
+    // Close the file
+    fclose(file);
+    return out;
 }

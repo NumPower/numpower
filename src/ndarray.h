@@ -117,6 +117,9 @@ void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);
 NDArray* NDArray_FromGD(zval *a, bool channel_last);
 void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
+void NDArray_Save(NDArray *a, char * filename, int length);
+NDArray* NDArray_Load(char * filename);
+
 #ifdef __cplusplus
 }
 #endif
