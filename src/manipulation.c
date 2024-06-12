@@ -118,7 +118,6 @@ NDArray*
 NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     int total_new_elements = 1;
     int i;
-
     if (new_shape == NULL) {
         zend_throw_error(NULL, "new shape cannot be null.");
         return NULL;
@@ -241,7 +240,16 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
         new_dim = NDArray_NDIM(array);
     }
 
-    NDArray *ret = NDArray_FromNDArrayBase(array, data_ptr, shape_ptr, strides_ptr, new_dim);
+    NDArray *ret = NULL;
+    NDArray *fret = NDArray_FromNDArrayBase(array, data_ptr, shape_ptr, strides_ptr, new_dim);
+
+    if (num_indices > 1) {
+        NDArray_ENABLEFLAGS(fret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        ret = NDArray_ToContiguous(fret);
+        NDArray_FREE(fret);
+    } else {
+        ret = fret;
+    }
     return ret;
 failure:
     if (sliceobj.start != NULL) {
@@ -577,35 +585,34 @@ NDArray_ConvertMultiAxis(NDArray *axis_in, int ndim, bool *out_axis_flags)
         }
         out_axis_flags[axis] = 1;
         return 1;
-    } else {
-        int i, naxes;
+    }
 
-        memset(out_axis_flags, 0, ndim);
+    int i, naxes;
 
-        naxes = NDArray_NUMELEMENTS(axis_in);
-        if (naxes < 0) {
+    memset(out_axis_flags, 0, ndim);
+
+    naxes = NDArray_NUMELEMENTS(axis_in);
+    if (naxes < 0) {
+        return 0;
+    }
+    for (i = 0; i < naxes; ++i) {
+        int axis = (int)NDArray_FDATA(axis_in)[i];
+        if (check_and_adjust_axis(&axis, ndim) < 0) {
             return 0;
         }
-        for (i = 0; i < naxes; ++i) {
-            int axis = (int)NDArray_FDATA(axis_in)[i];
-            if (check_and_adjust_axis(&axis, ndim) < 0) {
-                return 0;
-            }
-            if (out_axis_flags[axis]) {
-                zend_throw_error(NULL,
-                                "duplicate value in 'axis'");
-                return 0;
-            }
-            out_axis_flags[axis] = 1;
+        if (out_axis_flags[axis]) {
+            zend_throw_error(NULL,
+                             "duplicate value in 'axis'");
+            return 0;
         }
-
-        return 1;
+        out_axis_flags[axis] = 1;
     }
-    return 0;
+
+    return 1;
 }
 
 void
-NDArray_RemoveAxesInPlace(NDArray *arr, bool *flags)
+NDArray_RemoveAxesInPlace(NDArray *arr, const bool *flags)
 {
     int *shape = NDArray_SHAPE(arr), *strides = NDArray_STRIDES(arr);
     int idim, ndim = NDArray_NDIM(arr), idim_out = 0;
