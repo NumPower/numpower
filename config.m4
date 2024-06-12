@@ -115,7 +115,6 @@ PHP_CHECK_LIBRARY(cudnn, cudnnCreate,
     AC_MSG_RESULT([cuDNN not found. GPU DNN capabilities disabled.])
 ])
 
-
 if test "$PHP_NDARRAY" != "no"; then
   AC_DEFINE(HAVE_NDARRAY, 1, [ Have ndarray support ])
   PHP_NEW_EXTENSION(ndarray,

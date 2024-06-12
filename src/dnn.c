@@ -3,11 +3,10 @@
 #include "initializers.h"
 #include "dnn.h"
 #include "../config.h"
+#include "manipulation.h"
 
 #ifdef HAVE_CUDNN
 #include "ndmath/cuda/cuda_dnn.cuh"
-#include "manipulation.h"
-
 #endif
 
 #ifdef HAVE_CBLAS
@@ -366,4 +365,100 @@ NDArrayDNN_Conv2D_Backward(NDArray *input, NDArray *y, NDArray *filters, int ker
     rtn[0] = rtn_dw;
     rtn[1] = rtn_dinput;
     return rtn;
+}
+
+// Function to apply padding
+void apply_padding(const float* input, float* padded_input, int input_length, int input_channels, int padded_length, int padding, char padding_mode) {
+    for (int c = 0; c < input_channels; c++) {
+        for (int i = 0; i < padded_length; i++) {
+            int input_idx = i - padding;
+
+            if (input_idx < 0 || input_idx >= input_length) {
+                switch (padding_mode) {
+                    case 'z': // Zero padding
+                        padded_input[i * input_channels + c] = 0.0f;
+                        break;
+                    case 'r': // Reflect padding
+                        input_idx = abs(input_idx);
+                        input_idx = input_idx >= input_length ? 2 * input_length - input_idx - 2 : input_idx;
+                        padded_input[i * input_channels + c] = input[input_idx * input_channels + c];
+                        break;
+                    case 'e': // Replicate padding
+                        input_idx = input_idx < 0 ? 0 : input_length - 1;
+                        padded_input[i * input_channels + c] = input[input_idx * input_channels + c];
+                        break;
+                    case 'c': // Circular padding
+                        input_idx = (input_idx + input_length) % input_length;
+                        padded_input[i * input_channels + c] = input[input_idx * input_channels + c];
+                        break;
+                }
+            } else {
+                padded_input[i * input_channels + c] = input[input_idx * input_channels + c];
+            }
+        }
+    }
+}
+
+void im2col(const float* input, float* col, int input_length, int input_channels,
+            int kernel_size, int stride, int dilation, int padding, int col_length) {
+    for (int c = 0; c < input_channels; c++) {
+        for (int k = 0; k < kernel_size; k++) {
+            for (int i = 0; i < col_length; i++) {
+                int input_idx = i * stride + k * dilation - padding;
+                if (input_idx < 0 || input_idx >= input_length) {
+                    col[(c * kernel_size + k) * col_length + i] = 0.0f;
+                } else {
+                    col[(c * kernel_size + k) * col_length + i] = input[c * input_length + input_idx];
+                }
+            }
+        }
+    }
+}
+
+void conv1d_optimized(const float* input, float* output, const float* kernel,
+                      int input_length, int input_channels, int output_channels,
+                      int kernel_size, int stride, int *dilation, int groups, int padding, char padding_mode) {
+
+    int dil = (dilation == NULL) ? 1 : *dilation; // Default dilation to 1 if NULL
+    int padded_length = input_length + 2 * padding;
+    int output_length = (padded_length - dil * (kernel_size - 1) - 1) / stride + 1;
+
+    // Initialize output to zero
+    memset(output, 0, output_length * output_channels * sizeof(float));
+
+    int group_input_channels = input_channels / groups;
+    int group_output_channels = output_channels / groups;
+    int col_length = output_length;
+    int col_height = group_input_channels * kernel_size;
+
+    float* padded_input = (float*)malloc(padded_length * input_channels * sizeof(float));
+    float* col = (float*)malloc(col_height * col_length * sizeof(float));
+
+    // Apply padding
+    apply_padding(input, padded_input, input_length, input_channels, padded_length, padding, padding_mode);
+
+    for (int g = 0; g < groups; g++) {
+        // Perform im2col transformation
+        im2col(padded_input + g * group_input_channels * padded_length,
+               col, padded_length, group_input_channels, kernel_size, stride, dil, padding, col_length);
+
+        // Use BLAS to perform the matrix multiplication
+        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, group_output_channels, col_length, col_height,
+                    1.0, kernel + g * group_output_channels * col_height, col_height,
+                    col, col_length, 0.0, output + g * group_output_channels * col_length, col_length);
+    }
+
+    free(padded_input);
+    free(col);
+}
+
+NDArray *
+NDArray_DNN_Conv1D(NDArray *a, NDArray *kernel)
+{
+    int *out_shape = emalloc(sizeof(int) * 2);
+    out_shape[0] = 2;
+    out_shape[1] = 3;
+    NDArray *output = NDArray_Zeros(out_shape, 2, NDArray_TYPE(a), NDArray_DEVICE(a));
+    conv1d_optimized(NDArray_FDATA(a), NDArray_FDATA(output), NDArray_FDATA(kernel), 3, 2, 2, 3, 1, NULL, 1, 0, 'z');
+    return output;
 }
