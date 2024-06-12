@@ -3,6 +3,8 @@
 #include "../initializers.h"
 #include "calculation.h"
 #include <Zend/zend.h>
+#include "../../config.h"
+#include "../ndarray.h"
 
 static int
 float_argmax(float *ip, int n, float *max_ind)
@@ -78,6 +80,11 @@ float_argmin(float *ip, int n, float *min_ind)
  */
 NDArray *
 NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
+    if (NDArray_DEVICE(op) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "GPU not supported.");
+        return NULL;
+    }
+
     NDArray *ap = NULL, *rp = NULL;
     NDArray_ArgFunc* arg_func = NULL;
     char *ip, *func_name;
@@ -164,11 +171,15 @@ NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
 
     if (is_argmax) {
         func_name = "argmax";
-        arg_func = float_argmax;
+        if (NDArray_DEVICE(op) == NDARRAY_DEVICE_CPU) {
+            arg_func = float_argmax;
+        }
     }
     else {
         func_name = "argmin";
-        arg_func = float_argmin;
+        if (NDArray_DEVICE(op) == NDARRAY_DEVICE_CPU) {
+            arg_func = float_argmin;
+        }
     }
 
     elsize = NDArray_ELSIZE(ap);

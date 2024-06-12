@@ -87,15 +87,24 @@ NDArray_Transpose(NDArray *a) {
     reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
     reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
 
-    ret = NDArray_Copy(a, NDArray_DEVICE(a));
-    efree(ret->strides);
-    efree(ret->dimensions);
-    ret->strides = new_strides;
-    ret->dimensions = new_shape;
-    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
-    contiguous_ret = NDArray_ToContiguous(ret);
-    NDArray_FREE(ret);
-    return contiguous_ret;
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU || (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_NDIM(a) != 2)) {
+        ret = NDArray_Copy(a, NDArray_DEVICE(a));
+        efree(ret->strides);
+        efree(ret->dimensions);
+        ret->strides = new_strides;
+        ret->dimensions = new_shape;
+        NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        contiguous_ret = NDArray_ToContiguous(ret);
+        NDArray_FREE(ret);
+        return contiguous_ret;
+    } else {
+#ifdef HAVE_CUBLAS
+        efree(new_strides);
+        ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
+        cuda_float_transpose(32, 8, NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
+        return ret;
+#endif
+    }
 }
 
 /**
@@ -109,7 +118,6 @@ NDArray*
 NDArray_Reshape(NDArray *target, int *new_shape, int ndim) {
     int total_new_elements = 1;
     int i;
-
     if (new_shape == NULL) {
         zend_throw_error(NULL, "new shape cannot be null.");
         return NULL;
@@ -232,7 +240,16 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
         new_dim = NDArray_NDIM(array);
     }
 
-    NDArray *ret = NDArray_FromNDArrayBase(array, data_ptr, shape_ptr, strides_ptr, new_dim);
+    NDArray *ret = NULL;
+    NDArray *fret = NDArray_FromNDArrayBase(array, data_ptr, shape_ptr, strides_ptr, new_dim);
+
+    if (num_indices > 1) {
+        NDArray_ENABLEFLAGS(fret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        ret = NDArray_ToContiguous(fret);
+        NDArray_FREE(fret);
+    } else {
+        ret = fret;
+    }
     return ret;
 failure:
     if (sliceobj.start != NULL) {
@@ -545,9 +562,163 @@ NDArray_AtLeast3D(NDArray *a) {
     return output;
 }
 
-NDArray*
-NDArray_Flip(NDArray *a, NDArray *axis)
+int
+NDArray_ConvertMultiAxis(NDArray *axis_in, int ndim, bool *out_axis_flags)
 {
+    /* NULL means all the axes */
+    if (axis_in == NULL) {
+        memset(out_axis_flags, 1, ndim);
+        return 1;
+    }
 
+    if (NDArray_NDIM(axis_in) == 0) {
+        int axis = (int)NDArray_FDATA(axis_in)[0];
+
+        memset(out_axis_flags, 0, ndim);
+
+        if (ndim == 0 && (axis == 0 || axis == -1)) {
+            return 1;
+        }
+
+        if (check_and_adjust_axis(&axis, ndim) < 0) {
+            return 0;
+        }
+        out_axis_flags[axis] = 1;
+        return 1;
+    }
+
+    int i, naxes;
+
+    memset(out_axis_flags, 0, ndim);
+
+    naxes = NDArray_NUMELEMENTS(axis_in);
+    if (naxes < 0) {
+        return 0;
+    }
+    for (i = 0; i < naxes; ++i) {
+        int axis = (int)NDArray_FDATA(axis_in)[i];
+        if (check_and_adjust_axis(&axis, ndim) < 0) {
+            return 0;
+        }
+        if (out_axis_flags[axis]) {
+            zend_throw_error(NULL,
+                             "duplicate value in 'axis'");
+            return 0;
+        }
+        out_axis_flags[axis] = 1;
+    }
+
+    return 1;
 }
 
+void
+NDArray_RemoveAxesInPlace(NDArray *arr, const bool *flags)
+{
+    int *shape = NDArray_SHAPE(arr), *strides = NDArray_STRIDES(arr);
+    int idim, ndim = NDArray_NDIM(arr), idim_out = 0;
+
+    /* Compress the dimensions and strides */
+    for (idim = 0; idim < ndim; ++idim) {
+        if (!flags[idim]) {
+            shape[idim_out] = shape[idim];
+            strides[idim_out] = strides[idim];
+            ++idim_out;
+        }
+    }
+
+    /* The final number of dimensions */
+    arr->ndim = idim_out;
+}
+
+NDArray*
+NDArray_SqueezeSelected(NDArray *self, bool *axis_flags)
+{
+    NDArray *ret;
+    int idim, ndim, any_ones;
+    int *shape;
+
+    ndim = NDArray_NDIM(self);
+    shape = NDArray_SHAPE(self);
+
+    /* Verify that the axes requested are all size one */
+    any_ones = 0;
+    for (idim = 0; idim < ndim; ++idim) {
+        if (axis_flags[idim] != 0) {
+            if (shape[idim] == 1) {
+                any_ones = 1;
+            }
+            else {
+                zend_throw_error(NULL,
+                                "cannot select an axis to squeeze out "
+                                "which has size not equal to one");
+                return NULL;
+            }
+        }
+    }
+
+    /* If there were no axes to squeeze out, return the same array */
+    if (!any_ones) {
+        NDArray_ADDREF(self);
+        return self;
+    }
+
+
+    int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(self));
+    int *n_strides = emalloc(sizeof(int) * NDArray_NDIM(self));
+    memcpy(n_shape, NDArray_SHAPE(self), sizeof(int) * NDArray_NDIM(self));
+    memcpy(n_strides, NDArray_STRIDES(self), sizeof(int) * NDArray_NDIM(self));
+    ret = NDArray_FromNDArrayBase(self, NDArray_DATA(self), n_shape, n_strides, NDArray_NDIM(self));
+    if (ret == NULL) {
+        return NULL;
+    }
+
+    NDArray_RemoveAxesInPlace(ret, axis_flags);
+    return ret;
+}
+
+NDArray*
+NDArray_Squeeze(NDArray *a, NDArray *axis)
+{
+    bool unit_dims[128];
+    if (axis != NULL) {
+        if (NDArray_ConvertMultiAxis(axis, NDArray_NDIM(a), unit_dims) != 1) {
+            return NULL;
+        }
+        return NDArray_SqueezeSelected(a, unit_dims);
+    }
+
+    NDArray *ret;
+    int idim, ndim, any_ones;
+    int *shape;
+
+    ndim = NDArray_NDIM(a);
+    shape = NDArray_SHAPE(a);
+
+    any_ones = 0;
+    for (idim = 0; idim < ndim; ++idim) {
+        if (shape[idim] == 1) {
+            unit_dims[idim] = 1;
+            any_ones = 1;
+        }
+        else {
+            unit_dims[idim] = 0;
+        }
+    }
+
+    if (!any_ones) {
+        NDArray_ADDREF(a);
+        return a;
+    }
+
+    int *n_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
+    int *n_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
+    memcpy(n_shape, NDArray_SHAPE(a), sizeof(int) * NDArray_NDIM(a));
+    memcpy(n_strides, NDArray_STRIDES(a), sizeof(int) * NDArray_NDIM(a));
+    ret = NDArray_FromNDArrayBase(a, NDArray_DATA(a), n_shape, n_strides, NDArray_NDIM(a));
+    if (ret == NULL) {
+        return NULL;
+    }
+
+    NDArray_RemoveAxesInPlace(ret, unit_dims);
+    return ret;
+}

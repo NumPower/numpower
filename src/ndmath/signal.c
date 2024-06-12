@@ -216,6 +216,10 @@ _convolve2d(
  */
 NDArray *
 NDArray_Correlate2D(NDArray *a, NDArray *b, int mode, int boundary, NDArray* fill_value, int flip) {
+    if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU || NDArray_DEVICE(b) == NDARRAY_DEVICE_GPU) {
+        zend_throw_error(NULL, "correlate2d not implemented for GPU computation.");
+        return NULL;
+    }
     NDArray *temp, *afill;
     int i, flag;
     afill = fill_value;

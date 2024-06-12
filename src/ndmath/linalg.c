@@ -15,6 +15,10 @@
 #include <lapacke.h>
 #endif
 
+#ifdef HAVE_LAPACKE_MKL
+#include <mkl/mkl.h>
+#endif
+
 #ifdef HAVE_CBLAS
 #include <cblas.h>
 #endif
@@ -199,6 +203,11 @@ NDArray_SVD(NDArray *target) {
  */
 NDArray*
 NDArray_Matmul(NDArray *a, NDArray *b) {
+    if (NDArray_DEVICE(a) != NDArray_DEVICE(b)) {
+        zend_throw_error(NULL, "Device mismatch, both NDArray MUST be in the same device.");
+        return NULL;
+    }
+
     if (NDArray_NDIM(a) != NDArray_NDIM(b)) {
         zend_throw_error(NULL, "Arrays must have the same shape. Broadcasting not implemented.");
         return NULL;
@@ -478,7 +487,6 @@ matrixFloatInverse(float* matrix, int n) {
         efree(ipiv);
         return 0;
     }
-
     efree(ipiv);
     return 1;
 }

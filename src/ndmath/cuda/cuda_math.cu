@@ -133,6 +133,21 @@ __global__ void convolve2dSameFloatKernel(const float* a, const float* b,
     }
 }
 
+__global__ void transposeCoalesced(const float* matIn, int height, int width, float* matTran)
+{
+    // Calculate the row and column index of the element
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    // Ensure we are within matrix bounds
+    if (x < width && y < height) {
+        int inputIdx = y * width + x;
+        int outputIdx = x * height + y;
+        matTran[outputIdx] = matIn[inputIdx];
+    }
+}
+
+
 // CUDA kernel for LU decomposition
 __global__ void luFloatDecompositionKernel(float *matrix, float *L, float *U, float *P, int size) {
     int i, k, maxIndex;
@@ -261,17 +276,6 @@ __global__ void compareArraysLessEqualFloatKernel(const float* array1, const flo
     int index = blockIdx.x * blockDim.x + threadIdx.x;
     if (index < size) {
         result[index] = array1[index] <= array2[index] ? 1.0f : 0.0f;
-    }
-}
-
-__global__ void transposeFloatMatrixKernel(const float* input, float* output, int rows, int cols) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (row < rows && col < cols) {
-        int input_index = row * cols + col;
-        int output_index = col * rows + row;
-        output[output_index] = input[input_index];
     }
 }
 
@@ -460,6 +464,14 @@ void arctanFloatKernel(float* d_array, int size) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index < size) {
         d_array[index] = atanf(d_array[index]);
+    }
+}
+
+__global__
+void arctan2FloatKernel(float* d_array, float* d_array2, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        d_array[index] = atan2f(d_array[index], d_array2[index]);
     }
 }
 
@@ -795,6 +807,8 @@ void array_sum_float(float *a, float *result, int n) {
     if (tid == 0) atomicAdd(result, sdata[0]);
 }
 
+
+
 // CUDA Kernel for Matrix Multiplication for non-square matrices
 __global__ void
 matmul_float_kernel(float* A, float* B, float* C, int widthA, int heightA, int widthB) {
@@ -904,7 +918,7 @@ extern "C" {
 
     void
     cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB) {
-        dim3 blockSize(32, 32); // Use a block size appropriate for your hardware
+        dim3 blockSize(32, 32);
         dim3 gridSize((widthB + blockSize.x - 1) / blockSize.x, (heightA + blockSize.y - 1) / blockSize.y);
 
         matmul_float_kernel<<<gridSize, blockSize>>>(a, b, rtn, widthA, heightA, widthB);
@@ -1215,6 +1229,14 @@ extern "C" {
     }
 
     void
+    cuda_float_arctan2(int nblocks, float *d_array, float *y_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        arctan2FloatKernel<<<numBlocks, blockSize>>>(d_array, y_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
     cuda_float_arccos(int nblocks, float *d_array) {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
@@ -1267,6 +1289,15 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         arcsinhFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_transpose(int tiledim, int blockrows, const float *d_in, float *d_out, int width, int height) {
+
+        dim3 grid(16, 16);
+        dim3 block(16, 16);
+        transposeCoalesced<<<grid, block>>>(d_in, height, width, d_out);
         cudaDeviceSynchronize();
     }
 
@@ -1505,18 +1536,17 @@ extern "C" {
     }
 
     NDArray*
+    NDArrayMathGPU_ElementWise1N(NDArray* ndarray, ElementWiseFloatGPUOperation1N op, NDArray* val1) {
+        NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
+        op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn), NDArray_FDATA(val1));
+        return rtn;
+    }
+
+    NDArray*
     NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2) {
         NDArray *rtn = NDArray_Copy(ndarray, NDArray_DEVICE(ndarray));
         op(NDArray_NUMELEMENTS(rtn), NDArray_FDATA(rtn), val1, val2);
         return rtn;
-    }
-
-    void
-    cuda_float_transpose(float *target, float *rtn, int rows, int cols) {
-        dim3 blockSize(32, 32);
-        dim3 gridSize((cols + blockSize.x - 1) / blockSize.x, (rows + blockSize.y - 1) / blockSize.y);
-        // Launch the kernel
-        transposeFloatMatrixKernel<<<gridSize, blockSize>>>(target, rtn, rows, cols);
     }
 
     void

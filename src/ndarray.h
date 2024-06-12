@@ -24,7 +24,7 @@ extern "C" {
 #define NDArray_STRIDES(a) ((int *)((a)->strides))
 #define NDArray_TYPE(a) ((const char *)((a)->descriptor->type))
 #define NDArray_UUID(a) ((int)((a)->uuid))
-#define NDArray_NUMELEMENTS(a) ((int)((a)->descriptor->numElements))
+#define NDArray_NUMELEMENTS(a) ((long)((a)->descriptor->numElements))
 #define NDArray_ELSIZE(a) ((int)((a)->descriptor->elsize))
 #define NDArray_DEVICE(a) ((int)((a)->device))
 
@@ -52,7 +52,7 @@ typedef struct NDArrayIterator {
 typedef struct NDArrayDescriptor {
     const char* type;          // d = double
     int elsize;         // Datatype size
-    int numElements;    // Number of elements
+    long numElements;    // Number of elements
 } NDArrayDescriptor;
 
 /**
@@ -103,6 +103,7 @@ NDArray *single_reduce(NDArray *array, int *axis, float (*operation)(NDArray *))
 float NDArray_Min(NDArray *target);
 float NDArray_Max(NDArray *target);
 NDArray* NDArray_Maximum(NDArray *a, NDArray *b);
+NDArray * NDArray_Minimum(NDArray *a, NDArray *b);
 NDArray* NDArray_MaxAxis(NDArray* target, int axis);
 zval NDArray_ToPHPArray(NDArray *target);
 int *NDArray_ToIntVector(NDArray *nda);
@@ -116,6 +117,9 @@ void NDArray_FREEDATA(NDArray *target);
 int NDArray_Overwrite(NDArray *target, NDArray *values);
 NDArray* NDArray_FromGD(zval *a, bool channel_last);
 void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
+void NDArray_Save(NDArray *a, char * filename, int length);
+NDArray* NDArray_Load(char * filename);
+
 #ifdef __cplusplus
 }
 #endif
@@ -126,5 +130,6 @@ typedef float (*ElementWiseFloatOperation1F)(float, float);
 NDArray* NDArray_Map(NDArray *array, ElementWiseDoubleOperation op);
 NDArray* NDArray_Map2F(NDArray *array, ElementWiseFloatOperation2F op, float val1, float val2);
 NDArray* NDArray_Map1F(NDArray *array, ElementWiseFloatOperation1F op, float val1);
+NDArray * NDArray_Map1ND(NDArray *array, ElementWiseFloatOperation1F op, NDArray *val1);
 
 #endif //PHPSCI_NDARRAY_NDARRAY_H
