@@ -20,3 +20,9 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+--
+
+This repository includes code derived from the NumPy project (http://www.numpy.org/).
+NumPy is licensed under the BSD 3-Clause License. The original license for NumPy
+can be found at the following link: https://github.com/numpy/numpy/blob/main/LICENSE.txt
