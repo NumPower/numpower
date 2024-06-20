@@ -52,11 +52,36 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
         // Perform GPU matrix multiplication
 #ifdef HAVE_CUBLAS
-        NDArray* result_gpu = NDArray_ToGPU(result);
-        NDArray_FREE(result);
-        cuda_matmul_float(NDArray_NUMELEMENTS(a), NDArray_FDATA(a), NDArray_FDATA(b), NDArray_FDATA(result_gpu),
-                          NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1]);
-        return result_gpu;
+        cublasHandle_t handle;
+        cublasCreate(&handle);
+
+        float* d_A;
+        float* d_B;
+        float* d_C;
+        size_t size_A = NDArray_NUMELEMENTS(a) * sizeof(float);
+        size_t size_B = NDArray_NUMELEMENTS(b) * sizeof(float);
+        size_t size_C = NDArray_NUMELEMENTS(result) * sizeof(float);
+
+        cudaMalloc((void**)&d_A, size_A);
+        cudaMalloc((void**)&d_B, size_B);
+        cudaMalloc((void**)&d_C, size_C);
+
+        cudaMemcpy(d_A, NDArray_FDATA(a), size_A, cudaMemcpyHostToDevice);
+        cudaMemcpy(d_B, NDArray_FDATA(b), size_B, cudaMemcpyHostToDevice);
+
+        int m = NDArray_SHAPE(a)[0];
+        int n = NDArray_SHAPE(b)[1];
+        int k = NDArray_SHAPE(a)[1];
+        float alpha = 1.0f;
+        float beta = 0.0f;
+
+        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, d_B, n, d_A, k, &beta, d_C, n);
+        cudaMemcpy(NDArray_FDATA(result), d_C, size_C, cudaMemcpyDeviceToHost);
+
+        cudaFree(d_A);
+        cudaFree(d_B);
+        cudaFree(d_C);
+        cublasDestroy(handle);
 #endif
     } else {
         // Perform CPU matrix multiplication
@@ -222,6 +247,7 @@ NDArray_Matmul(NDArray *a, NDArray *b) {
 
     if (NDArray_SHAPE(a)[NDArray_NDIM(a) - 1] != NDArray_SHAPE(b)[NDArray_NDIM(b) - 2]) {
         zend_throw_error(NULL, "Shape mismatch for matmul. cols(a) != rows(b)");
+        return NULL;
     }
 
     if (NDArray_NDIM(a) > 2 && NDArray_NDIM(b) > 2) {

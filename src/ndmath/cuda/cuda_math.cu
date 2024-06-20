@@ -807,23 +807,6 @@ void array_sum_float(float *a, float *result, int n) {
     if (tid == 0) atomicAdd(result, sdata[0]);
 }
 
-
-
-// CUDA Kernel for Matrix Multiplication for non-square matrices
-__global__ void
-matmul_float_kernel(float* A, float* B, float* C, int widthA, int heightA, int widthB) {
-    int row = blockIdx.y * blockDim.y + threadIdx.y;
-    int col = blockIdx.x * blockDim.x + threadIdx.x;
-
-    if (row < heightA && col < widthB) {
-        float sum = 0;
-        for(int i = 0; i < widthA; ++i) {
-            sum += A[row * widthA + i] * B[i * widthB + col];
-        }
-        C[row * widthB + col] = sum;
-    }
-}
-
 __global__
 void fill_float_kernel(float* array, int n, float value) {
     int idx = threadIdx.x + blockIdx.x * blockDim.x;
@@ -913,15 +896,6 @@ extern "C" {
         int gridSize = (n + blockSize - 1) / blockSize;
 
         fill_float_kernel<<<gridSize, blockSize>>>(a, n, value);
-        cudaDeviceSynchronize();
-    }
-
-    void
-    cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB) {
-        dim3 blockSize(32, 32);
-        dim3 gridSize((widthB + blockSize.x - 1) / blockSize.x, (heightA + blockSize.y - 1) / blockSize.y);
-
-        matmul_float_kernel<<<gridSize, blockSize>>>(a, b, rtn, widthA, heightA, widthB);
         cudaDeviceSynchronize();
     }
 
