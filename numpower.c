@@ -237,7 +237,7 @@ static void ndarray_destructor(zend_object* object) {
     NDArrayObject* my_object = (NDArrayObject*)object;
     if (GC_REFCOUNT(object) <= 1) {
         zval *obj_uuid = OBJ_PROP_NUM(object, 0);
-        buffer_ndarray_free(Z_LVAL_P(obj_uuid));
+        buffer_ndarray_free((int)Z_LVAL_P(obj_uuid));
         zend_object_std_dtor(object);
     }
 }
@@ -754,8 +754,8 @@ PHP_METHOD(NDArray, greater_equal) {
     NDArray *nda, *ndb, *rtn = NULL;
     zval *a, *b;
     ZEND_PARSE_PARAMETERS_START(2, 2)
-    Z_PARAM_ZVAL(a)
-    Z_PARAM_ZVAL(b)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(b)
     ZEND_PARSE_PARAMETERS_END();
     nda = ZVAL_TO_NDARRAY(a);
     ndb = ZVAL_TO_NDARRAY(b);
@@ -3528,7 +3528,9 @@ PHP_METHOD(NDArray, matmul) {
         return;
     }
     rtn = NDArray_Matmul(nda, ndb);
-
+    if (rtn == NULL) {
+        return;
+    }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_NDARRAY(rtn, return_value);
