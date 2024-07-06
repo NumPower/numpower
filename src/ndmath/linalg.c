@@ -51,23 +51,13 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
 
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
         // Perform GPU matrix multiplication
-#ifdef HAVE_CUBLAS
         cublasHandle_t handle;
         cublasCreate(&handle);
 
-        float* d_A;
-        float* d_B;
-        float* d_C;
-        size_t size_A = NDArray_NUMELEMENTS(a) * sizeof(float);
-        size_t size_B = NDArray_NUMELEMENTS(b) * sizeof(float);
-        size_t size_C = NDArray_NUMELEMENTS(result) * sizeof(float);
+        float* deviceResult;
+        size_t sizeResult = NDArray_NUMELEMENTS(result) * sizeof(float);
 
-        cudaMalloc((void**)&d_A, size_A);
-        cudaMalloc((void**)&d_B, size_B);
-        cudaMalloc((void**)&d_C, size_C);
-
-        cudaMemcpy(d_A, NDArray_FDATA(a), size_A, cudaMemcpyHostToDevice);
-        cudaMemcpy(d_B, NDArray_FDATA(b), size_B, cudaMemcpyHostToDevice);
+        cudaMalloc((void**)&deviceResult, sizeResult);
 
         int m = NDArray_SHAPE(a)[0];
         int n = NDArray_SHAPE(b)[1];
@@ -75,14 +65,11 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
         float alpha = 1.0f;
         float beta = 0.0f;
 
-        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, d_B, n, d_A, k, &beta, d_C, n);
-        cudaMemcpy(NDArray_FDATA(result), d_C, size_C, cudaMemcpyDeviceToHost);
+        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, NDArray_FDATA(b), n, NDArray_FDATA(a), k, &beta, deviceResult, n);
+        cudaMemcpy(NDArray_FDATA(result), deviceResult, sizeResult, cudaMemcpyDeviceToHost);
 
-        cudaFree(d_A);
-        cudaFree(d_B);
-        cudaFree(d_C);
+        cudaFree(deviceResult);
         cublasDestroy(handle);
-#endif
     } else {
         // Perform CPU matrix multiplication
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
