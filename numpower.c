@@ -953,31 +953,42 @@ PHP_METHOD(NDArray, random_binomial) {
     RETURN_NDARRAY(rtn, return_value);
 }
 
-
 /**
  * NDArray::standard_normal
  *
  * @param execute_data
  * @param return_value
  */
-ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_standard_normal, 0, 0, 1)
-ZEND_ARG_INFO(0, size)
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_standard_normal, 1)
+ZEND_ARG_INFO(0, shape_zval)
 ZEND_END_ARG_INFO()
+
 PHP_METHOD(NDArray, standard_normal) {
     NDArray *rtn = NULL;
     int *shape;
-    zval* size;
-    ZEND_PARSE_PARAMETERS_START(1, 3)
-    Z_PARAM_ZVAL(size)
+    zval* shape_zval;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+    Z_PARAM_ZVAL(shape_zval)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(size);
-    if (nda == NULL) return;
-    shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda));
-    for (int i = 0; i < NDArray_NUMELEMENTS(nda); i++) {
-        shape[i] = (int) NDArray_DDATA(nda)[i];
+    NDArray *nda = ZVAL_TO_NDARRAY(shape_zval);
+
+    if (nda == NULL) {
+        zend_throw_error(NULL, "Invalid parameter: Expected non-null NDArray.");
+        return;
     }
+
+    // Ensure the NDArray is not empty
+    if (NDArray_NUMELEMENTS(nda) == 0) {
+        NDArray_FREE(nda);
+        zend_throw_error(NULL, "Invalid parameter: Expected a non-empty array.");
+        return;
+    }
+
+    shape = NDArray_ToIntVector(nda);
+
     rtn = NDArray_StandardNormal(shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
+
     RETURN_NDARRAY(rtn, return_value);
 }
 
@@ -1283,8 +1294,6 @@ PHP_METHOD(NDArray, allclose) {
     CHECK_INPUT_AND_FREE(b, ndb);
     RETURN_BOOL(rtn);
 }
-
-
 
 /**
  * NDArray::transpose
