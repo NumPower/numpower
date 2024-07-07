@@ -114,12 +114,12 @@ new class {
 };
 ?>
 --EXPECT--
-Invalid parameter: Expected aa array.
-Invalid parameter: Expected aa array.
-Invalid parameter: Expected aa array.
-Invalid parameter: Expected aa array.
-Invalid parameter: Expected aa array.
-Invalid parameter: Expected aa array.
+Invalid parameter: Shape must be an array.
+Invalid parameter: Shape must be an array.
+Invalid parameter: Shape must be an array.
+Invalid parameter: Shape must be an array.
+Invalid parameter: Shape must be an array.
+Invalid parameter: Shape must be an array.
 Invalid parameter: Shape elements must be integers.
 Invalid parameter: Shape elements must be integers.
 Invalid parameter: Shape elements must be integers.
