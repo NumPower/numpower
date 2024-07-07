@@ -960,17 +960,36 @@ PHP_METHOD(NDArray, random_binomial) {
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_standard_normal, 1)
-ZEND_ARG_INFO(0, shape_zval)
+ZEND_ARG_INFO(0, shape)
 ZEND_END_ARG_INFO()
 
 PHP_METHOD(NDArray, standard_normal) {
     NDArray *rtn = NULL;
-    int *shape;
-    zval* shape_zval;
+    int *vector;
+    zval* shape;
+    HashTable *shape_ht;
+    zend_string *key;
+    zend_ulong idx;
+    zval *val;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(shape_zval)
+    Z_PARAM_ZVAL(shape)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda = ZVAL_TO_NDARRAY(shape_zval);
+
+    if (Z_TYPE_P(shape) != IS_ARRAY) {
+        zend_throw_error(NULL, "Invalid parameter: Shape must be an array.");
+        return;
+    }
+
+    shape_ht = Z_ARRVAL_P(shape);
+
+    ZEND_HASH_FOREACH_KEY_VAL(shape_ht, idx, key, val) {
+        if (Z_TYPE_P(val) != IS_LONG) {
+            zend_throw_error(NULL, "Invalid parameter: Shape elements must be integers.");
+            return;
+        }
+    } ZEND_HASH_FOREACH_END();
+
+    NDArray *nda = ZVAL_TO_NDARRAY(shape);
 
     if (nda == NULL) {
         zend_throw_error(NULL, "Invalid parameter: Expected non-null NDArray.");
@@ -984,9 +1003,9 @@ PHP_METHOD(NDArray, standard_normal) {
         return;
     }
 
-    shape = NDArray_ToIntVector(nda);
+    vector = NDArray_ToIntVector(nda);
 
-    rtn = NDArray_StandardNormal(shape, NDArray_NUMELEMENTS(nda));
+    rtn = NDArray_StandardNormal(vector, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
 
     RETURN_NDARRAY(rtn, return_value);
