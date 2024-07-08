@@ -554,7 +554,7 @@ NDArray_Poisson(double lam, int* shape, int ndim) {
     NDArray *rtn;
     rtn = NDArray_Zeros(shape, ndim, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
 
-    // Generate random samples from the normal distribution
+    // Generate random samples from the Poisson distribution
     for (int i = 0; i < NDArray_NUMELEMENTS(rtn); i++) {
         float L = expf((float)-lam);
         float p = 1.0f;
