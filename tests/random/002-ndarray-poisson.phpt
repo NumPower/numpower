@@ -26,7 +26,7 @@ new class
         foreach ($dataset['shape'] as $sk => $shape) {
             foreach ($dataset['lam'] as $lk => $lam) {
                 nd::poisson($shape, $lam);
-                echo "successful creation with $sk and $lk" . PHP_EOL;;
+                echo "successful creation with $sk and $lk" . PHP_EOL;
             }
         }
         echo PHP_EOL;
