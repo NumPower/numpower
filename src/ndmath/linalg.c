@@ -58,8 +58,7 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
         float* deviceResult;
         size_t sizeResult = NDArray_NUMELEMENTS(result) * sizeof(float);
 
-        cudaMalloc((void**)&deviceResult, sizeResult);
-
+        vmalloc((void**)&deviceResult, sizeResult);
         int m = NDArray_SHAPE(a)[0];
         int n = NDArray_SHAPE(b)[1];
         int k = NDArray_SHAPE(a)[1];
@@ -67,9 +66,8 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
         float beta = 0.0f;
 
         cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, NDArray_FDATA(b), n, NDArray_FDATA(a), k, &beta, deviceResult, n);
-        cudaMemcpy(NDArray_FDATA(result), deviceResult, sizeResult, cudaMemcpyDeviceToHost);
-
-        cudaFree(deviceResult);
+        vfree(result->data);
+        result->data = (void*)deviceResult;
         cublasDestroy(handle);
 #endif
     } else {
