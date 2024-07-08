@@ -1001,15 +1001,10 @@ PHP_METHOD(NDArray, poisson) {
     double lam = 1.0;
 
     ZEND_PARSE_PARAMETERS_START(1, 2)
-        Z_PARAM_ZVAL(shape)
-        Z_PARAM_OPTIONAL
+        Z_PARAM_ARRAY(shape)
+    Z_PARAM_OPTIONAL
         Z_PARAM_DOUBLE(lam)
     ZEND_PARSE_PARAMETERS_END();
-
-    if (Z_TYPE_P(shape) != IS_ARRAY) {
-        zend_throw_error(NULL, "Invalid parameter: Shape must be an array.");
-        return;
-    }
 
     shape_ht = Z_ARRVAL_P(shape);
 
@@ -1021,11 +1016,6 @@ PHP_METHOD(NDArray, poisson) {
     } ZEND_HASH_FOREACH_END();
 
     NDArray *nda = ZVAL_TO_NDARRAY(shape);
-
-    if (nda == NULL) {
-        zend_throw_error(NULL, "Invalid parameter: Expected non-null NDArray.");
-        return;
-    }
 
     if (NDArray_NUMELEMENTS(nda) == 0) {
         NDArray_FREE(nda);

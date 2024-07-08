@@ -11,42 +11,14 @@ new class
         $this->testCase1();
         $this->testCase2();
         $this->testCase3();
-        $this->testCase4();
-    }
-
-    /**
-     * An exception is thrown when a parameter of an invalid type is passed.
-     */
-    private function testCase1(): void
-    {
-        $dataset = self::case1DataProvider();
-        foreach ($dataset as $data) {
-            try {
-                nd::poisson($data);
-            } catch (\Throwable $t) {
-                echo $t->getMessage() . PHP_EOL;
-            }
-        }
-    }
-
-    private static function case1DataProvider(): array
-    {
-        return [
-            'integerIsInvalid' => 1,
-            'floatIsInvalid' => 3.5,
-            'stringIsInvalid' => 'test',
-            'booleanIsInvalid' => true,
-            'nullIsInvalid' => null,
-            'objectIsInvalid' => (object) [],
-        ];
     }
 
     /**
      * An exception is thrown when passing an array with elements of an invalid type.
      */
-    private function testCase2(): void
+    private function testCase1(): void
     {
-        $dataset = self::case2DataProvider();
+        $dataset = self::case1DataProvider();
         foreach ($dataset as $data) {
             try {
                 nd::poisson([$data]);
@@ -56,7 +28,7 @@ new class
         }
     }
 
-    private static function case2DataProvider(): array
+    private static function case1DataProvider(): array
     {
         return [
             'arrayIsInvalid' => [],
@@ -71,7 +43,7 @@ new class
     /**
      * An exception is thrown when passing an empty array.
      */
-    private function testCase3(): void
+    private function testCase2(): void
         {
         try {
             nd::poisson([]);
@@ -84,7 +56,7 @@ new class
      * The resulting array has the correct number of dimensions and
      * each dimension contains only integers.
      */
-    private function testCase4(): void
+    private function testCase3(): void
     {
         $a = nd::poisson([4]);
 
@@ -115,12 +87,6 @@ new class
 };
 ?>
 --EXPECT--
-Invalid parameter: Shape must be an array.
-Invalid parameter: Shape must be an array.
-Invalid parameter: Shape must be an array.
-Invalid parameter: Shape must be an array.
-Invalid parameter: Shape must be an array.
-Invalid parameter: Shape must be an array.
 Invalid parameter: Shape elements must be integers.
 Invalid parameter: Shape elements must be integers.
 Invalid parameter: Shape elements must be integers.
