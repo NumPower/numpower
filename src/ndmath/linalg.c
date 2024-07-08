@@ -51,6 +51,7 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
 
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
         // Perform GPU matrix multiplication
+#ifdef HAVE_CUBLAS
         cublasHandle_t handle;
         cublasCreate(&handle);
 
@@ -70,6 +71,7 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
 
         cudaFree(deviceResult);
         cublasDestroy(handle);
+#endif
     } else {
         // Perform CPU matrix multiplication
         cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
