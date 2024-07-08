@@ -35,7 +35,7 @@ vfree(void* target) {
 void
 vmemcheck() {
     if (MAIN_MEM_STACK.totalGPUAllocated != 0) {
-        printf("\nVRAM MEMORY LEAK: Unallocated %d arrays\n", MAIN_MEM_STACK.totalGPUAllocated);
+        printf("\nVRAM MEMORY LEAK: leaked %d array(s)\n", MAIN_MEM_STACK.totalGPUAllocated);
     }
 }
 
