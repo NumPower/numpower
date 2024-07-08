@@ -985,6 +985,10 @@ PHP_METHOD(NDArray, standard_normal) {
 
     NDArray *nda = ZVAL_TO_NDARRAY(shape);
 
+    if (nda == NULL) {
+        return;
+    }
+
     if (NDArray_NUMELEMENTS(nda) == 0) {
         NDArray_FREE(nda);
         zend_throw_error(NULL, "Invalid parameter: Expected a non-empty array.");
