@@ -565,7 +565,7 @@ NDArray_Poisson(double lam, int* shape, int ndim) {
             float u = (float)rand() / (float)RAND_MAX;
             p *= u;
         } while (p > L);
-        NDArray_FDATA(rtn)[i] = k - 1;
+        NDArray_FDATA(rtn)[i] = (float)k - 1.0f;
     }
 
     return rtn;
