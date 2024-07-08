@@ -988,7 +988,7 @@ PHP_METHOD(NDArray, standard_normal) {
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_poisson, 0, 0, 1)
-    ZEND_ARG_ARRAY_INFO(0, size, 0)
+    ZEND_ARG_ARRAY_INFO(0, shape, 0)
     ZEND_ARG_TYPE_INFO(0, lam, IS_DOUBLE, 0)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, poisson) {
