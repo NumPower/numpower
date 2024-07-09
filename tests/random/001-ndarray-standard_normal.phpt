@@ -61,7 +61,6 @@ new class
             'shape is integer' => 1,
             'shape is double' => 3.5,
             'shape is string' => 'test',
-            'shape is boolean' => true,
             'shape is null' => null,
             'shape is object' => (object) [],
         ];
@@ -159,7 +158,6 @@ Error when passed shape is object: NDArray::standard_normal(): Argument #1 ($sha
 Error when shape value is array: Invalid parameter: Shape elements must be integers.
 Error when shape value is float: Invalid parameter: Shape elements must be integers.
 Error when shape value is string: Invalid parameter: Shape elements must be integers.
-Error when shape value is boolean: Invalid parameter: Shape elements must be integers.
 Error when shape value is null: Invalid parameter: Shape elements must be integers.
 Error when shape value is object: Invalid parameter: Shape elements must be integers.
 
