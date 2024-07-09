@@ -70,7 +70,6 @@ new class
             'shape is integer' => 1,
             'shape is double' => 3.5,
             'shape is string' => 'test',
-            'shape is boolean' => true,
             'shape is null' => null,
             'shape is object' => (object) [],
         ];
@@ -99,7 +98,6 @@ new class
         return [
             'lamb is arrayy' => [],
             'lamb is string' => 'test',
-            'lamb is boolean' => true,
             'lamb is object' => (object) [],
         ];
     }
@@ -127,7 +125,6 @@ new class
             'value is array' => [],
             'value is float' => 3.5,
             'value is string' => 'test',
-            'value is boolean' => true,
             'value is null' => null,
             'value is object' => (object) [],
         ];
@@ -193,7 +190,6 @@ successful creation with 3-dim and float
 Error when passed shape is integer: NDArray::poisson(): Argument #1 ($shape) must be of type array, int given
 Error when passed shape is double: NDArray::poisson(): Argument #1 ($shape) must be of type array, float given
 Error when passed shape is string: NDArray::poisson(): Argument #1 ($shape) must be of type array, string given
-Error when passed shape is boolean: NDArray::poisson(): Argument #1 ($shape) must be of type array, true given
 Error when passed shape is null: NDArray::poisson(): Argument #1 ($shape) must be of type array, null given
 Error when passed shape is object: NDArray::poisson(): Argument #1 ($shape) must be of type array, stdClass given
 
@@ -206,7 +202,6 @@ Error when passed lamb is object: NDArray::poisson(): Argument #2 ($lam) must be
 Error when shape value is array: Invalid parameter: Shape elements must be integers.
 Error when shape value is float: Invalid parameter: Shape elements must be integers.
 Error when shape value is string: Invalid parameter: Shape elements must be integers.
-Error when shape value is boolean: Invalid parameter: Shape elements must be integers.
 Error when shape value is null: Invalid parameter: Shape elements must be integers.
 Error when shape value is object: Invalid parameter: Shape elements must be integers.
 
