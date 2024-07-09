@@ -235,8 +235,8 @@ int arithmetic_do_operation(zend_uchar opcode, zval *result, zval *op1, zval *op
 
 static void ndarray_destructor(zend_object* object) {
     NDArrayObject* my_object = (NDArrayObject*)object;
-    if (GC_REFCOUNT(object) <= 1) {
-        zval *obj_uuid = OBJ_PROP_NUM(object, 0);
+    zval *obj_uuid = OBJ_PROP_NUM(object, 0);
+    if (GC_REFCOUNT(object) <= 1 && Z_TYPE_P(obj_uuid) != NULL) {
         buffer_ndarray_free((int)Z_LVAL_P(obj_uuid));
         zend_object_std_dtor(object);
     }
