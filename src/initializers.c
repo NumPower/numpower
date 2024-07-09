@@ -80,7 +80,7 @@ int get_num_dims_from_zval(zval *arr) {
     int num_dims = 0;
 
     if (zend_array_count(Z_ARRVAL_P(arr)) == 0) {
-        return 0;
+        return 1;
     }
 
     zval *val = zend_hash_index_find(Z_ARRVAL_P(arr), 0);
@@ -207,9 +207,9 @@ NDArray* Create_NDArray_FromZendArray(zend_array* ht, int ndim) {
     int last_index = 0;
     int *shape;
     if (ndim != 0) {
-        shape = emalloc(ndim * sizeof(int));
+        shape = ecalloc(ndim, sizeof(int));
     } else {
-        shape = emalloc(1 * sizeof(int));
+        shape = ecalloc(1, sizeof(int));
     }
     if (!is_packed_zend_array(ht)) {
         return NULL;

@@ -59,6 +59,13 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
     char* str;
     int i, j, t;
     int reverse_run = 0;
+
+    if (num_elements == 0) {
+        str = (char*)emalloc(3 * sizeof(char));
+        str = "[]";
+        return str;
+    }
+
     // Allocate memory for the string
     str = (char*)emalloc(10000000 * sizeof(char));
     if (str == NULL) {
@@ -177,7 +184,7 @@ print_array_float(float* buffer, int ndims, int* shape, int* strides, int cur_di
 }
 
 /**
- * Print matrix to
+ * Print matrix of type float32
  *
  * @param buffer
  * @param ndims

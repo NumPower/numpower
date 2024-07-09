@@ -4364,7 +4364,7 @@ PHP_METHOD(NDArray, array) {
     zval *a;
     long axis;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(a)
+        Z_PARAM_ZVAL(a)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
