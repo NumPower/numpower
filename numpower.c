@@ -1148,30 +1148,42 @@ ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, full) {
     NDArray *rtn = NULL;
     zval* shape;
+    HashTable *shape_ht;
     double fill_value;
     int *new_shape;
+    zend_string *key;
+    zend_ulong idx;
+    zval *val;
     ZEND_PARSE_PARAMETERS_START(2, 2)
-    Z_PARAM_ZVAL(shape)
-    Z_PARAM_DOUBLE(fill_value)
+        Z_PARAM_ARRAY(shape)
+        Z_PARAM_DOUBLE(fill_value)
     ZEND_PARSE_PARAMETERS_END();
-    NDArray *nda_shape = ZVAL_TO_NDARRAY(shape);
-    if (nda_shape == NULL) {
+    shape_ht = Z_ARRVAL_P(shape);
+
+    ZEND_HASH_FOREACH_KEY_VAL(shape_ht, idx, key, val) {
+        if (Z_TYPE_P(val) != IS_LONG) {
+            zend_throw_error(NULL, "Invalid parameter: Shape elements must be integers.");
+            return;
+        }
+    } ZEND_HASH_FOREACH_END();
+
+    NDArray *nd_shape = ZVAL_TO_NDARRAY(shape);
+
+    if (nd_shape == NULL) {
         return;
     }
-    if (NDArray_NDIM(nda_shape) != 1) {
-        zend_throw_error(NULL, "`shape` argument must be a vector");
-        NDArray_FREE(nda_shape);
+
+    if (NDArray_NUMELEMENTS(nd_shape) == 0) {
+        NDArray_FREE(nd_shape);
+        zend_throw_error(NULL, "Invalid parameter: Expected a non-empty array.");
         return;
     }
-    new_shape = emalloc(sizeof(int) * NDArray_NUMELEMENTS(nda_shape));
-    for (int i = 0; i < NDArray_NUMELEMENTS(nda_shape); i++) {
-        new_shape[i] = (int) NDArray_DDATA(nda_shape)[i];
-    }
-    rtn = NDArray_Full(new_shape, NDArray_NUMELEMENTS(nda_shape), fill_value);
+
+    new_shape = NDArray_ToIntVector(nd_shape);
+    rtn = NDArray_Full(new_shape, NDArray_NUMELEMENTS(nd_shape), fill_value);
+
     efree(new_shape);
-    if (Z_TYPE_P(shape) == IS_ARRAY) {
-        NDArray_FREE(nda_shape);
-    }
+    NDArray_FREE(nd_shape);
     RETURN_NDARRAY(rtn, return_value);
 }
 

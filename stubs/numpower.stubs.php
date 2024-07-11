@@ -1004,4 +1004,13 @@ final class NDArray {
      * @return NDArray
      */
     public static function diag(NDArray|array $a): NDArray {}
+
+    /**
+     * Return a new array of given shape and type, filled with $fill_value.
+     *
+     * @param int[] $shape
+     * @param float|int $fill_value
+     * @return NDArray
+     */
+    public static function full(array $shape, float|int $fill_value): NDArray {}
 }
