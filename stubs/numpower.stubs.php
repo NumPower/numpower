@@ -1020,5 +1020,23 @@ final class NDArray {
      * @param float|int $fill_value Fill value
      * @return NDArray
      */
-    public static function fill(float|int $fill_value): NDArray {}
+    public function fill(float|int $fill_value): NDArray {}
+
+    /**
+     * Returns the indices of the minimum values along an axis.
+     *
+     * @param NDArray|array $a Target array
+     * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along $axis removed.
+     */
+    public function argmin(NDArray|array $a, ?int $axis): NDArray {}
+
+    /**
+     * Returns the indices of the maximum values along an axis.
+     *
+     * @param NDArray|array $a Target array
+     * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along axis removed.
+     */
+    public function argmax(NDArray|array $a, ?int $axis): NDArray {}
 }

@@ -42,7 +42,6 @@ float_argmin(float *ip, int n, float *min_ind)
 {
     int i;
     float mp = *ip;
-
     *min_ind = 0;
 
 
@@ -53,16 +52,16 @@ float_argmin(float *ip, int n, float *min_ind)
 
     for (i = 1; i < n; i++) {
         ip++;
-        if (!(mp <= *ip)) {  /* negated, for correct nan handling */
+
+        if (!_LESS_THAN_OR_EQUAL(mp, *ip)) {
             mp = *ip;
-            *min_ind = (float)i;
+            *min_ind = i;
             if (isnanf(mp)) {
-                /* nan encountered, it's minimal */
                 break;
             }
         }
-
     }
+
     return 0;
 }
 

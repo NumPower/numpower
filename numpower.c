@@ -2437,13 +2437,17 @@ PHP_METHOD(NDArray, argmax) {
     NDArray *rtn = NULL;
     zval *a;
     long axis;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
         Z_PARAM_ZVAL(a)
+        Z_PARAM_OPTIONAL
         Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
+    }
+    if (ZEND_NUM_ARGS() == 1) {
+        axis = 128;
     }
     rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 1);
     if (rtn == NULL) return;
@@ -2465,13 +2469,17 @@ PHP_METHOD(NDArray, argmin) {
     NDArray *rtn = NULL;
     zval *a;
     long axis;
-    ZEND_PARSE_PARAMETERS_START(2, 2)
+    ZEND_PARSE_PARAMETERS_START(1, 2)
         Z_PARAM_ZVAL(a)
+        Z_PARAM_OPTIONAL
         Z_PARAM_LONG(axis)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
         return;
+    }
+    if (ZEND_NUM_ARGS() == 1) {
+        axis = 128;
     }
     rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 0);
     if (rtn == NULL) return;
