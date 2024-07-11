@@ -1008,9 +1008,17 @@ final class NDArray {
     /**
      * Return a new array of given shape and type, filled with $fill_value.
      *
-     * @param int[] $shape
-     * @param float|int $fill_value
+     * @param int[] $shape Shape of the new array
+     * @param float|int $fill_value Fill value
      * @return NDArray
      */
     public static function full(array $shape, float|int $fill_value): NDArray {}
+
+    /**
+     * Fill the array with a scalar value.
+     *
+     * @param float|int $fill_value Fill value
+     * @return NDArray
+     */
+    public static function fill(float|int $fill_value): NDArray {}
 }
