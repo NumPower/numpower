@@ -722,3 +722,9 @@ NDArray_Squeeze(NDArray *a, NDArray *axis)
     NDArray_RemoveAxesInPlace(ret, unit_dims);
     return ret;
 }
+
+NDArray*
+NDArray_Flip(NDArray *a, NDArray *axis)
+{
+
+}

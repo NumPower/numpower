@@ -1100,7 +1100,7 @@ PHP_METHOD(NDArray, diag) {
     NDArray *rtn = NULL;
     zval* target;
     ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(target)
+        Z_PARAM_ZVAL(target)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(target);
     if (nda == NULL)  return;
@@ -3429,7 +3429,7 @@ PHP_METHOD(NDArray, expand_dims) {
 /**
 * NDArray::squeeze
 */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_squeeze, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_squeeze, 0, 0, 1)
     ZEND_ARG_INFO(0, a)
     ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
@@ -3438,9 +3438,9 @@ PHP_METHOD(NDArray, squeeze) {
     zval *a;
     zval *axis;
     ZEND_PARSE_PARAMETERS_START(1, 2)
-            Z_PARAM_ZVAL(a)
-            Z_PARAM_OPTIONAL
-            Z_PARAM_ZVAL(axis)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL(axis)
     ZEND_PARSE_PARAMETERS_END();
 
     if (Z_TYPE_P(axis) != IS_ARRAY && Z_TYPE_P(axis) != IS_LONG && Z_TYPE_P(axis) != IS_OBJECT && ZEND_NUM_ARGS() > 1) {
@@ -3466,7 +3466,7 @@ PHP_METHOD(NDArray, squeeze) {
 /**
 * NDArray::flip
 */
-ZEND_BEGIN_ARG_INFO(arginfo_ndarray_flip, 0)
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_flip, 0, 0, 1)
     ZEND_ARG_INFO(0, a)
     ZEND_ARG_INFO(0, axis)
 ZEND_END_ARG_INFO()
@@ -4671,6 +4671,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, append, arginfo_ndarray_append, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, expand_dims, arginfo_ndarray_expand_dims, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, squeeze, arginfo_ndarray_squeeze, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, flip, arginfo_ndarray_flip, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

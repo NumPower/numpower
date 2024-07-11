@@ -858,7 +858,7 @@ final class NDArray {
      *
      * - **1** - L1-Norm
      * - **2** - L2-Norm
- *
+     *
      * @param NDArray|array $a
      * @param int $order (1) L1-Norm, (2) L2-Norm
      * @return float
@@ -985,5 +985,23 @@ final class NDArray {
      */
     public static function arange(float|int $stop, float|int $start = 0, float|int $step = 1): NDArray {}
 
+    /**
+     * Remove axes of length one from $a.
+     *
+     * @param NDArray|array $a Input array
+     * @param int|int[] $axis Selects a subset of the entries of length one in the shape.
+     * If an axis is selected with shape entry greater than one, an error is raised.
+     * @return NDArray|float The input array, but with all or a subset of the dimensions of length 1 removed.
+     * This is always $a itself or $a view into $a. Note that if all axes are squeezed,
+     * the result is a 0d array and not a scalar.
+     */
+    public static function squeeze(NDArray|array $a, int|array $axis): NDArray|float {}
 
+    /**
+     * Extract a diagonal or construct a diagonal array.
+     *
+     * @param NDArray|array $a
+     * @return NDArray
+     */
+    public static function diag(NDArray|array $a): NDArray {}
 }
