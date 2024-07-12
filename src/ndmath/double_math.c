@@ -256,7 +256,10 @@ float float_round(float number, float decimals) {
     return roundf(number * factor) / factor;
 }
 
-float float_arctan2(float x, float y)
-{
+float float_arctan2(float x, float y) {
     return atan2f(x, y);
+}
+
+float float_reciprocal(float val) {
+    return 1 / val;
 }

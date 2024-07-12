@@ -76,6 +76,7 @@ NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOpera
 NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
 void cuda_float_transpose(int tiledim, int blockrows, const float *d_in, float *d_out, int width, int height);
 void cuda_float_positive(int nblocks, float *d_array);
+void cuda_float_reciprocal(int nblocks, float *d_array);
 
 #ifdef __cplusplus
 }
