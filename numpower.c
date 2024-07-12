@@ -1342,36 +1342,45 @@ PHP_METHOD(NDArray, allclose) {
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_transpose, 0, 0, 1)
 ZEND_ARG_INFO(0, array)
-ZEND_ARG_INFO(0, axis)
+ZEND_ARG_INFO(0, axes)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, transpose) {
     NDArray *rtn = NULL;
-    zval *array;
-    long axis;
-    int axis_i;
-    ZEND_PARSE_PARAMETERS_START(1, 1)
-    Z_PARAM_ZVAL(array)
-    Z_PARAM_OPTIONAL
-    Z_PARAM_LONG(axis)
+    zval *array, *axes;
+    HashTable *axes_ht;
+    zend_string *key;
+    zend_ulong idx;
+    zval *val;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ZVAL(array)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ARRAY(axes)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(array);
     if (nda == NULL) {
         return;
     }
-    axis_i = (int)axis;
-    if (ZEND_NUM_ARGS() == 1) {
-        rtn = NDArray_Transpose(nda);
-        add_to_buffer(rtn);
-        CHECK_INPUT_AND_FREE(array, nda);
-        RETURN_NDARRAY(rtn, return_value);
-    } else {
-        if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_GPU) {
-            zend_throw_error(NULL, "Axis not supported for GPU operation");
-            return;
-        }
-        zend_throw_error(NULL, "Not implemented");
-        return;
+    NDArray_Dims *dims = NULL;
+    if (ZEND_NUM_ARGS() == 2) {
+        axes_ht = Z_ARRVAL_P(axes);
+        dims = emalloc(sizeof(NDArray_Dims));
+        dims->len = (int)zend_array_count(axes_ht);
+        dims->ptr = emalloc(sizeof(int) * dims->len);
+        ZEND_HASH_FOREACH_KEY_VAL(axes_ht, idx, key, val)
+        {
+            if (Z_TYPE_P(val) != IS_LONG) {
+                zend_throw_error(NULL, "Invalid parameter: axes elements must be integers.");
+                return;
+            }
+            dims->ptr[(int)idx] = (int)zval_get_long(val);
+        }ZEND_HASH_FOREACH_END();
     }
+
+    rtn = NDArray_Transpose(nda, dims);
+    CHECK_INPUT_AND_FREE(array, nda);
+    if (ZEND_NUM_ARGS() == 2) efree(dims);
+    if (rtn == NULL) return;
+    RETURN_NDARRAY(rtn, return_value);
 }
 
 /**
@@ -3590,6 +3599,38 @@ PHP_METHOD(NDArray, flip) {
 }
 
 /**
+* NDArray::swapaxes
+*/
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_swapaxes, 0, 0, 3)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis1)
+    ZEND_ARG_INFO(0, axis2)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, swapaxes) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis1, axis2;
+    ZEND_PARSE_PARAMETERS_START(3, 3)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis1)
+        Z_PARAM_LONG(axis2)
+    ZEND_PARSE_PARAMETERS_END();
+
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+
+    rtn = NDArray_SwapAxes(nda, (int) axis1, (int) axis2);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    if (rtn == NULL) {
+        return;
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::append
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_append, 0, 0, 1)
@@ -4763,6 +4804,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, expand_dims, arginfo_ndarray_expand_dims, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, squeeze, arginfo_ndarray_squeeze, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, flip, arginfo_ndarray_flip, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, swapaxes, arginfo_ndarray_swapaxes, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

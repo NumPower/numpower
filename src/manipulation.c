@@ -68,40 +68,62 @@ check_and_adjust_axis(int *axis, int ndim) {
  * @return
  */
 NDArray*
-NDArray_Transpose(NDArray *a) {
+NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
+    int *axes;
+    int i, n;
+    int permutation[NDARRAY_MAX_DIMS], reverse_permutation[NDARRAY_MAX_DIMS];
     NDArray *ret = NULL;
-    NDArray *contiguous_ret = NULL;
-    if (NDArray_NDIM(a) < 2) {
-        int ndim = NDArray_NDIM(a);
-        return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
+
+    if (permute == NULL) {
+        n = NDArray_NDIM(a);
+        for (i = 0; i < n; i++) {
+            permutation[i] = n-1-i;
+        }
+    }
+    else {
+        n = permute->len;
+        axes = permute->ptr;
+        if (n != NDArray_NDIM(a)) {
+            zend_throw_error(NULL, "axes don't match array");
+            return NULL;
+        }
+        for (i = 0; i < n; i++) {
+            reverse_permutation[i] = -1;
+        }
+        for (i = 0; i < n; i++) {
+            int axis = axes[i];
+            if (check_and_adjust_axis(&axis, NDArray_NDIM(a)) < 0) {
+                return NULL;
+            }
+            if (reverse_permutation[axis] != -1) {
+                zend_throw_error(NULL, "repeated axis in transpose");
+                return NULL;
+            }
+            reverse_permutation[axis] = i;
+            permutation[i] = axis;
+        }
     }
 
-    int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    int *new_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
-
-    if (new_shape == NULL || new_strides == NULL) {
-        zend_throw_error(NULL, "failed to allocate memory for new_shape and new_strides.");
+    ret = NDArray_Copy(a, NDArray_DEVICE(a));
+    if (ret == NULL) {
         return NULL;
     }
 
-    reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
-    reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
+    /* fix the dimensions and strides of the return-array */
+    for (i = 0; i < n; i++) {
+        NDArray_SHAPE(ret)[i] = NDArray_SHAPE(a)[permutation[i]];
+        NDArray_STRIDES(ret)[i] = NDArray_STRIDES(a)[permutation[i]];
+    }
+    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
 
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU || (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_NDIM(a) != 2)) {
-        ret = NDArray_Copy(a, NDArray_DEVICE(a));
-        efree(ret->strides);
-        efree(ret->dimensions);
-        ret->strides = new_strides;
-        ret->dimensions = new_shape;
-        NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        NDArray * contiguous_ret;
         contiguous_ret = NDArray_ToContiguous(ret);
         NDArray_FREE(ret);
         return contiguous_ret;
     } else {
 #ifdef HAVE_CUBLAS
-        efree(new_strides);
-        ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
-        cuda_float_transpose(32, 8, NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
+        cuda_float_transpose(32, 8, NDArray_FDATA(ret), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
         return ret;
 #endif
     }
@@ -721,6 +743,33 @@ NDArray_Squeeze(NDArray *a, NDArray *axis)
 
     NDArray_RemoveAxesInPlace(ret, unit_dims);
     return ret;
+}
+
+NDArray*
+NDArray_SwapAxes(NDArray *a, int axis1, int axis2)
+{
+    NDArray_Dims new_axes;
+    int dims[NDARRAY_MAX_DIMS];
+    int n = NDArray_NDIM(a);
+    int i;
+
+    if (check_and_adjust_axis_msg(&axis1, n) < 0) {
+        return NULL;
+    }
+    if (check_and_adjust_axis_msg(&axis2, n) < 0) {
+        return NULL;
+    }
+
+    for (i = 0; i < n; ++i) {
+        dims[i] = i;
+    }
+    dims[axis1] = axis2;
+    dims[axis2] = axis1;
+
+    new_axes.ptr = dims;
+    new_axes.len = n;
+
+    return NDArray_Transpose(a, &new_axes);
 }
 
 NDArray*
