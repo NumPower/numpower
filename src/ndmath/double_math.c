@@ -238,6 +238,11 @@ float float_negate(float val) {
     return -val;
 }
 
+float float_positive(float val) {
+    if (val < 0) return -val;
+    return val;
+}
+
 float float_sign(float val) {
     return (float)((val > 0.0f) - (val < 0.0f));
 }

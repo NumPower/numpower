@@ -77,7 +77,6 @@ final class NDArray {
      */
     public static function multiply(NDArray|array|float|int $a, NDArray|array|float|int $b): NDArray|float|int {}
 
-
     /**
      * Computes the element-wise negation (unary minus) of an array, returning a new array with the negation of each element.
      *
@@ -87,6 +86,14 @@ final class NDArray {
      * @return NDArray|float|int The multiplication of $a * -1
      */
     public static function negative(NDArray|array|float|int $a): NDArray|float|int {}
+
+    /**
+     * Numerical positive, element-wise.
+     *
+     * @param NDArray|array|float|int $a Input array
+     * @return NDArray|float|int
+     */
+    public static function positive(NDArray|array|float|int $a): NDArray|float|int {}
 
     /**
      * Raises each element of an array $a to a specified power $b and returns a new array containing the result.
@@ -1029,7 +1036,7 @@ final class NDArray {
      * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
      * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along $axis removed.
      */
-    public function argmin(NDArray|array $a, ?int $axis): NDArray {}
+    public static function argmin(NDArray|array $a, ?int $axis): NDArray {}
 
     /**
      * Returns the indices of the maximum values along an axis.
@@ -1038,5 +1045,5 @@ final class NDArray {
      * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
      * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along axis removed.
      */
-    public function argmax(NDArray|array $a, ?int $axis): NDArray {}
+    public static function argmax(NDArray|array $a, ?int $axis): NDArray {}
 }

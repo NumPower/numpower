@@ -2285,6 +2285,41 @@ PHP_METHOD(NDArray, negative) {
 }
 
 /**
+ * NDArray::positive
+ *
+ * @param execute_data
+ * @param return_value
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_positive, 0, 0, 1)
+    ZEND_ARG_INFO(0, array)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, positive) {
+    NDArray *rtn = NULL;
+    zval *array;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ZVAL(array)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray *nda = ZVAL_TO_NDARRAY(array);
+    if (nda == NULL) {
+        return;
+    }
+
+    if (NDArray_DEVICE(nda) == NDARRAY_DEVICE_CPU) {
+        rtn = NDArray_Map(nda, float_positive);
+    } else {
+#ifdef HAVE_CUBLAS
+        rtn = NDArrayMathGPU_ElementWise(nda, cuda_float_positive);
+#else
+        zend_throw_error(NULL, "GPU operations unavailable. CUBLAS not detected.");
+#endif
+    }
+    if (Z_TYPE_P(array) == IS_ARRAY) {
+        NDArray_FREE(nda);
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::sign
  *
  * @param execute_data
@@ -4784,6 +4819,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, trunc, arginfo_ndarray_trunc, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, sinc, arginfo_ndarray_sinc, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, negative, arginfo_ndarray_negative, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, positive, arginfo_ndarray_positive, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, sign, arginfo_ndarray_sign, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, clip, arginfo_ndarray_clip, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, round, arginfo_ndarray_round, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

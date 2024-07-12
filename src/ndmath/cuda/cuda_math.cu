@@ -303,10 +303,20 @@ __global__
 void negateFloatKernel(float* d_array, int size) {
     int index = threadIdx.x + blockIdx.x * blockDim.x;
     if (index < size) {
-
         d_array[index] = -(d_array[index]);
     }
 }
+
+__global__
+void positiveFloatKernel(float* d_array, int size) {
+    int index = threadIdx.x + blockIdx.x * blockDim.x;
+    if (index < size) {
+        if (d_array[index] < 0) {
+            d_array[index] = -(d_array[index]);
+        }
+    }
+}
+
 
 __device__
 float sinc(float number) {
@@ -1360,6 +1370,14 @@ extern "C" {
         int blockSize = 256;  // Number of threads per block. This is a typical choice.
         int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
         negateFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
+        cudaDeviceSynchronize();
+    }
+
+    void
+    cuda_float_positive(int nblocks, float *d_array) {
+        int blockSize = 256;  // Number of threads per block. This is a typical choice.
+        int numBlocks = (nblocks + blockSize - 1) / blockSize;  // Number of blocks in the grid.
+        positiveFloatKernel<<<numBlocks, blockSize>>>(d_array, nblocks);
         cudaDeviceSynchronize();
     }
 
