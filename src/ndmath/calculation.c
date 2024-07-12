@@ -11,23 +11,19 @@ float_argmax(float *ip, int n, float *max_ind)
 {
     int i;
     float mp = *ip;
-
     *max_ind = 0;
-
     if (isnanf(mp)) {
         /* nan encountered; it's maximal */
         return 0;
     }
-
     for (i = 1; i < n; i++) {
         ip++;
-
         /*
         * Propagate nans, similarly as max() and min()
         */
-        if (!(*ip <= mp)) {  /* negated, for correct nan handling */
+        if (*ip > mp) {  /* negated, for correct nan handling */
             mp = *ip;
-            *max_ind = i;
+            *max_ind = (float)i;
             if (isnanf(mp)) {
                 /* nan encountered, it's maximal */
                 break;
@@ -43,8 +39,6 @@ float_argmin(float *ip, int n, float *min_ind)
     int i;
     float mp = *ip;
     *min_ind = 0;
-
-
     if (isnanf(mp)) {
         /* nan encountered; it's minimal */
         return 0;
@@ -55,13 +49,12 @@ float_argmin(float *ip, int n, float *min_ind)
 
         if (!_LESS_THAN_OR_EQUAL(mp, *ip)) {
             mp = *ip;
-            *min_ind = i;
+            *min_ind = (float)i;
             if (isnanf(mp)) {
                 break;
             }
         }
     }
-
     return 0;
 }
 
@@ -78,7 +71,7 @@ float_argmin(float *ip, int n, float *min_ind)
  * @return
  */
 NDArray *
-NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
+NDArray_ArgMinMaxCommon(NDArray *op, int axis, bool keepdims, bool is_argmax) {
     if (NDArray_DEVICE(op) == NDARRAY_DEVICE_GPU) {
         zend_throw_error(NULL, "GPU not supported.");
         return NULL;
@@ -92,7 +85,6 @@ NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
     int elsize;
     // Keep a copy because axis changes via call to NDArray_CheckAxis
     int axis_copy = axis;
-    int _shape_buf[NDARRAY_MAX_DIMS];
     int *out_shape;
     // Keep the number of dimensions and shape of
     // original array. Helps when `keepdims` is True.
@@ -149,17 +141,13 @@ NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax) {
         memcpy(out_shape, NDArray_SHAPE(ap), sizeof(int) * NDArray_NDIM(ap));
     }
     else {
-        out_shape = _shape_buf;
+        out_shape = emalloc(out_ndim * sizeof(int));
         if (axis_copy == NDARRAY_MAX_DIMS) {
-            for (int i = 0; i < out_ndim; i++) {
+            for (i = 0; i < out_ndim; i++) {
                 out_shape[i] = 1;
             }
         }
         else {
-            /*
-             * While `ap` may be transposed, we can ignore this for `out` because the
-             * transpose only reorders the size 1 `axis` (not changing memory layout).
-             */
             memcpy(out_shape, original_op_shape, out_ndim * sizeof(int));
             out_shape[axis] = 1;
         }

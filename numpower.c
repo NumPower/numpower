@@ -2512,15 +2512,18 @@ PHP_METHOD(NDArray, minimum) {
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_argmax, 0, 0, 1)
     ZEND_ARG_INFO(0, a)
     ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, keepdims)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, argmax) {
     NDArray *rtn = NULL;
     zval *a;
     long axis;
-    ZEND_PARSE_PARAMETERS_START(1, 2)
+    bool keepdims = false;
+    ZEND_PARSE_PARAMETERS_START(1, 3)
         Z_PARAM_ZVAL(a)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(axis)
+        Z_PARAM_BOOL(keepdims)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
@@ -2529,7 +2532,7 @@ PHP_METHOD(NDArray, argmax) {
     if (ZEND_NUM_ARGS() == 1) {
         axis = 128;
     }
-    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 1);
+    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, keepdims, true);
     if (rtn == NULL) return;
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
@@ -2542,17 +2545,20 @@ PHP_METHOD(NDArray, argmax) {
  * @param return_value
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_argmin, 0, 0, 1)
-        ZEND_ARG_INFO(0, a)
-        ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, keepdims)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, argmin) {
     NDArray *rtn = NULL;
     zval *a;
     long axis;
-    ZEND_PARSE_PARAMETERS_START(1, 2)
+    bool keepdims = false;
+    ZEND_PARSE_PARAMETERS_START(1, 3)
         Z_PARAM_ZVAL(a)
         Z_PARAM_OPTIONAL
         Z_PARAM_LONG(axis)
+        Z_PARAM_BOOL(keepdims)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
@@ -2561,7 +2567,7 @@ PHP_METHOD(NDArray, argmin) {
     if (ZEND_NUM_ARGS() == 1) {
         axis = 128;
     }
-    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, 0, 0);
+    rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, keepdims, false);
     if (rtn == NULL) return;
     CHECK_INPUT_AND_FREE(a, nda);
     RETURN_NDARRAY(rtn, return_value);
