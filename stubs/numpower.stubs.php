@@ -685,10 +685,21 @@ final class NDArray {
      * Return the transpose of matrix `$a`
      *
      * @param NDArray|array|float|int $a Target array
+     * @param array|null $axes For an n-D array, if $axes are given, their order indicates how the axes are permuted
      * @return NDArray $a transposed
      */
-    public static function transpose(NDArray|array|float|int $a): NDArray {}
+    public static function transpose(NDArray|array|float|int $a, ?array $axes): NDArray {}
 
+
+    /**
+     * Interchange two axes of an array.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int $axis1 First axis
+     * @param int $axis2 Second axis
+     * @return NDArray $a transposed
+     */
+    public static function swapaxes(NDArray|array|float|int $a, int $axis1, int $axis2): NDArray {}
 
     /**
      * Creates a new NDArray from a PHP array.
