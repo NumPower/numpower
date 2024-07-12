@@ -96,7 +96,9 @@ final class NDArray {
     public static function positive(NDArray|array|float|int $a): NDArray|float|int {}
 
     /**
-     * `1 / x`, element-wise.
+     * Return the reciprocal of the argument, element-wise.
+     *
+     * Calculates `1 / $a`
      *
      * @param NDArray|array|float|int $a Input array
      * @return NDArray|float|int
