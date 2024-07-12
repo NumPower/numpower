@@ -96,6 +96,14 @@ final class NDArray {
     public static function positive(NDArray|array|float|int $a): NDArray|float|int {}
 
     /**
+     * `1 / x`, element-wise.
+     *
+     * @param NDArray|array|float|int $a Input array
+     * @return NDArray|float|int
+     */
+    public static function reciprocal(NDArray|array|float|int $a): NDArray|float|int {}
+
+    /**
      * Raises each element of an array $a to a specified power $b and returns a new array containing the result.
      *
      * Same as $a ** $b;
