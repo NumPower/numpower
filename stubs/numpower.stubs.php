@@ -690,16 +690,25 @@ final class NDArray {
      */
     public static function transpose(NDArray|array|float|int $a, ?array $axes): NDArray {}
 
-
     /**
      * Interchange two axes of an array.
      *
      * @param NDArray|array|float|int $a Target array
      * @param int $axis1 First axis
      * @param int $axis2 Second axis
-     * @return NDArray $a transposed
+     * @return NDArray $a
      */
     public static function swapaxes(NDArray|array|float|int $a, int $axis1, int $axis2): NDArray {}
+
+    /**
+     * Roll the specified axis backwards, until it lies in a given position.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int $axis
+     * @param int $start
+     * @return NDArray $a
+     */
+    public static function rollaxis(NDArray|array|float|int $a, int $axis, int $start = 0): NDArray {}
 
     /**
      * Creates a new NDArray from a PHP array.
@@ -1055,16 +1064,18 @@ final class NDArray {
      *
      * @param NDArray|array $a Target array
      * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @param bool $keepdims
      * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along $axis removed.
      */
-    public static function argmin(NDArray|array $a, ?int $axis): NDArray {}
+    public static function argmin(NDArray|array $a, ?int $axis, bool $keepdims = false): NDArray {}
 
     /**
      * Returns the indices of the maximum values along an axis.
      *
      * @param NDArray|array $a Target array
      * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @param bool $keepdims
      * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along axis removed.
      */
-    public static function argmax(NDArray|array $a, ?int $axis): NDArray {}
+    public static function argmax(NDArray|array $a, ?int $axis, bool $keepdims = false): NDArray {}
 }

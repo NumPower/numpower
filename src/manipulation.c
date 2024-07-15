@@ -773,6 +773,48 @@ NDArray_SwapAxes(NDArray *a, int axis1, int axis2)
 }
 
 NDArray*
+NDArray_Rollaxis(NDArray *a, int axis, int start)
+{
+    NDArray *result;
+    int n = NDArray_NDIM(a);
+
+    if (check_and_adjust_axis_msg(&axis, n) < 0) {
+        return NULL;
+    }
+
+    if (start < 0) start += n;
+
+    if (!(0 <= start < n + 1)) {
+        zend_throw_error(NULL, "'%s' arg requires %d <= %s < %d, but %d was passed in", "start", -n, "start", n+1, start);
+        return NULL;
+    }
+
+    if (axis < start) start -= 1;
+
+    if (axis == start) {
+        return NDArray_Copy(a, NDArray_DEVICE(a));
+    }
+
+    int *axes = emalloc(sizeof(int) * n);
+    for (int i = 0; i < n; i++) {
+        axes[i] = i;
+    }
+
+    for (int i = n; i > start; i--) {
+        axes[i] = axes[i - 1];
+    }
+    axes[start] = axis;
+
+    NDArray_Dims dims;
+    dims.len = n;
+    dims.ptr = axes;
+
+    result = NDArray_Transpose(a, &dims);
+    efree(axes);
+    return result;
+}
+
+NDArray*
 NDArray_Flip(NDArray *a, NDArray *axis)
 {
 

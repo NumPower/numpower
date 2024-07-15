@@ -21,5 +21,6 @@ NDArray* NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays);
 NDArray* NDArray_Flip(NDArray *a, NDArray *axis);
 NDArray* NDArray_Squeeze(NDArray *a, NDArray *axis);
 NDArray* NDArray_SwapAxes(NDArray *a, int axis1, int axis2);
+NDArray* NDArray_Rollaxis(NDArray *a, int axis, int start);
 int NDArray_ConvertMultiAxis(NDArray *axis_in, int ndim, bool *out_axis_flags);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H

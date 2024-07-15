@@ -3637,6 +3637,39 @@ PHP_METHOD(NDArray, swapaxes) {
 }
 
 /**
+* NDArray::rollaxis
+*/
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_rollaxis, 0, 0, 2)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, axis)
+    ZEND_ARG_INFO(0, start)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, rollaxis) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis, start = 0;
+    ZEND_PARSE_PARAMETERS_START(2, 3)
+        Z_PARAM_ZVAL(a)
+        Z_PARAM_LONG(axis)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_LONG(start)
+    ZEND_PARSE_PARAMETERS_END();
+
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+    return;
+    }
+
+    rtn = NDArray_Rollaxis(nda, (int) axis, (int) start);
+
+    CHECK_INPUT_AND_FREE(a, nda);
+    if (rtn == NULL) {
+    return;
+    }
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
  * NDArray::append
  */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_append, 0, 0, 1)
@@ -4811,6 +4844,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, squeeze, arginfo_ndarray_squeeze, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, flip, arginfo_ndarray_flip, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, swapaxes, arginfo_ndarray_swapaxes, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, rollaxis, arginfo_ndarray_rollaxis, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
