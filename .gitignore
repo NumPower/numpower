@@ -46,3 +46,5 @@ test.php
 *.loT
 tensor
 test_img.jpg
+composer.lock
+vendor
