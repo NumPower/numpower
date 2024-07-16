@@ -745,6 +745,14 @@ final class NDArray {
     public static function dstack(array $arrays): NDArray {}
 
     /**
+     * Stack 1-D arrays as columns into a 2-D array.
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function column_stack(array $arrays): NDArray {}
+
+    /**
      * Creates a new NDArray from a PHP array.
      *
      * It is the equivalent of `new NDArray($array);`
