@@ -198,7 +198,7 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
 
     int new_strides[NDARRAY_MAX_DIMS];
     int new_shape[NDARRAY_MAX_DIMS];
-    int i, start = 0, stop = 0, step = 0, n_steps = 0, new_dim = 0, orig_dim = 0;
+    int i, start = 0, stop = 0, step = 0, n_steps = 0, new_dim = NDArray_NDIM(array), orig_dim = 0, new_dim_step = 0;
     char *data_ptr = NDArray_DATA(array);
 
     SliceObject sliceobj;
@@ -230,9 +230,14 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
             start = 0;
         }
         data_ptr += NDArray_STRIDES(array)[orig_dim] * start;
-        new_strides[new_dim] = NDArray_STRIDES(array)[orig_dim] * step;
-        new_shape[new_dim] = n_steps;
-        new_dim += 1;
+        new_strides[new_dim_step] = NDArray_STRIDES(array)[orig_dim] * step;
+        new_shape[new_dim_step] = n_steps;
+
+        if (NDArray_NUMELEMENTS(indexes[i]) != 0) {
+            new_dim--;
+            new_dim_step--;
+        }
+        new_dim_step += 1;
         orig_dim += 1;
         if (sliceobj.start != NULL) {
             efree(sliceobj.start);
