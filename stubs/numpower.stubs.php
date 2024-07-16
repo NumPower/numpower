@@ -1088,4 +1088,28 @@ final class NDArray {
      * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along axis removed.
      */
     public static function argmax(NDArray|array $a, ?int $axis, bool $keepdims = false): NDArray {}
+
+    /**
+     * Array slicing, each argument represents a slice of a dimension.
+     *
+     * Empty arrays represent all values of a dimension, arrays with values are treated in
+     * the format [start, stop, step], when only one value exists, it is automatically
+     * assigned to stop, the default value of start is 0 and step is 1.
+     *
+     * When instead of an array, a number is passed, it is also assigned to the
+     * stop of that dimension.
+     *
+     * Ex: Get the first row of a matrix:
+     * $array->slice(0)
+     *
+     * Ex: Get the last column of a matrix:
+     * $array->slice([], -1);
+     *
+     * Ex: Get the first two columns of the first row:
+     * $array->slice(0, [0,2]);
+     *
+     * @param array ...$indices
+     * @return NDArray|float
+     */
+    public function slice(...$indices): NDArray|float {};
 }
