@@ -696,7 +696,7 @@ final class NDArray {
      * @param NDArray|array|float|int $a Target array
      * @param int $axis1 First axis
      * @param int $axis2 Second axis
-     * @return NDArray $a
+     * @return NDArray
      */
     public static function swapaxes(NDArray|array|float|int $a, int $axis1, int $axis2): NDArray {}
 
@@ -706,7 +706,7 @@ final class NDArray {
      * @param NDArray|array|float|int $a Target array
      * @param int $axis
      * @param int $start
-     * @return NDArray $a
+     * @return NDArray
      */
     public static function rollaxis(NDArray|array|float|int $a, int $axis, int $start = 0): NDArray {}
 
@@ -716,9 +716,33 @@ final class NDArray {
      * @param NDArray|array|float|int $a Target array
      * @param int|array $source
      * @param int|array $destination
-     * @return NDArray $a
+     * @return NDArray
      */
     public static function moveaxis(NDArray|array|float|int $a, int|array $source, int|array $destination): NDArray {}
+
+    /**
+     * Stack arrays in sequence vertically (row wise).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function vstack(array $arrays): NDArray {}
+
+    /**
+     * Stack arrays in sequence horizontally (column wise).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function hstack(array $arrays): NDArray {}
+
+    /**
+     * Stack arrays in sequence depth wise (along third axis).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function dstack(array $arrays): NDArray {}
 
     /**
      * Creates a new NDArray from a PHP array.

@@ -284,6 +284,77 @@ NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output) {
 
 #endif
 
+char*
+convert_shape_to_string(int n, int const *vals, char *endin)
+{
+    int i;
+    if (n == 0) {
+        return NULL;
+    }
+    char *value = emalloc(sizeof(char) * (n + 3));
+    value[0] = '(';
+    for (i = 1; i <= n; i++) {
+        value[i] = (char)vals[i];
+    }
+    value[i + 1] = ')';
+    value[i + 2] = *endin;
+    return value;
+}
+
+int
+broadcast_strides(int ndim, int const *shape,
+                  int strides_ndim, int const *strides_shape, int const *strides,
+                  char const *strides_name,
+                  int *out_strides)
+{
+    int idim, idim_start = ndim - strides_ndim;
+
+    /* Can't broadcast to fewer dimensions */
+    if (idim_start < 0) {
+        goto broadcast_error;
+    }
+
+    for (idim = ndim - 1; idim >= idim_start; --idim) {
+        int strides_shape_value = strides_shape[idim - idim_start];
+        /* If it doesn't have dimension one, it must match */
+        if (strides_shape_value == 1) {
+            out_strides[idim] = 0;
+        }
+        else if (strides_shape_value != shape[idim]) {
+            goto broadcast_error;
+        }
+        else {
+            out_strides[idim] = strides[idim - idim_start];
+        }
+    }
+
+    /* New dimensions get a zero stride */
+    for (idim = 0; idim < idim_start; ++idim) {
+        out_strides[idim] = 0;
+    }
+
+    return 0;
+
+broadcast_error: {
+        char *shape1 = convert_shape_to_string(strides_ndim, strides_shape, "");
+        if (shape1 == NULL) {
+            return -1;
+        }
+
+        char *shape2 = convert_shape_to_string(ndim, shape, "");
+        if (shape2 == NULL) {
+            efree(shape1);
+            return -1;
+        }
+        zend_throw_error(NULL,
+                         "could not broadcast %s from shape %s into shape %s",
+                         strides_name, shape1, shape2);
+        efree(shape1);
+        efree(shape2);
+        return -1;
+    }
+}
+
 void apply_reduce(NDArray *result, NDArray *target, NDArray *(*operation)(NDArray *, NDArray *)) {
     NDArray *temp = operation(result, target);
     if (NDArray_DEVICE(target) == NDARRAY_DEVICE_CPU) {
@@ -1330,4 +1401,264 @@ NDArray_Load(char * filename)
     // Close the file
     fclose(file);
     return out;
+}
+
+NDArray*
+NDArray_AssignRawScalar(NDArray *dst, NDArray *src)
+{
+    NDArray_FDATA(dst)[0] = NDArray_FDATA(src)[0];
+    return dst;
+}
+
+int
+NDArray_CompareLists(int const *l1, int const *l2, int n)
+{
+    int i;
+
+    for (i = 0; i < n; i++) {
+        if (l1[i] != l2[i]) {
+            return 0;
+        }
+    }
+    return 1;
+}
+
+int
+raw_array_assign_array(int ndim, int const *shape,
+                       NDArrayDescriptor *dst_dtype, char *dst_data, int const *dst_strides,
+                       NDArrayDescriptor *src_dtype, char *src_data, int const *src_strides)
+{
+    int idim;
+    int shape_it[NDARRAY_MAX_DIMS];
+    int dst_strides_it[NDARRAY_MAX_DIMS];
+    int src_strides_it[NDARRAY_MAX_DIMS];
+    int coord[NDARRAY_MAX_DIMS];
+
+    if (NDArray_PrepareTwoRawArrayIter(
+            ndim, shape,
+            dst_data, dst_strides,
+            src_data, src_strides,
+            &ndim, shape_it,
+            &dst_data, dst_strides_it,
+            &src_data, src_strides_it) < 0) {
+        return -1;
+    }
+
+    /*
+     * Overlap check for the 1D case. Higher dimensional arrays and
+     * opposite strides cause a temporary copy before getting here.
+     */
+    if (ndim == 1 && src_data < dst_data &&
+        src_data + shape_it[0] * src_strides_it[0] > dst_data) {
+        src_data += (shape_it[0] - 1) * src_strides_it[0];
+        dst_data += (shape_it[0] - 1) * dst_strides_it[0];
+        src_strides_it[0] = -src_strides_it[0];
+        dst_strides_it[0] = -dst_strides_it[0];
+    }
+
+    int strides[2] = {src_strides_it[0], dst_strides_it[0]};
+    int size;
+    NDARRAY_RAW_ITER_START(idim, ndim, coord, shape_it) {
+        size = shape_it[0];
+        for (int i = 0; i < size; i++) {
+            memcpy(dst_data + (int)(i * dst_strides_it[0]), src_data + (int)(i * src_strides_it[0]), sizeof(float));
+        }
+    } NDARRAY_RAW_ITER_TWO_NEXT(idim, ndim, coord, shape_it,
+                            dst_data, dst_strides_it,
+                            src_data, src_strides_it);
+    return 0;
+fail:
+    return -1;
+}
+
+int
+NDArray_AssignArray(NDArray *dst, NDArray *src)
+{
+    int copied_src = 0;
+
+    int src_strides[NDARRAY_MAX_DIMS];
+
+    if (NDArray_NDIM(src) == 0) {
+        NDArray_AssignRawScalar(dst, NDArray_DATA(src));
+        return 0;
+    }
+
+    if (NDArray_DATA(src) == NDArray_DATA(dst) &&
+        NDArray_DESCRIPTOR(src) == NDArray_DESCRIPTOR(dst) &&
+        NDArray_NDIM(src) == NDArray_NDIM(dst) &&
+        NDArray_CompareLists(NDArray_SHAPE(src),
+                             NDArray_SHAPE(dst),
+                             NDArray_NDIM(src)) &&
+        NDArray_CompareLists(NDArray_STRIDES(src),
+                             NDArray_STRIDES(dst),
+                             NDArray_NDIM(src))) {
+        return 0;
+    }
+
+    if (NDArray_NDIM(src) > NDArray_NDIM(dst)) {
+        int ndim_tmp = NDArray_NDIM(src);
+        int *src_shape_tmp = NDArray_SHAPE(src);
+        int *src_strides_tmp = NDArray_STRIDES(src);
+
+        while (ndim_tmp > NDArray_NDIM(dst) && src_shape_tmp[0] == 1) {
+            --ndim_tmp;
+            ++src_shape_tmp;
+            ++src_strides_tmp;
+        }
+
+        if (broadcast_strides(NDArray_NDIM(dst), NDArray_SHAPE(dst),
+                              ndim_tmp, src_shape_tmp,
+                              src_strides_tmp, "input array",
+                              src_strides) < 0) {
+            goto fail;
+        }
+    }
+    else {
+        if (broadcast_strides(NDArray_NDIM(dst), NDArray_SHAPE(dst),
+                              NDArray_NDIM(src), NDArray_SHAPE(src),
+                              NDArray_STRIDES(src), "input array",
+                              src_strides) < 0) {
+            goto fail;
+        }
+    }
+
+    if (raw_array_assign_array(NDArray_NDIM(dst), NDArray_SHAPE(dst),
+                               NDArray_DESCRIPTOR(dst), NDArray_DATA(dst), NDArray_STRIDES(dst),
+                               NDArray_DESCRIPTOR(src), NDArray_DATA(src), src_strides) < 0) {
+        goto fail;
+    }
+
+    if (copied_src) {
+        NDArray_FREE(src);
+    }
+    return 0;
+
+fail:
+    if (copied_src) {
+        NDArray_FREE(src);
+    }
+    return -1;
+}
+
+static inline int
+s_intp_abs(int x)
+{
+return (x < 0) ? -x : x;
+}
+
+void
+NDArray_CreateMultiSortedStridePerm(int narrays, NDArray **arrays,
+                                    int ndim, int *out_strideperm)
+{
+    int i0, i1, ipos, ax_j0, ax_j1, iarrays;
+
+    for (i0 = 0; i0 < ndim; ++i0) {
+        out_strideperm[i0] = i0;
+    }
+
+    for (i0 = 1; i0 < ndim; ++i0) {
+        ipos = i0;
+        ax_j0 = out_strideperm[i0];
+        for (i1 = i0 - 1; i1 >= 0; --i1) {
+            int ambig = 1, shouldswap = 0;
+
+            ax_j1 = out_strideperm[i1];
+
+            for (iarrays = 0; iarrays < narrays; ++iarrays) {
+                if (NDArray_SHAPE(arrays[iarrays])[ax_j0] != 1 &&
+                    NDArray_SHAPE(arrays[iarrays])[ax_j1] != 1) {
+                    if (s_intp_abs(NDArray_STRIDES(arrays[iarrays])[ax_j0]) <=
+                        s_intp_abs(NDArray_STRIDES(arrays[iarrays])[ax_j1])) {
+                        /*
+                         * Set swap even if it's not ambiguous already,
+                         * because in the case of conflicts between
+                         * different operands, C-order wins.
+                         */
+                        shouldswap = 0;
+                    }
+                    else {
+                        /* Only set swap if it's still ambiguous */
+                        if (ambig) {
+                            shouldswap = 1;
+                        }
+                    }
+
+                    /*
+                     * A comparison has been done, so it's
+                     * no longer ambiguous
+                     */
+                    ambig = 0;
+                }
+            }
+            /*
+             * If the comparison was unambiguous, either shift
+             * 'ipos' to 'i1' or stop looking for an insertion point
+             */
+            if (!ambig) {
+                if (shouldswap) {
+                    ipos = i1;
+                }
+                else {
+                    break;
+                }
+            }
+        }
+
+        /* Insert out_strideperm[i0] into the right place */
+        if (ipos != i0) {
+            for (i1 = i0; i1 > ipos; --i1) {
+                out_strideperm[i1] = out_strideperm[i1-1];
+            }
+            out_strideperm[ipos] = ax_j0;
+        }
+    }
+}
+
+/*
+ * Sorts items so stride is descending, because C-order
+ * is the default in the face of ambiguity.
+ */
+static int _nd_stride_sort_item_comparator(const void *a, const void *b)
+{
+    int astride = ((const ndarray_stride_sort_item *)a)->stride,
+        bstride = ((const ndarray_stride_sort_item *)b)->stride;
+
+    /* Sort the absolute value of the strides */
+    if (astride < 0) {
+        astride = -astride;
+    }
+    if (bstride < 0) {
+        bstride = -bstride;
+    }
+
+    if (astride == bstride) {
+        /*
+         * Make the qsort stable by next comparing the perm order.
+         * (Note that two perm entries will never be equal)
+         */
+        int aperm = ((const ndarray_stride_sort_item *)a)->perm,
+                bperm = ((const ndarray_stride_sort_item *)b)->perm;
+        return (aperm < bperm) ? -1 : 1;
+    }
+    if (astride > bstride) {
+        return -1;
+    }
+    return 1;
+}
+
+void
+NDArray_CreateSortedStridePerm(int ndim, int const *strides,
+                               ndarray_stride_sort_item *out_strideperm)
+{
+    int i;
+
+    /* Set up the strideperm values */
+    for (i = 0; i < ndim; ++i) {
+        out_strideperm[i].perm = i;
+        out_strideperm[i].stride = strides[i];
+    }
+
+    /* Sort them */
+    qsort(out_strideperm, ndim, sizeof(raw_array_assign_array),
+          &_nd_stride_sort_item_comparator);
 }
