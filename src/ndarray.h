@@ -96,6 +96,10 @@ NDArray_CLEARFLAGS(NDArray *arr, int flags) {
     (arr)->flags &= ~flags;
 }
 
+typedef struct {
+    int perm, stride;
+} ndarray_stride_sort_item;
+
 void NDArray_FREE(NDArray *array);
 char *NDArray_Print(NDArray *array, int do_return);
 NDArray *reduce(NDArray *array, int *axis, NDArray *(*operation)(NDArray *, NDArray *));
@@ -119,6 +123,11 @@ NDArray* NDArray_FromGD(zval *a, bool channel_last);
 void NDArray_ToGD(NDArray *a, NDArray *n_alpha, zval *output);
 void NDArray_Save(NDArray *a, char * filename, int length);
 NDArray* NDArray_Load(char * filename);
+NDArray* NDArray_AssignRawScalar(NDArray *dst, NDArray *src);
+int NDArray_AssignArray(NDArray *dst, NDArray *src);
+int NDArray_CompareLists(int const *l1, int const *l2, int n);
+void NDArray_CreateMultiSortedStridePerm(int narrays, NDArray **arrays, int ndim, int *out_strideperm);
+void NDArray_CreateSortedStridePerm(int ndim, int const *strides, ndarray_stride_sort_item *out_strideperm);
 
 #ifdef __cplusplus
 }

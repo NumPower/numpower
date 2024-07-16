@@ -5,6 +5,8 @@
 
 typedef int (NDArray_ArgFunc)(float*, int, float *);
 
-NDArray * NDArray_ArgMinMaxCommon(NDArray *op, int axis, int keepdims, bool is_argmax);
+#define _LESS_THAN_OR_EQUAL(a,b) ((a) <= (b))
+
+NDArray * NDArray_ArgMinMaxCommon(NDArray *op, int axis, bool keepdims, bool is_argmax);
 
 #endif //NUMPOWER_CALCULATION_H
