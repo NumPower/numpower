@@ -3927,6 +3927,8 @@ ZEND_END_ARG_INFO()
     } else {
         rtn = NDArray_Concatenate(ndarrays, num_args, zval_get_long(axis));
     }
+    CHECK_INPUT_AND_FREE(array, ndarrays[0]);
+    CHECK_INPUT_AND_FREE(values, ndarrays[1]);
     efree(ndarrays);
     RETURN_NDARRAY(rtn, return_value);
 }
