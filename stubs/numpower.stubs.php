@@ -711,6 +711,16 @@ final class NDArray {
     public static function rollaxis(NDArray|array|float|int $a, int $axis, int $start = 0): NDArray {}
 
     /**
+     * Move axes of an array to new positions.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int|array $source
+     * @param int|array $destination
+     * @return NDArray $a
+     */
+    public static function moveaxis(NDArray|array|float|int $a, int|array $source, int|array $destination): NDArray {}
+
+    /**
      * Creates a new NDArray from a PHP array.
      *
      * It is the equivalent of `new NDArray($array);`

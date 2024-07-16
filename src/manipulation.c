@@ -42,13 +42,10 @@ check_and_adjust_axis_msg(int *axis, int ndim) {
     if (axis == NULL) {
         return 0;
     }
-
-    /* Check that index is valid, taking into account negative indices */
     if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
-        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
+        zend_throw_error(NULL, "Axis is out of bounds for array dimension");
         return -1;
     }
-
     /* adjust negative indices */
     if (*axis < 0) {
         *axis += ndim;
@@ -93,6 +90,7 @@ NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
         for (i = 0; i < n; i++) {
             int axis = axes[i];
             if (check_and_adjust_axis(&axis, NDArray_NDIM(a)) < 0) {
+                zend_throw_error(NULL, "axes don't match array");
                 return NULL;
             }
             if (reverse_permutation[axis] != -1) {
@@ -812,6 +810,53 @@ NDArray_Rollaxis(NDArray *a, int axis, int start)
     result = NDArray_Transpose(a, &dims);
     efree(axes);
     return result;
+}
+
+
+NDArray*
+NDArray_Moveaxis(NDArray *a, int* src, int* dest, int n_source, int n_dest)
+{
+    NDArray *result;
+    int order[NDARRAY_MAX_DIMS];
+    int n = NDArray_NDIM(a);
+
+    if (check_and_adjust_axis_msg(src, n) < 0) {
+        return NULL;
+    }
+    if (check_and_adjust_axis_msg(dest, n) < 0) {
+        return NULL;
+    }
+
+    if (n_source != n_dest) {
+        zend_throw_error(NULL, "`source` and `destination` must have the same number of elements.");
+        return NULL;
+    }
+
+    int found;
+    int count_order = 0;
+    for (int i = 0; i < n; i++) {
+        found = 0;
+        for (int j = 0; j < n_source; j++) {
+            if (src[j] == i) found = 1;
+        }
+        if (!found) {
+            order[count_order] = i;
+            count_order++;
+        }
+    }
+
+    for (int i = 0; i < n_source; i++) {
+        if (dest[i] < 0) {
+            dest[i] = dest[i] + (count_order + 1);
+        }
+        order[dest[i]] = src[i];
+        count_order++;
+    }
+
+    NDArray_Dims order_dims;
+    order_dims.len = count_order;
+    order_dims.ptr = order;
+    return NDArray_Transpose(a, &order_dims);
 }
 
 NDArray*
