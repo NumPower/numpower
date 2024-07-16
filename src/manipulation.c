@@ -292,46 +292,60 @@ failure:
 NDArray*
 NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
 {
-    NDArray *rtn;
     int iarrays;
-    int *shape = emalloc(sizeof(int));
+    int shape = 0;
+    NDArray *sliding_view = NULL;
+    int narrays = num_arrays;
 
-    *shape = 0;
-    if (num_arrays <= 0) {
+    if (narrays <= 0) {
         zend_throw_error(NULL,
                         "need at least one array to concatenate");
         return NULL;
     }
 
-    for (iarrays = 0; iarrays < num_arrays; ++iarrays) {
-        *shape += NDArray_NUMELEMENTS(arrays[iarrays]);
-        if (*shape < 0) {
+    /*
+     * Figure out the final concatenated shape starting from the first
+     * array's shape.
+     */
+    for (iarrays = 0; iarrays < narrays; ++iarrays) {
+        shape += NDArray_NUMELEMENTS(arrays[iarrays]);
+        /* Check for overflow */
+        if (shape < 0) {
             zend_throw_error(NULL,
                             "total number of elements "
                             "too large to concatenate");
             return NULL;
         }
     }
-    rtn = NDArray_Zeros(shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
-    int device = NDArray_DEVICE(rtn);
-
-    int extra_bytes = 0;
-    char *tmp_data = NULL;
-    for (int i_array = 0; i_array < num_arrays; i_array++) {
-        extra_bytes = i_array * (NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[0]));
-        tmp_data = NDArray_DATA(rtn) + extra_bytes;
-
-        switch (NDArray_DEVICE(rtn)) {
-            case NDARRAY_DEVICE_GPU:
-#ifdef HAVE_CUBLAS
-
-#endif
-                break;
-            default:
-                memcpy(tmp_data, NDArray_DATA(arrays[i_array]), NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[i_array]));
-        }
+    int *ret_shape = emalloc(sizeof(int));
+    ret_shape[0] = shape;
+    NDArray *ret = NDArray_Zeros(ret_shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
+    int stride = NDArray_ELSIZE(ret);
+    if (ret == NULL) {
+        return NULL;
     }
-    return rtn;
+
+    int *sliding_strides = emalloc(sizeof(int));
+    int *sliding_shape = emalloc(sizeof(int));
+    sliding_shape[0] = shape;
+    sliding_strides[0] = stride;
+    sliding_view = NDArray_FromNDArrayBase(ret, NDArray_DATA(ret), sliding_shape, sliding_strides, 1);
+    if (sliding_view == NULL) {
+        NDArray_FREE(ret);
+        return NULL;
+    }
+
+    for (iarrays = 0; iarrays < narrays; ++iarrays) {
+        sliding_view->dimensions[0] = NDArray_NUMELEMENTS(arrays[iarrays]);
+
+        memcpy(sliding_view->data, arrays[iarrays]->data, sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+
+        /* Slide to the start of the next window */
+        sliding_view->data += sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]);
+    }
+
+    NDArray_FREE(sliding_view);
+    return ret;
 }
 
 /**

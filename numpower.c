@@ -3840,7 +3840,7 @@ PHP_METHOD(NDArray, dstack) {
 * NDArray::column_stack
 */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_column_stack, 0, 0, 1)
-    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, arrays)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, column_stack) {
     NDArray *rtn = NULL;
@@ -3852,6 +3852,43 @@ PHP_METHOD(NDArray, column_stack) {
     NDArray **ndarrays = ARRAY_OF_NDARRAYS(arrays, &num_args);
     if (ndarrays == NULL) return;
     rtn = NDArray_ColumnStack(ndarrays, num_args);
+
+    for (int i = 0; i < num_args; i++) {
+        NDArray_FREE(ndarrays[i]);
+    }
+    efree(ndarrays);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+* NDArray::concatenate
+*/
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_concatenate, 0, 0, 1)
+    ZEND_ARG_INFO(0, arrays)
+    ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, concatenate) {
+    NDArray *rtn = NULL;
+    zval *arrays;
+    int num_args;
+    zval *axis = NULL;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+        Z_PARAM_ARRAY(arrays)
+        Z_PARAM_OPTIONAL
+        Z_PARAM_ZVAL(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray **ndarrays = ARRAY_OF_NDARRAYS(arrays, &num_args);
+    if (ndarrays == NULL) return;
+
+    if (ZEND_NUM_ARGS() > 1 && Z_TYPE_P(axis) == IS_NULL) {
+        rtn = NDArray_ConcatenateFlat(ndarrays, num_args);
+    } else {
+        if (ZEND_NUM_ARGS() == 1) {
+            rtn = NDArray_Concatenate(ndarrays, num_args, 0);
+        } else {
+            rtn = NDArray_Concatenate(ndarrays, num_args, zval_get_long(axis));
+        }
+    }
 
     for (int i = 0; i < num_args; i++) {
         NDArray_FREE(ndarrays[i]);
@@ -5041,6 +5078,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, hstack, arginfo_ndarray_hstack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, dstack, arginfo_ndarray_dstack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, column_stack, arginfo_ndarray_column_stack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, concatenate, arginfo_ndarray_concatenate, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

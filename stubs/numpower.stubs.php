@@ -745,6 +745,15 @@ final class NDArray {
     public static function dstack(array $arrays): NDArray {}
 
     /**
+     * Join a sequence of arrays along an existing axis.
+     *
+     * @param NDArray[] $arrays
+     * @param int|null $axis
+     * @return NDArray
+     */
+    public static function concatenate(array $arrays, ?int $axis = 0): NDArray {}
+
+    /**
      * Stack 1-D arrays as columns into a 2-D array.
      *
      * @param NDArray[] $arrays
