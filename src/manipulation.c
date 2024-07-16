@@ -233,7 +233,7 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
         new_strides[new_dim_step] = NDArray_STRIDES(array)[orig_dim] * step;
         new_shape[new_dim_step] = n_steps;
 
-        if (NDArray_NUMELEMENTS(indexes[i]) != 0) {
+        if (NDArray_NUMELEMENTS(indexes[i]) == 1) {
             new_dim--;
             new_dim_step--;
         }
