@@ -337,9 +337,21 @@ NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
 
     for (iarrays = 0; iarrays < narrays; ++iarrays) {
         sliding_view->dimensions[0] = NDArray_NUMELEMENTS(arrays[iarrays]);
-
-        memcpy(sliding_view->data, arrays[iarrays]->data, sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
-
+        if (NDArray_DEVICE(ret) == NDARRAY_DEVICE_CPU) {
+            memcpy(sliding_view->data, arrays[iarrays]->data,
+                   sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+        }
+#ifdef HAVE_CUBLAS
+        if (NDArray_DEVICE(ret) == NDARRAY_DEVICE_GPU) {
+            if (NDArray_NDIM(arrays[iarrays]) > 0) {
+                vmemcpyd2d(arrays[iarrays]->data, sliding_view->data,
+                           sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+            } else {
+                vmemcpyh2d(arrays[iarrays]->data, sliding_view->data,
+                           sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+            }
+        }
+#endif
         /* Slide to the start of the next window */
         sliding_view->data += sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]);
     }

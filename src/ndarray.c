@@ -1406,7 +1406,14 @@ NDArray_Load(char * filename)
 NDArray*
 NDArray_AssignRawScalar(NDArray *dst, NDArray *src)
 {
-    NDArray_FDATA(dst)[0] = NDArray_FDATA(src)[0];
+    if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_CPU) {
+        NDArray_FDATA(dst)[0] = NDArray_FDATA(src)[0];
+    }
+#ifdef HAVE_CUBLAS
+    if (NDArray_DEVICE(dst) == NDARRAY_DEVICE_GPU) {
+        vmemcpyd2d(NDArray_DATA(src), NDArray_DATA(dst), sizeof(float));
+    }
+#endif
     return dst;
 }
 
@@ -1426,7 +1433,8 @@ NDArray_CompareLists(int const *l1, int const *l2, int n)
 int
 raw_array_assign_array(int ndim, int const *shape,
                        NDArrayDescriptor *dst_dtype, char *dst_data, int const *dst_strides,
-                       NDArrayDescriptor *src_dtype, char *src_data, int const *src_strides)
+                       NDArrayDescriptor *src_dtype, char *src_data, int const *src_strides,
+                       int device)
 {
     int idim;
     int shape_it[NDARRAY_MAX_DIMS];
@@ -1461,7 +1469,15 @@ raw_array_assign_array(int ndim, int const *shape,
     NDARRAY_RAW_ITER_START(idim, ndim, coord, shape_it) {
         size = shape_it[0];
         for (int i = 0; i < size; i++) {
-            memcpy(dst_data + (int)(i * dst_strides_it[0]), src_data + (int)(i * src_strides_it[0]), sizeof(float));
+            if (device == NDARRAY_DEVICE_CPU) {
+                memcpy(dst_data + (int) (i * dst_strides_it[0]), src_data + (int) (i * src_strides_it[0]),
+                       sizeof(float));
+            }
+            if (device == NDARRAY_DEVICE_GPU) {
+#ifdef HAVE_CUBLAS
+                vmemcpyd2d(src_data + (int) (i * src_strides_it[0]), dst_data + (int) (i * dst_strides_it[0]), sizeof(float));
+#endif
+            }
         }
     } NDARRAY_RAW_ITER_TWO_NEXT(idim, ndim, coord, shape_it,
                             dst_data, dst_strides_it,
@@ -1524,7 +1540,7 @@ NDArray_AssignArray(NDArray *dst, NDArray *src)
 
     if (raw_array_assign_array(NDArray_NDIM(dst), NDArray_SHAPE(dst),
                                NDArray_DESCRIPTOR(dst), NDArray_DATA(dst), NDArray_STRIDES(dst),
-                               NDArray_DESCRIPTOR(src), NDArray_DATA(src), src_strides) < 0) {
+                               NDArray_DESCRIPTOR(src), NDArray_DATA(src), src_strides, NDArray_DEVICE(src)) < 0) {
         goto fail;
     }
 
