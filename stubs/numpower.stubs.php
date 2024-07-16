@@ -754,6 +754,16 @@ final class NDArray {
     public static function concatenate(array $arrays, ?int $axis = 0): NDArray {}
 
     /**
+     * Append values to the end of an array.
+     *
+     * @param NDArray|array $array
+     * @param NDArray|array $values
+     * @param int|null $axis
+     * @return NDArray
+     */
+    public static function append(NDArray|array $array, NDArray|array $values, ?int $axis): NDArray {}
+
+    /**
      * Stack 1-D arrays as columns into a 2-D array.
      *
      * @param NDArray[] $arrays
