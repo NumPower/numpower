@@ -40,4 +40,6 @@ float float_clip(float val, float min, float max);
 float float_round(float number, float decimals);
 float float_rsqrt(float val);
 float float_arctan2(float x, float y);
+float float_positive(float val);
+float float_reciprocal(float val);
 #endif //PHPSCI_NDARRAY_DOUBLE_MATH_H

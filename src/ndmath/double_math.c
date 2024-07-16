@@ -238,6 +238,11 @@ float float_negate(float val) {
     return -val;
 }
 
+float float_positive(float val) {
+    if (val < 0) return -val;
+    return val;
+}
+
 float float_sign(float val) {
     return (float)((val > 0.0f) - (val < 0.0f));
 }
@@ -251,7 +256,10 @@ float float_round(float number, float decimals) {
     return roundf(number * factor) / factor;
 }
 
-float float_arctan2(float x, float y)
-{
+float float_arctan2(float x, float y) {
     return atan2f(x, y);
+}
+
+float float_reciprocal(float val) {
+    return 1 / val;
 }
