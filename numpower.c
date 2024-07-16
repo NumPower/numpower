@@ -3816,7 +3816,7 @@ PHP_METHOD(NDArray, hstack) {
 * NDArray::dstack
 */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_dstack, 0, 0, 1)
-    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, arrays)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NDArray, dstack) {
     NDArray *rtn = NULL;
@@ -3828,6 +3828,30 @@ PHP_METHOD(NDArray, dstack) {
     NDArray **ndarrays = ARRAY_OF_NDARRAYS(arrays, &num_args);
     if (ndarrays == NULL) return;
     rtn = NDArray_DSTACK(ndarrays, num_args);
+
+    for (int i = 0; i < num_args; i++) {
+        NDArray_FREE(ndarrays[i]);
+    }
+    efree(ndarrays);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+* NDArray::column_stack
+*/
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_column_stack, 0, 0, 1)
+    ZEND_ARG_INFO(0, a)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, column_stack) {
+    NDArray *rtn = NULL;
+    zval *arrays;
+    int num_args;
+    ZEND_PARSE_PARAMETERS_START(1, 1)
+        Z_PARAM_ARRAY(arrays)
+    ZEND_PARSE_PARAMETERS_END();
+    NDArray **ndarrays = ARRAY_OF_NDARRAYS(arrays, &num_args);
+    if (ndarrays == NULL) return;
+    rtn = NDArray_ColumnStack(ndarrays, num_args);
 
     for (int i = 0; i < num_args; i++) {
         NDArray_FREE(ndarrays[i]);
@@ -5016,6 +5040,7 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, vstack, arginfo_ndarray_vstack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, hstack, arginfo_ndarray_hstack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, dstack, arginfo_ndarray_dstack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, column_stack, arginfo_ndarray_column_stack, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // INDEXING
     ZEND_ME(NDArray, diagonal, arginfo_ndarray_diagonal, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)

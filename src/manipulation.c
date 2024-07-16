@@ -1026,6 +1026,27 @@ NDArray_DSTACK(NDArray **arrays, int narrays)
 }
 
 NDArray*
+NDArray_ColumnStack(NDArray **arrays, int narrays)
+{
+    NDArray *tmp;
+    NDArray **parsed_arrays = emalloc(sizeof(NDArray*) * narrays);
+    for (int i = 0; i < narrays; i++) {
+        tmp = NDArray_AtLeast2D(arrays[i]);
+        parsed_arrays[i] = NDArray_Transpose(tmp, NULL);
+        NDArray_FREE(tmp);
+    }
+
+    NDArray * result = NULL;
+    result = NDArray_Concatenate(parsed_arrays, narrays, 1);
+
+    for (int i = 0; i < narrays; i++) {
+        NDArray_FREE(parsed_arrays[i]);
+    }
+    efree(parsed_arrays);
+    return result;
+}
+
+NDArray*
 NDArray_Flip(NDArray *a, NDArray *axis)
 {
 

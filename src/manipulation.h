@@ -27,5 +27,6 @@ NDArray* NDArray_Concatenate(NDArray **arrays, int narrays, int axis);
 NDArray* NDArray_VSTACK(NDArray **arrays, int narrays);
 NDArray* NDArray_HSTACK(NDArray **arrays, int narrays);
 NDArray* NDArray_DSTACK(NDArray **arrays, int narrays);
+NDArray* NDArray_ColumnStack(NDArray **arrays, int narrays);
 int NDArray_ConvertMultiAxis(NDArray *axis_in, int ndim, bool *out_axis_flags);
 #endif //PHPSCI_NDARRAY_MANIPULATION_H
