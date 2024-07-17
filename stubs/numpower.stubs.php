@@ -77,7 +77,6 @@ final class NDArray {
      */
     public static function multiply(NDArray|array|float|int $a, NDArray|array|float|int $b): NDArray|float|int {}
 
-
     /**
      * Computes the element-wise negation (unary minus) of an array, returning a new array with the negation of each element.
      *
@@ -87,6 +86,24 @@ final class NDArray {
      * @return NDArray|float|int The multiplication of $a * -1
      */
     public static function negative(NDArray|array|float|int $a): NDArray|float|int {}
+
+    /**
+     * Numerical positive, element-wise.
+     *
+     * @param NDArray|array|float|int $a Input array
+     * @return NDArray|float|int
+     */
+    public static function positive(NDArray|array|float|int $a): NDArray|float|int {}
+
+    /**
+     * Return the reciprocal of the argument, element-wise.
+     *
+     * Calculates `1 / $a`
+     *
+     * @param NDArray|array|float|int $a Input array
+     * @return NDArray|float|int
+     */
+    public static function reciprocal(NDArray|array|float|int $a): NDArray|float|int {}
 
     /**
      * Raises each element of an array $a to a specified power $b and returns a new array containing the result.
@@ -668,10 +685,91 @@ final class NDArray {
      * Return the transpose of matrix `$a`
      *
      * @param NDArray|array|float|int $a Target array
+     * @param array|null $axes For an n-D array, if $axes are given, their order indicates how the axes are permuted
      * @return NDArray $a transposed
      */
-    public static function transpose(NDArray|array|float|int $a): NDArray {}
+    public static function transpose(NDArray|array|float|int $a, ?array $axes): NDArray {}
 
+    /**
+     * Interchange two axes of an array.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int $axis1 First axis
+     * @param int $axis2 Second axis
+     * @return NDArray
+     */
+    public static function swapaxes(NDArray|array|float|int $a, int $axis1, int $axis2): NDArray {}
+
+    /**
+     * Roll the specified axis backwards, until it lies in a given position.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int $axis
+     * @param int $start
+     * @return NDArray
+     */
+    public static function rollaxis(NDArray|array|float|int $a, int $axis, int $start = 0): NDArray {}
+
+    /**
+     * Move axes of an array to new positions.
+     *
+     * @param NDArray|array|float|int $a Target array
+     * @param int|array $source
+     * @param int|array $destination
+     * @return NDArray
+     */
+    public static function moveaxis(NDArray|array|float|int $a, int|array $source, int|array $destination): NDArray {}
+
+    /**
+     * Stack arrays in sequence vertically (row wise).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function vstack(array $arrays): NDArray {}
+
+    /**
+     * Stack arrays in sequence horizontally (column wise).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function hstack(array $arrays): NDArray {}
+
+    /**
+     * Stack arrays in sequence depth wise (along third axis).
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function dstack(array $arrays): NDArray {}
+
+    /**
+     * Join a sequence of arrays along an existing axis.
+     *
+     * @param NDArray[] $arrays
+     * @param int|null $axis
+     * @return NDArray
+     */
+    public static function concatenate(array $arrays, ?int $axis = 0): NDArray {}
+
+    /**
+     * Append values to the end of an array.
+     *
+     * @param NDArray|array $array
+     * @param NDArray|array $values
+     * @param int|null $axis
+     * @return NDArray
+     */
+    public static function append(NDArray|array $array, NDArray|array $values, ?int $axis): NDArray {}
+
+    /**
+     * Stack 1-D arrays as columns into a 2-D array.
+     *
+     * @param NDArray[] $arrays
+     * @return NDArray
+     */
+    public static function column_stack(array $arrays): NDArray {}
 
     /**
      * Creates a new NDArray from a PHP array.
@@ -858,7 +956,7 @@ final class NDArray {
      *
      * - **1** - L1-Norm
      * - **2** - L2-Norm
- *
+     *
      * @param NDArray|array $a
      * @param int $order (1) L1-Norm, (2) L2-Norm
      * @return float
@@ -985,5 +1083,84 @@ final class NDArray {
      */
     public static function arange(float|int $stop, float|int $start = 0, float|int $step = 1): NDArray {}
 
+    /**
+     * Remove axes of length one from $a.
+     *
+     * @param NDArray|array $a Input array
+     * @param int|int[] $axis Selects a subset of the entries of length one in the shape.
+     * If an axis is selected with shape entry greater than one, an error is raised.
+     * @return NDArray|float The input array, but with all or a subset of the dimensions of length 1 removed.
+     * This is always $a itself or $a view into $a. Note that if all axes are squeezed,
+     * the result is a 0d array and not a scalar.
+     */
+    public static function squeeze(NDArray|array $a, int|array $axis): NDArray|float {}
 
+    /**
+     * Extract a diagonal or construct a diagonal array.
+     *
+     * @param NDArray|array $a
+     * @return NDArray
+     */
+    public static function diag(NDArray|array $a): NDArray {}
+
+    /**
+     * Return a new array of given shape and type, filled with $fill_value.
+     *
+     * @param int[] $shape Shape of the new array
+     * @param float|int $fill_value Fill value
+     * @return NDArray
+     */
+    public static function full(array $shape, float|int $fill_value): NDArray {}
+
+    /**
+     * Fill the array with a scalar value.
+     *
+     * @param float|int $fill_value Fill value
+     * @return NDArray
+     */
+    public function fill(float|int $fill_value): NDArray {}
+
+    /**
+     * Returns the indices of the minimum values along an axis.
+     *
+     * @param NDArray|array $a Target array
+     * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @param bool $keepdims
+     * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along $axis removed.
+     */
+    public static function argmin(NDArray|array $a, ?int $axis, bool $keepdims = false): NDArray {}
+
+    /**
+     * Returns the indices of the maximum values along an axis.
+     *
+     * @param NDArray|array $a Target array
+     * @param int|null $axis If NULL, the index is into the flattened array, otherwise along the specified axis.
+     * @param bool $keepdims
+     * @return NDArray Array of indices into the array. It has the same shape as $a with the dimension along axis removed.
+     */
+    public static function argmax(NDArray|array $a, ?int $axis, bool $keepdims = false): NDArray {}
+
+    /**
+     * Array slicing, each argument represents a slice of a dimension.
+     *
+     * Empty arrays represent all values of a dimension, arrays with values are treated in
+     * the format [start, stop, step], when only one value exists, it is automatically
+     * assigned to stop, the default value of start is 0 and step is 1.
+     *
+     * When instead of an array, a number is passed, it is also assigned to the
+     * stop of that dimension.
+     *
+     * Ex: Get the first row of a matrix:
+     * $array->slice(0)
+     *
+     * Ex: Get the last column of a matrix:
+     * $array->slice([], -1);
+     *
+     * Ex: Get the first two columns of the first row:
+     * $array->slice(0, [0,2]);
+     *
+     * @param array ...$indices
+     * @return NDArray|float
+     */
+    public function slice(...$indices): NDArray|float {};
 }

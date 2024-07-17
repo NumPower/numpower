@@ -338,7 +338,7 @@ NDArrayDNN_Conv2D_Backward(NDArray *input, NDArray *y, NDArray *filters, int ker
         rtn_temp = NDArray_Empty(output_shape_dw, 4, NDArray_TYPE(input), NDArray_DEVICE(input));
         NDArray_FREEDATA(rtn_temp);
         rtn_temp->data = (void*)outputs[0];
-        rtn_dw = NDArray_Transpose(rtn_temp);
+        rtn_dw = NDArray_Transpose(rtn_temp, NULL);
         NDArray_FREE(rtn_temp);
 
         // Build dW
