@@ -1,5 +1,5 @@
 <?php
-    class ZerosInitializerBench
+    class FullInitializerBench
     {
         /**
         * @var string
@@ -19,8 +19,8 @@
         * })
         */
         public function benchShapeFunctions($params): void
-        {
-            \NDArray::zeros($this->shape);
+        {  
+            \NDArray::full($this->shape, 4);
         }
 
         public function provideShapes() {

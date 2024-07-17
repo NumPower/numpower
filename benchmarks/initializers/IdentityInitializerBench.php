@@ -2,28 +2,30 @@
     class IdentityInitializerBench
     {
         /**
-        * @Revs(1000)
-        * @Iterations(5)
+        * @var size
         */
-        public function benchIdentity_100()
+        private $size = 0;
+
+        public function setUp(array $params): void
         {
-            $ndarray = \NDArray::identity(100);
+            $this->size = $params['size'];
         }
         /**
         * @Revs(1000)
         * @Iterations(5)
+        * @ParamProviders({
+        *     "provideSizes",
+        * })
         */
-        public function benchIdentity_500()
+        public function benchIdentity($params)
         {
-            $ndarray = \NDArray::identity(500);
+            $ndarray = \NDArray::identity($this->size);
         }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchIdentity_1000()
-        {
-            $ndarray = \NDArray::identity(1000);
+
+        public function provideSizes() {
+            yield ['size' => 100];
+            yield ['size' => 500];
+            yield ['size' => 1000];
         }
     }
 ?>

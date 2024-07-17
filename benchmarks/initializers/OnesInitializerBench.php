@@ -2,52 +2,34 @@
     class OnesInitializerBench
     {
         /**
-        * @Revs(1000)
-        * @Iterations(5)
+        * @var string
         */
-        public function benchMatrix_10x100()
+        private $shape = [];
+
+        public function setUp(array $params): void
         {
-            $ndarray = \NDArray::ones([10, 100, 1]);
+            $this->shape = $params['shape'];
         }
+
         /**
         * @Revs(1000)
         * @Iterations(5)
+        * @ParamProviders({
+        *     "provideShapes"
+        * })
         */
-        public function benchMatrix_1000x500()
+        public function benchShapeFunctions($params): void
         {
-            $ndarray = \NDArray::ones([500, 1000, 1]);
+            \NDArray::ones($this->shape);
         }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchMatrix_10000x1000()
-        {
-            $ndarray = \NDArray::ones([1000, 10000, 1]);
-        }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchVector_100()
-        {
-            $ndarray = \NDArray::ones([100, 1, 1]);
-        }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchVector_500()
-        {
-            $ndarray = \NDArray::ones([500, 1, 1]);
-        }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchVector_1000()
-        {
-            $ndarray = \NDArray::ones([1000, 1, 1]);
+
+        public function provideShapes() {
+            yield ['shape' => [100, 1, 1]];
+            yield ['shape' => [500, 1, 1]];
+            yield ['shape' => [1000, 1, 1]];
+            yield ['shape' => [10, 100, 1]];
+            yield ['shape' => [500, 1000, 1]];
+            yield ['shape' => [1000, 10000, 1]];
         }
     }
 ?>

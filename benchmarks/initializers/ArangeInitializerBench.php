@@ -2,28 +2,29 @@
     class ArangeInitializerBench
     {
         /**
-        * @Revs(1000)
-        * @Iterations(5)
+        * @var size
         */
-        public function benchRange_100()
+        private $size = 1;
+
+        public function setUp(array $params): void
         {
-            $ndarray = \NDArray::arange(100, 0, 1);
+            $this->size = $params['size'];
         }
         /**
         * @Revs(1000)
         * @Iterations(5)
+        * @ParamProviders({
+        *     "provideSizes",
+        * })
         */
-        public function benchRange_500()
+        public function benchRange($params)
         {
-            $ndarray = \NDArray::arange(500, 0, 1);
+            $ndarray = \NDArray::arange($this->size, 0, 1);
         }
-        /**
-        * @Revs(1000)
-        * @Iterations(5)
-        */
-        public function benchRange_1000()
-        {
-            $ndarray = \NDArray::arange(1000, 0, 1);
+        public function provideSizes() {
+            yield ['size' => 100];
+            yield ['size' => 500];
+            yield ['size' => 1000];
         }
     }
 ?>
