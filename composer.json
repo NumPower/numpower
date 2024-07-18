@@ -1,0 +1,13 @@
+{
+    "name": "numpower/extension",
+    "require-dev": {
+        "phpbench/phpbench": "^1.0"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Numpower\\Benchmarks\\": "benchmarks/initializers"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
