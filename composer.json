@@ -1,5 +1,5 @@
 {
-    "name": "numpower/numpower",
+    "name": "numpower/extension",
     "require-dev": {
         "phpbench/phpbench": "^1.0"
     },
