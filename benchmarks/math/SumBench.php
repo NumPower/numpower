@@ -4,7 +4,7 @@
         /**
         * @var testArray
         */
-        private $testArray = [1, 2, 3];
+        private $testArray = [];
 
         public function setUp(array $params): void
         {
@@ -13,6 +13,8 @@
 
         /**
         * @BeforeMethods("setUp")
+        * @Revs(1000)
+        * @Iterations(5)
         * @ParamProviders({
         *     "provideArrays"
         * })

@@ -1,5 +1,5 @@
 <?php
-    class ProdBench
+    class NegativeBench
     {
         /**
         * @var testArray
@@ -19,9 +19,9 @@
         *     "provideArrays"
         * })
         */
-        public function benchProd($params): void
+        public function benchNegative($params): void
         {
-            \NDArray::prod($this->testArray);
+            \NDArray::negative($this->testArray);
         }
 
         public function provideArrays() {
