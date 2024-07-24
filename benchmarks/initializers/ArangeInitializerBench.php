@@ -10,14 +10,16 @@
         {
             $this->size = $params['size'];
         }
+        
         /**
+        * @BeforeMethods("setUp")
         * @Revs(1000)
         * @Iterations(5)
         * @ParamProviders({
         *     "provideSizes",
         * })
         */
-        public function benchRange($params)
+        public function benchARange($params)
         {
             $ndarray = \NDArray::arange($this->size, 0, 1);
         }
