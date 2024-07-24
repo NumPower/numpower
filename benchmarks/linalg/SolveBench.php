@@ -17,6 +17,8 @@
 
         /**
         * @BeforeMethods("setUp")
+        * @Revs(1000)
+        * @Iterations(5)
         * @ParamProviders({
         *     "provideArrays"
         * })
