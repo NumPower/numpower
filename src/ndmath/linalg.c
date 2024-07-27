@@ -1031,7 +1031,6 @@ NDArray_Solve(NDArray *a, NDArray *b) {
  * NDArray::cond
  *
  * @param a
- * @param b
  * @return
  */
 NDArray*

@@ -1,10 +1,12 @@
 <?php
-    class CholeskyBench
+    class InvBench
     {
         /**
         * @var testArray
         */
         private $testArray = [];
+
+        
 
         public function setUp(array $params): void
         {
@@ -19,9 +21,9 @@
         *     "provideArrays"
         * })
         */
-        public function benchCholesky($params): void
+        public function benchInv($params): void
         {
-            \NDArray::cholesky($this->testArray);
+            \NDArray::inv($this->testArray);
         }
 
         private function createArray($ndim) {
@@ -29,14 +31,12 @@
             for ($i=0; $i<$ndim; $i++) {
                 $symmetric[$i][$i] += $ndim * 10;
             }
-            $L = \NDArray::cholesky($symmetric);
-            $L_T = \NDArray::transpose($L);
-            $positive_definite_matrix = \NDArray::matmul($L, $L_T);
-            return $positive_definite_matrix;
+            return $symmetric;
         }
 
+
         public function provideArrays() {
-            $testSizes = array(10, 100, 1000, 10000);
+            $testSizes = array(10, 100, 1000);
             foreach ($testSizes as &$value) {
                 $currTestMatrix = $this->createArray($value);
                 yield ['testArray' => $currTestMatrix];
