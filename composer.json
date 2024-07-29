@@ -1,5 +1,6 @@
 {
     "name": "numpower/extension",
+    "license": "MIT",
     "require-dev": {
         "phpbench/phpbench": "^1.0"
     },
