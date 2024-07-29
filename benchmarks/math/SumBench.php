@@ -1,4 +1,7 @@
 <?php
+    /**
+     * @Groups({"sumsProductsDifferences"})
+     */
     class SumBench
     {
         /**

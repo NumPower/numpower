@@ -1,4 +1,7 @@
 <?php
+    /**
+     * @Groups({"initializers"})
+     */
     class ArangeInitializerBench
     {
         /**

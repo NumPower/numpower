@@ -1,4 +1,7 @@
 <?php
+    /**
+     * @Groups({"arithmetics"})
+     */
     class PowBench
     {
         /**

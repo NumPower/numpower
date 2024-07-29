@@ -1,4 +1,7 @@
 <?php
+    /**
+     * @Groups({"linearAlgebra"})
+     */
     class Matrix_Rank_Bench
     {
         /**
