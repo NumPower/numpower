@@ -32,6 +32,12 @@ int NDArrayIteratorPHP_ISDONE(NDArray* array);
 void NDArrayIteratorPHP_NEXT(NDArray* array);
 
 NDArrayIter* NDArray_NewElementWiseIter(NDArray *target);
+int NDArray_PrepareTwoRawArrayIter(int ndim, int const *shape,
+                               char *dataA, int const *stridesA,
+                               char *dataB, int const *stridesB,
+                               int *out_ndim, int *out_shape,
+                               char **out_dataA, int *out_stridesA,
+                               char **out_dataB, int *out_stridesB);
 
 #define _NDArray_ITER_NEXT1(it) do { \
         (it)->dataptr += (it)->strides[0]; \
@@ -86,4 +92,38 @@ NDArrayIter* NDArray_NewElementWiseIter(NDArray *target);
                 } \
         } \
 } while (0)
+
+
+#define NDARRAY_RAW_ITER_START(idim, ndim, coord, shape) \
+        memset((coord), 0, (ndim) * sizeof(coord[0]));   \
+        do {
+
+#define NDARRAY_RAW_ITER_ONE_NEXT(idim, ndim, coord, shape, data, strides) \
+            for ((idim) = 1; (idim) < (ndim); ++(idim)) { \
+                if (++(coord)[idim] == (shape)[idim]) { \
+                    (coord)[idim] = 0; \
+                    (data) -= ((shape)[idim] - 1) * (strides)[idim]; \
+                } \
+                else { \
+                    (data) += (strides)[idim]; \
+                    break; \
+                } \
+            } \
+        } while ((idim) < (ndim))
+
+#define NDARRAY_RAW_ITER_TWO_NEXT(idim, ndim, coord, shape, \
+                              dataA, stridesA, dataB, stridesB) \
+            for ((idim) = 1; (idim) < (ndim); ++(idim)) { \
+                if (++(coord)[idim] == (shape)[idim]) { \
+                    (coord)[idim] = 0; \
+                    (dataA) -= ((shape)[idim] - 1) * (stridesA)[idim]; \
+                    (dataB) -= ((shape)[idim] - 1) * (stridesB)[idim]; \
+                } \
+                else { \
+                    (dataA) += (stridesA)[idim]; \
+                    (dataB) += (stridesB)[idim]; \
+                    break; \
+                } \
+            } \
+        } while ((idim) < (ndim))
 #endif //PHPSCI_NDARRAY_ITERATORS_H
