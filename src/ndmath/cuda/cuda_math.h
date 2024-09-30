@@ -33,7 +33,6 @@ float cuda_min_float(float *a, int nelements);
 void cuda_pow_float(int nblocks, float *a, float *b, float *rtn, int nelements);
 int cuda_equal_float(int nblocks, float *a, float *b, int nelements);
 void cuda_sum_float(int nblocks, float *a, float *rtn, int nelements);
-void cuda_matmul_float(int nblocks, float *a, float *b, float *rtn, int widthA, int heightA, int widthB);
 void cuda_fill_float(float *a, float value, int n);
 int cuda_det_float(float *a, float *result, int n);
 void cuda_float_sin(int nblocks, float *d_array);
@@ -76,6 +75,8 @@ void cuda_lstsq_float(float* A, int m, int n, float* B, int k, float* X);
 NDArray* NDArrayMathGPU_ElementWise2F(NDArray* ndarray, ElementWiseFloatGPUOperation2F op, float val1, float val2);
 NDArray* NDArrayMathGPU_ElementWise1F(NDArray* ndarray, ElementWiseFloatGPUOperation1F op, float val1);
 void cuda_float_transpose(int tiledim, int blockrows, const float *d_in, float *d_out, int width, int height);
+void cuda_float_positive(int nblocks, float *d_array);
+void cuda_float_reciprocal(int nblocks, float *d_array);
 
 #ifdef __cplusplus
 }

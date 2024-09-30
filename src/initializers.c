@@ -448,7 +448,7 @@ NDArray_Zeros(int *shape, int ndim, const char *type, const int device) {
 }
 
 /**
- * Initialize NDArray with zeros
+ * Initialize NDArray with ones
  *
  * @param shape
  * @param ndim

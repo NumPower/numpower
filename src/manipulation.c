@@ -42,13 +42,10 @@ check_and_adjust_axis_msg(int *axis, int ndim) {
     if (axis == NULL) {
         return 0;
     }
-
-    /* Check that index is valid, taking into account negative indices */
     if (NDARRAY_UNLIKELY((*axis < -ndim) || (*axis >= ndim))) {
-        //zend_throw_error(NULL, "Axis is out of bounds for array dimension");
+        zend_throw_error(NULL, "Axis is out of bounds for array dimension");
         return -1;
     }
-
     /* adjust negative indices */
     if (*axis < 0) {
         *axis += ndim;
@@ -68,40 +65,63 @@ check_and_adjust_axis(int *axis, int ndim) {
  * @return
  */
 NDArray*
-NDArray_Transpose(NDArray *a) {
+NDArray_Transpose(NDArray *a, NDArray_Dims *permute) {
+    int *axes;
+    int i, n;
+    int permutation[NDARRAY_MAX_DIMS], reverse_permutation[NDARRAY_MAX_DIMS];
     NDArray *ret = NULL;
-    NDArray *contiguous_ret = NULL;
-    if (NDArray_NDIM(a) < 2) {
-        int ndim = NDArray_NDIM(a);
-        return NDArray_FromNDArray(a, 0, NULL, NULL, &ndim);
+
+    if (permute == NULL) {
+        n = NDArray_NDIM(a);
+        for (i = 0; i < n; i++) {
+            permutation[i] = n-1-i;
+        }
+    }
+    else {
+        n = permute->len;
+        axes = permute->ptr;
+        if (n != NDArray_NDIM(a)) {
+            zend_throw_error(NULL, "axes don't match array");
+            return NULL;
+        }
+        for (i = 0; i < n; i++) {
+            reverse_permutation[i] = -1;
+        }
+        for (i = 0; i < n; i++) {
+            int axis = axes[i];
+            if (check_and_adjust_axis(&axis, NDArray_NDIM(a)) < 0) {
+                zend_throw_error(NULL, "axes don't match array");
+                return NULL;
+            }
+            if (reverse_permutation[axis] != -1) {
+                zend_throw_error(NULL, "repeated axis in transpose");
+                return NULL;
+            }
+            reverse_permutation[axis] = i;
+            permutation[i] = axis;
+        }
     }
 
-    int *new_shape = emalloc(sizeof(int) * NDArray_NDIM(a));
-    int *new_strides = emalloc(sizeof(int) * NDArray_NDIM(a));
-
-    if (new_shape == NULL || new_strides == NULL) {
-        zend_throw_error(NULL, "failed to allocate memory for new_shape and new_strides.");
+    ret = NDArray_Copy(a, NDArray_DEVICE(a));
+    if (ret == NULL) {
         return NULL;
     }
 
-    reverse_copy(NDArray_SHAPE(a), new_shape, NDArray_NDIM(a));
-    reverse_copy(NDArray_STRIDES(a), new_strides, NDArray_NDIM(a));
+    /* fix the dimensions and strides of the return-array */
+    for (i = 0; i < n; i++) {
+        NDArray_SHAPE(ret)[i] = NDArray_SHAPE(a)[permutation[i]];
+        NDArray_STRIDES(ret)[i] = NDArray_STRIDES(a)[permutation[i]];
+    }
+    NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
 
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_CPU || (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU && NDArray_NDIM(a) != 2)) {
-        ret = NDArray_Copy(a, NDArray_DEVICE(a));
-        efree(ret->strides);
-        efree(ret->dimensions);
-        ret->strides = new_strides;
-        ret->dimensions = new_shape;
-        NDArray_ENABLEFLAGS(ret, NDARRAY_ARRAY_F_CONTIGUOUS);
+        NDArray * contiguous_ret;
         contiguous_ret = NDArray_ToContiguous(ret);
         NDArray_FREE(ret);
         return contiguous_ret;
     } else {
 #ifdef HAVE_CUBLAS
-        efree(new_strides);
-        ret = NDArray_Empty(new_shape, NDArray_NDIM(a), NDArray_TYPE(a), NDArray_DEVICE(a));
-        cuda_float_transpose(32, 8, NDArray_FDATA(a), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
+        cuda_float_transpose(32, 8, NDArray_FDATA(ret), NDArray_FDATA(ret), NDArray_SHAPE(a)[1], NDArray_SHAPE(a)[0]);
         return ret;
 #endif
     }
@@ -178,7 +198,7 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
 
     int new_strides[NDARRAY_MAX_DIMS];
     int new_shape[NDARRAY_MAX_DIMS];
-    int i, start = 0, stop = 0, step = 0, n_steps = 0, new_dim = 0, orig_dim = 0;
+    int i, start = 0, stop = 0, step = 0, n_steps = 0, new_dim = NDArray_NDIM(array), orig_dim = 0, new_dim_step = 0;
     char *data_ptr = NDArray_DATA(array);
 
     SliceObject sliceobj;
@@ -210,9 +230,14 @@ NDArray_Slice(NDArray* array, NDArray** indexes, int num_indices) {
             start = 0;
         }
         data_ptr += NDArray_STRIDES(array)[orig_dim] * start;
-        new_strides[new_dim] = NDArray_STRIDES(array)[orig_dim] * step;
-        new_shape[new_dim] = n_steps;
-        new_dim += 1;
+        new_strides[new_dim_step] = NDArray_STRIDES(array)[orig_dim] * step;
+        new_shape[new_dim_step] = n_steps;
+
+        if (NDArray_NUMELEMENTS(indexes[i]) == 1) {
+            new_dim--;
+            new_dim_step--;
+        }
+        new_dim_step += 1;
         orig_dim += 1;
         if (sliceobj.start != NULL) {
             efree(sliceobj.start);
@@ -267,46 +292,72 @@ failure:
 NDArray*
 NDArray_ConcatenateFlat(NDArray **arrays, int num_arrays)
 {
-    NDArray *rtn;
     int iarrays;
-    int *shape = emalloc(sizeof(int));
+    int shape = 0;
+    NDArray *sliding_view = NULL;
+    int narrays = num_arrays;
 
-    *shape = 0;
-    if (num_arrays <= 0) {
+    if (narrays <= 0) {
         zend_throw_error(NULL,
                         "need at least one array to concatenate");
         return NULL;
     }
 
-    for (iarrays = 0; iarrays < num_arrays; ++iarrays) {
-        *shape += NDArray_NUMELEMENTS(arrays[iarrays]);
-        if (*shape < 0) {
+    /*
+     * Figure out the final concatenated shape starting from the first
+     * array's shape.
+     */
+    for (iarrays = 0; iarrays < narrays; ++iarrays) {
+        shape += NDArray_NUMELEMENTS(arrays[iarrays]);
+        /* Check for overflow */
+        if (shape < 0) {
             zend_throw_error(NULL,
                             "total number of elements "
                             "too large to concatenate");
             return NULL;
         }
     }
-    rtn = NDArray_Zeros(shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
-    int device = NDArray_DEVICE(rtn);
-
-    int extra_bytes = 0;
-    char *tmp_data = NULL;
-    for (int i_array = 0; i_array < num_arrays; i_array++) {
-        extra_bytes = i_array * (NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[0]));
-        tmp_data = NDArray_DATA(rtn) + extra_bytes;
-
-        switch (NDArray_DEVICE(rtn)) {
-            case NDARRAY_DEVICE_GPU:
-#ifdef HAVE_CUBLAS
-
-#endif
-                break;
-            default:
-                memcpy(tmp_data, NDArray_DATA(arrays[i_array]), NDArray_NUMELEMENTS(arrays[i_array]) * NDArray_ELSIZE(arrays[i_array]));
-        }
+    int *ret_shape = emalloc(sizeof(int));
+    ret_shape[0] = shape;
+    NDArray *ret = NDArray_Zeros(ret_shape, 1, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
+    int stride = NDArray_ELSIZE(ret);
+    if (ret == NULL) {
+        return NULL;
     }
-    return rtn;
+
+    int *sliding_strides = emalloc(sizeof(int));
+    int *sliding_shape = emalloc(sizeof(int));
+    sliding_shape[0] = shape;
+    sliding_strides[0] = stride;
+    sliding_view = NDArray_FromNDArrayBase(ret, NDArray_DATA(ret), sliding_shape, sliding_strides, 1);
+    if (sliding_view == NULL) {
+        NDArray_FREE(ret);
+        return NULL;
+    }
+
+    for (iarrays = 0; iarrays < narrays; ++iarrays) {
+        sliding_view->dimensions[0] = NDArray_NUMELEMENTS(arrays[iarrays]);
+        if (NDArray_DEVICE(ret) == NDARRAY_DEVICE_CPU) {
+            memcpy(sliding_view->data, arrays[iarrays]->data,
+                   sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+        }
+#ifdef HAVE_CUBLAS
+        if (NDArray_DEVICE(ret) == NDARRAY_DEVICE_GPU) {
+            if (NDArray_NDIM(arrays[iarrays]) > 0) {
+                vmemcpyd2d(arrays[iarrays]->data, sliding_view->data,
+                           sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+            } else {
+                vmemcpyh2d(arrays[iarrays]->data, sliding_view->data,
+                           sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]));
+            }
+        }
+#endif
+        /* Slide to the start of the next window */
+        sliding_view->data += sliding_view->strides[0] * NDArray_NUMELEMENTS(arrays[iarrays]);
+    }
+
+    NDArray_FREE(sliding_view);
+    return ret;
 }
 
 /**
@@ -544,8 +595,9 @@ NDArray_AtLeast3D(NDArray *a) {
         int *new_shape = emalloc(sizeof(int) * 2);
         new_shape[0] = 1;
         if (NDArray_NDIM(a) < 2) {
-            new_shape[1] = 1;
-            new_shape[2] = NDArray_NUMELEMENTS(a);
+            new_shape[0] = 1;
+            new_shape[1] = NDArray_NUMELEMENTS(a);
+            new_shape[2] = 1;
         }
         if (NDArray_NDIM(a) == 2) {
             new_shape[1] = NDArray_SHAPE(a)[0];
@@ -721,4 +773,307 @@ NDArray_Squeeze(NDArray *a, NDArray *axis)
 
     NDArray_RemoveAxesInPlace(ret, unit_dims);
     return ret;
+}
+
+NDArray*
+NDArray_SwapAxes(NDArray *a, int axis1, int axis2)
+{
+    NDArray_Dims new_axes;
+    int dims[NDARRAY_MAX_DIMS];
+    int n = NDArray_NDIM(a);
+    int i;
+
+    if (check_and_adjust_axis_msg(&axis1, n) < 0) {
+        return NULL;
+    }
+    if (check_and_adjust_axis_msg(&axis2, n) < 0) {
+        return NULL;
+    }
+
+    for (i = 0; i < n; ++i) {
+        dims[i] = i;
+    }
+    dims[axis1] = axis2;
+    dims[axis2] = axis1;
+
+    new_axes.ptr = dims;
+    new_axes.len = n;
+
+    return NDArray_Transpose(a, &new_axes);
+}
+
+NDArray*
+NDArray_Rollaxis(NDArray *a, int axis, int start)
+{
+    NDArray *result;
+    int n = NDArray_NDIM(a);
+
+    if (check_and_adjust_axis_msg(&axis, n) < 0) {
+        return NULL;
+    }
+
+    if (start < 0) start += n;
+
+    if (!(0 <= start < n + 1)) {
+        zend_throw_error(NULL, "'%s' arg requires %d <= %s < %d, but %d was passed in", "start", -n, "start", n+1, start);
+        return NULL;
+    }
+
+    if (axis < start) start -= 1;
+
+    if (axis == start) {
+        return NDArray_Copy(a, NDArray_DEVICE(a));
+    }
+
+    int *axes = emalloc(sizeof(int) * n);
+    for (int i = 0; i < n; i++) {
+        axes[i] = i;
+    }
+
+    for (int i = n; i > start; i--) {
+        axes[i] = axes[i - 1];
+    }
+    axes[start] = axis;
+
+    NDArray_Dims dims;
+    dims.len = n;
+    dims.ptr = axes;
+
+    result = NDArray_Transpose(a, &dims);
+    efree(axes);
+    return result;
+}
+
+
+NDArray*
+NDArray_Moveaxis(NDArray *a, int* src, int* dest, int n_source, int n_dest)
+{
+    NDArray *result;
+    int order[NDARRAY_MAX_DIMS];
+    int n = NDArray_NDIM(a);
+
+    if (check_and_adjust_axis_msg(src, n) < 0) {
+        return NULL;
+    }
+    if (check_and_adjust_axis_msg(dest, n) < 0) {
+        return NULL;
+    }
+
+    if (n_source != n_dest) {
+        zend_throw_error(NULL, "`source` and `destination` must have the same number of elements.");
+        return NULL;
+    }
+
+    int found;
+    int count_order = 0;
+    for (int i = 0; i < n; i++) {
+        found = 0;
+        for (int j = 0; j < n_source; j++) {
+            if (src[j] == i) found = 1;
+        }
+        if (!found) {
+            order[count_order] = i;
+            count_order++;
+        }
+    }
+
+    for (int i = 0; i < n_source; i++) {
+        if (dest[i] < 0) {
+            dest[i] = dest[i] + (count_order + 1);
+        }
+        order[dest[i]] = src[i];
+        count_order++;
+    }
+
+    NDArray_Dims order_dims;
+    order_dims.len = count_order;
+    order_dims.ptr = order;
+    return NDArray_Transpose(a, &order_dims);
+}
+
+NDArray*
+NDArray_Concatenate(NDArray **arrays, int narrays, int axis)
+{
+    int iarrays, idim, ndim;
+    int shape[NDARRAY_MAX_DIMS];
+    NDArray *sliding_view = NULL;
+
+    if (narrays <= 0) {
+        zend_throw_error(NULL, "need at least one array to concatenate");
+        return NULL;
+    }
+
+    ndim = NDArray_NDIM(arrays[0]);
+
+    if (ndim == 0) {
+        zend_throw_error(NULL, "zero-dimensional arrays cannot be concatenated");
+        return NULL;
+    }
+
+    if (check_and_adjust_axis_msg(&axis, ndim) < 0) {
+        return NULL;
+    }
+
+    /*
+     * Figure out the final concatenated shape starting from the first
+     * array's shape.
+     */
+    memcpy(shape, NDArray_SHAPE(arrays[0]), ndim * sizeof(shape[0]));
+    for (iarrays = 1; iarrays < narrays; ++iarrays) {
+        int *arr_shape;
+        if (NDArray_NDIM(arrays[iarrays]) != ndim) {
+            zend_throw_error(NULL,
+                         "all the input arrays must have same number of "
+                         "dimensions, but the array at index %d has %d "
+                         "dimension(s) and the array at index %d has %d "
+                         "dimension(s)",
+                         0, ndim, iarrays, NDArray_NDIM(arrays[iarrays]));
+            return NULL;
+        }
+        arr_shape = NDArray_SHAPE(arrays[iarrays]);
+
+        for (idim = 0; idim < ndim; ++idim) {
+            /* Build up the size of the concatenation axis */
+            if (idim == axis) {
+                shape[idim] += arr_shape[idim];
+            }
+            /* Validate that the rest of the dimensions match */
+            else if (shape[idim] != arr_shape[idim]) {
+                zend_throw_error(NULL,
+                             "all the input array dimensions except for the "
+                             "concatenation axis must match exactly, but "
+                             "along dimension %d, the array at index %d has "
+                             "size %d and the array at index %d has size %d",
+                             idim, 0, shape[idim], iarrays, arr_shape[idim]);
+                return NULL;
+            }
+        }
+    }
+    int s, strides[NDARRAY_MAX_DIMS];
+    int strideperm[NDARRAY_MAX_DIMS];
+
+    NDArrayDescriptor *descr = NDArray_DESCRIPTOR(arrays[0]);
+    if (descr == NULL) {
+        return NULL;
+    }
+
+    /*
+     * Figure out the permutation to apply to the strides to match
+     * the memory layout of the input arrays, using ambiguity
+     * resolution rules matching that of the NpyIter.
+     */
+    NDArray_CreateMultiSortedStridePerm(narrays, arrays, ndim, strideperm);
+    s = descr->elsize;
+    for (idim = ndim-1; idim >= 0; --idim) {
+        int iperm = strideperm[idim];
+        strides[iperm] = s;
+        s *= shape[iperm];
+    }
+
+    int *ret_shape = emalloc(sizeof(int) * ndim);
+    memcpy(ret_shape, shape, sizeof(int) * ndim);
+    int *sliding_shape = emalloc(sizeof(int) * ndim);
+    memcpy(sliding_shape, shape, sizeof(int) * ndim);
+    int *sliding_strides = emalloc(sizeof(int) * ndim);
+    /* Allocate the array for the result. This steals the 'dtype' reference. */
+    NDArray *ret = NDArray_Zeros(ret_shape, ndim, NDArray_TYPE(arrays[0]), NDArray_DEVICE(arrays[0]));
+    memcpy(sliding_strides, NDArray_STRIDES(ret), sizeof(int) * ndim);
+    sliding_view = NDArray_FromNDArrayBase(ret, NDArray_DATA(ret), sliding_shape, sliding_strides ,ndim);
+    for (iarrays = 0; iarrays < narrays; ++iarrays) {
+        /* Set the dimension to match the input array's */
+        sliding_view->dimensions[axis] = NDArray_SHAPE(arrays[iarrays])[axis];
+        /* Copy the data for this array */
+        if (NDArray_AssignArray(sliding_view, arrays[iarrays]) < 0) {
+            NDArray_FREE(sliding_view);
+            return NULL;
+        }
+        /* Slide to the start of the next window */
+        sliding_view->data += sliding_view->dimensions[axis] * sliding_view->strides[axis];
+    }
+    NDArray_FREE(sliding_view);
+    return ret;
+}
+
+
+NDArray*
+NDArray_VSTACK(NDArray **arrays, int narrays)
+{
+    NDArray *result = NULL;
+    NDArray **parsed_arrays = emalloc(sizeof(NDArray*) * narrays);
+    for (int i = 0; i < narrays; i++) {
+        parsed_arrays[i] = NDArray_AtLeast2D(arrays[i]);
+    }
+    result = NDArray_Concatenate(parsed_arrays, narrays, 0);
+    for (int i = 0; i < narrays; i++) {
+        NDArray_FREE(parsed_arrays[i]);
+    }
+    efree(parsed_arrays);
+    return result;
+}
+
+NDArray*
+NDArray_HSTACK(NDArray **arrays, int narrays)
+{
+    NDArray **parsed_arrays = emalloc(sizeof(NDArray*) * narrays);
+    for (int i = 0; i < narrays; i++) {
+        parsed_arrays[i] = NDArray_AtLeast1D(arrays[i]);
+    }
+
+    NDArray * result = NULL;
+    if (arrays && parsed_arrays[0]->ndim == 1) {
+        result = NDArray_Concatenate(parsed_arrays, narrays, 0);
+    } else {
+        result = NDArray_Concatenate(parsed_arrays, narrays, 1);
+    }
+
+    for (int i = 0; i < narrays; i++) {
+        NDArray_FREE(parsed_arrays[i]);
+    }
+    efree(parsed_arrays);
+    return result;
+}
+
+NDArray*
+NDArray_DSTACK(NDArray **arrays, int narrays)
+{
+    NDArray **parsed_arrays = emalloc(sizeof(NDArray*) * narrays);
+    for (int i = 0; i < narrays; i++) {
+        parsed_arrays[i] = NDArray_AtLeast3D(arrays[i]);
+    }
+
+    NDArray * result = NULL;
+    result = NDArray_Concatenate(parsed_arrays, narrays, 2);
+
+    for (int i = 0; i < narrays; i++) {
+        NDArray_FREE(parsed_arrays[i]);
+    }
+    efree(parsed_arrays);
+    return result;
+}
+
+NDArray*
+NDArray_ColumnStack(NDArray **arrays, int narrays)
+{
+    NDArray *tmp;
+    NDArray **parsed_arrays = emalloc(sizeof(NDArray*) * narrays);
+    for (int i = 0; i < narrays; i++) {
+        tmp = NDArray_AtLeast2D(arrays[i]);
+        parsed_arrays[i] = NDArray_Transpose(tmp, NULL);
+        NDArray_FREE(tmp);
+    }
+
+    NDArray * result = NULL;
+    result = NDArray_Concatenate(parsed_arrays, narrays, 1);
+
+    for (int i = 0; i < narrays; i++) {
+        NDArray_FREE(parsed_arrays[i]);
+    }
+    efree(parsed_arrays);
+    return result;
+}
+
+NDArray*
+NDArray_Flip(NDArray *a, NDArray *axis)
+{
+
 }

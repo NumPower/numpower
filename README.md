@@ -33,7 +33,23 @@ NumPower aims to manage memory more efficiently than a matrix in PHP arrays
 - **Optional (GPU)**: CUBLAS, CUDA Build Toolkit and cuDNN
 - **Optional (Image)**: PHP-GD
 
-## Composer Install
+## Compiling
+
+``` 
+$ phpize
+$ ./configure
+$ make install
+```
+
+## Compiling with GPU (CUDA) support
+
+``` 
+$ phpize
+$ ./configure --with-cuda
+$ make install-cuda
+```
+
+## Composer install
 The composer package provides a stubs file to facilitate autocomplete in the IDE. To install, simply run the command below in your environment with composer installed:
 
 ```bash
@@ -42,7 +58,7 @@ $ composer require numpower/numpower
 
 The composer package will follow the same versioning as the extension.
 
-## GPU Support
+## GPU support
 
 If you have an NVIDIA graphics card with CUDA support, you can use your graphics card 
 to perform operations. To do this, just copy your array to the GPU memory.
