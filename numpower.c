@@ -4750,6 +4750,60 @@ PHP_METHOD(NDArray, prod) {
     RETURN_NDARRAY(rtn, return_value);
 }
 
+/**
+ * NDArray::cumProd
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_cumProd, 0, 0, 1)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, cumProd) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis = -1;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+    Z_PARAM_ZVAL(a)
+    Z_PARAM_OPTIONAL
+    Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    axis_i = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_Cum_Prod(nda, &axis_i);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
+/**
+ * NDArray::cumSum
+ */
+ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_cumSum, 0, 0, 1)
+ZEND_ARG_INFO(0, a)
+ZEND_ARG_INFO(0, axis)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NDArray, cumSum) {
+    NDArray *rtn = NULL;
+    zval *a;
+    long axis = -1;
+    int axis_i;
+    ZEND_PARSE_PARAMETERS_START(1, 2)
+    Z_PARAM_ZVAL(a)
+    Z_PARAM_OPTIONAL
+    Z_PARAM_LONG(axis)
+    ZEND_PARSE_PARAMETERS_END();
+    axis_i = (int)axis;
+    NDArray *nda = ZVAL_TO_NDARRAY(a);
+    if (nda == NULL) {
+        return;
+    }
+    rtn = NDArray_Cum_Sum(nda, &axis_i);
+    CHECK_INPUT_AND_FREE(a, nda);
+    RETURN_NDARRAY(rtn, return_value);
+}
+
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_array, 0)
 ZEND_ARG_INFO(0, a)
 ZEND_END_ARG_INFO()
@@ -5190,6 +5244,9 @@ static const zend_function_entry class_NDArray_methods[] = {
     ZEND_ME(NDArray, sum, arginfo_ndarray_sum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, prod, arginfo_ndarray_prod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NDArray, mod, arginfo_ndarray_mod, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, cumProd, arginfo_ndarray_cumProd, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NDArray, cumSum, arginfo_ndarray_cumSum, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+
 
     ZEND_ME(NDArray, size, arginfo_size, ZEND_ACC_PUBLIC)
     ZEND_ME(NDArray, count, arginfo_count, ZEND_ACC_PUBLIC)

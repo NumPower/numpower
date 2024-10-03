@@ -263,3 +263,11 @@ float float_arctan2(float x, float y) {
 float float_reciprocal(float val) {
     return 1 / val;
 }
+
+float float_sum(float val1, float val2) {
+    return val1 + val2;
+}
+
+float float_product(float val1, float val2) {
+    return val1 * val2;
+}

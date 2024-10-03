@@ -945,3 +945,105 @@ NDArray_Abs(NDArray *nda) {
     }
     return rtn;
 }
+
+NDArray*
+NDArray_Cum_Flat(NDArray *a, ElementWiseFloatOperation1F op) {
+    NDArray *rtn = NDArray_Copy(a, NDArray_DEVICE(a));
+    int num_elements = NDArray_NUMELEMENTS(rtn);
+    int *flat_shape = emalloc(sizeof(int) * 2);
+    flat_shape[0] = 1;
+    flat_shape[1] = num_elements;
+    rtn = NDArray_Reshape(rtn, flat_shape, 2);
+    for (int i = 1; i < num_elements; i++) {
+        NDArray_FDATA(rtn)[i] = op(NDArray_FDATA(rtn)[i], NDArray_FDATA(rtn)[i - 1]);
+    }
+    return rtn;
+}
+
+NDArray*
+NDArray_Cum_Axis(NDArray *a, int *axis, NDArray *(*operation)(NDArray *, NDArray *)) {
+    if (*axis == 1) {
+        a = NDArray_Transpose(a, NULL);
+    }
+    
+    int rows = NDArray_SHAPE(a)[0];
+    int cols = NDArray_SHAPE(a)[1];
+    // setup indices for slicing
+    int *indices_shape = emalloc(sizeof(int) * 2);
+    indices_shape[0] = 2;
+    indices_shape[1] = 1;
+    NDArray** indices_axis = emalloc(sizeof(NDArray*) * 2);
+    indices_axis[0] =  NDArray_Zeros(indices_shape, 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    indices_axis[1] =  NDArray_Zeros(indices_shape, 1, NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
+    NDArray **row_array = emalloc(sizeof(NDArray*) * rows);
+    // Set Column
+    NDArray_FDATA(indices_axis[1])[0] = 0;
+    NDArray_FDATA(indices_axis[1])[1] = cols;
+    for (int i = 0; i < rows; i++) {
+        // Set Row
+        NDArray_FDATA(indices_axis[0])[0] = i;
+        NDArray_FDATA(indices_axis[0])[1] = i + 1;
+        if (i == 0) {
+            row_array[i] = NDArray_Slice(a, indices_axis, 2);
+        } else {
+            NDArray *curr_row = NDArray_Slice(a, indices_axis, 2);
+            row_array[i] = operation(row_array[i-1], curr_row);
+            NDArray_FREE(curr_row);
+        }
+    }
+    efree(indices_axis[0]);
+    efree(indices_axis[1]);
+    efree(indices_axis);
+    efree(indices_shape);
+    NDArray *combined = NDArray_Concatenate(row_array, rows, 0);
+    for (int i = 0; i < rows; i++) {
+        NDArray_FREE(row_array[i]);
+    }
+    efree(row_array);
+    if (*axis == 1) {
+        combined = NDArray_Transpose(combined, NULL);
+    }
+    return combined;
+}
+
+/**
+ * NDArray::cumprod
+ *
+ * @param a
+ * @param axis
+ * @return
+ */
+NDArray*
+NDArray_Cum_Prod(NDArray *a, int *axis) {
+    NDArray *rtn = NULL;
+    
+    if (*axis == -1) {
+        rtn = NDArray_Cum_Flat(a, float_product);
+    } else {
+        rtn = NDArray_Cum_Axis(a, axis, NDArray_Multiply_Float);
+    }
+
+    return rtn;
+}
+
+/**
+ * NDArray::cumsum
+ *
+ * @param a
+ * @param axis
+ * @return
+ */
+NDArray*
+NDArray_Cum_Sum(NDArray *a, int *axis) {
+    NDArray *rtn = NULL;
+
+    if (*axis == -1) {
+        rtn = NDArray_Cum_Flat(a, float_sum);
+    } else {
+        rtn = NDArray_Cum_Axis(a, axis, NDArray_Add_Float);
+    }
+
+    return rtn;
+}
+
+

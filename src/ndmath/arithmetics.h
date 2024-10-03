@@ -15,4 +15,6 @@ float NDArray_Mean_Float(NDArray* a);
 float NDArray_Mean_Float_Axis(NDArray* a, NDArray *b);
 NDArray* NDArray_Abs(NDArray *nda);
 float NDArray_Median_Float(NDArray* a);
+NDArray* NDArray_Cum_Prod(NDArray* a, int *axis);
+NDArray* NDArray_Cum_Sum(NDArray* a, int *axis);
 #endif //PHPSCI_NDARRAY_ARITHMETICS_H
