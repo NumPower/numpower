@@ -3,6 +3,8 @@
 #include "string.h"
 #include "../initializers.h"
 #include "arithmetics.h"
+#include "../manipulation.h"
+#include "linalg.h"
 
 // Comparison function for sorting
 int compare_quantile(const void* a, const void* b) {
@@ -150,5 +152,69 @@ NDArray_Average(NDArray *a, NDArray *weights) {
         rtn = NDArray_CreateFromFloatScalar(s_aweights / s_weights);
         NDArray_FREE(m_weights);
     }
+    return rtn;
+}
+
+/**
+ * NDArray::cov
+ *
+ * @param a
+ * @return
+ */
+NDArray *NDArray_cov(NDArray *a, bool rowvar)
+{
+    if (!rowvar) {
+        a = NDArray_Transpose(a, NULL);
+    }
+    
+    if (a == NULL || NDArray_NUMELEMENTS(a) == 0)
+    {
+        zend_throw_error(NULL, "Input cannot be null or empty.");
+        return NULL;
+    }
+    if (NDArray_NDIM(a) != 2 || NDArray_SHAPE(a)[1] == 1)
+    {
+        zend_throw_error(NULL, "Input must be a 2D NDArray.");
+        return NULL;
+    }
+
+    int cols = NDArray_SHAPE(a)[0];
+    int rows = NDArray_SHAPE(a)[1];
+
+    int *indices_shape = emalloc(sizeof(int) * 2);
+    indices_shape[0] = 2;
+    indices_shape[1] = 1;
+
+    NDArray** indices_axis = emalloc(sizeof(NDArray*) * 2);
+    indices_axis[0] =  NDArray_Zeros(indices_shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+    indices_axis[1] =  NDArray_Zeros(indices_shape, 1, NDArray_TYPE(a), NDArray_DEVICE(a));
+
+    NDArray_FDATA(indices_axis[1])[0] = 0;
+    NDArray_FDATA(indices_axis[1])[1] = rows;
+
+    NDArray **centered_vectors = emalloc(sizeof(NDArray *) * cols);
+    for (int i = 0; i < cols; i++)
+    {
+        NDArray_FDATA(indices_axis[0])[0] = i;
+        NDArray_FDATA(indices_axis[0])[1] = i + 1;
+        NDArray *col_vector = NDArray_Slice(a, indices_axis, 2);
+        NDArray *centered = NDArray_Subtract_Float(col_vector, NDArray_CreateFromFloatScalar(NDArray_Sum_Float(col_vector) / NDArray_NUMELEMENTS(col_vector)));
+        NDArray_FREE(col_vector);
+        centered_vectors[i] = centered;
+    }
+    efree(indices_shape);
+    efree(indices_axis[0]);
+    efree(indices_axis[1]);
+    efree(indices_axis);
+    NDArray *centered_a = NDArray_Reshape(NDArray_ConcatenateFlat(centered_vectors, cols), NDArray_SHAPE(a), NDArray_NDIM(a));
+    for (int i = 0; i < cols; i++)
+    {
+        NDArray_FREE(centered_vectors[i]);
+    }
+    efree(centered_vectors);
+    NDArray *multiplied = NDArray_Dot(centered_a, NDArray_Transpose(centered_a, NULL));
+    NDArray_FREE(centered_a);
+    NDArray *rtn = NDArray_Divide_Float(multiplied, NDArray_CreateFromFloatScalar((float)rows - 1));
+    NDArray_FREE(multiplied);
     return rtn;
 }
