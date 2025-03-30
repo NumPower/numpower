@@ -26,12 +26,17 @@
 #include "src/ndmath/signal.h"
 #include "src/ndmath/calculation.h"
 #include "src/dnn.h"
+#include "src/sanitizers.h"
 
 #ifdef HAVE_CUBLAS
 #include <cuda_runtime.h>
 #include <cublas_v2.h>
 #include "src/ndmath/cuda/cuda_math.h"
 #include "src/gpu_alloc.h"
+#endif
+
+#ifdef ZTS
+#include "TSRM.h"
 #endif
 
 #ifdef HAVE_GD
@@ -49,42 +54,52 @@ static zend_object_handlers ndarray_object_handlers;
 static zend_object_handlers numpower_object_handlers;
 static zend_object_handlers arithmetic_object_handlers;
 
-int *
-zval_axis_argument(zval *arg, char *name, int *outsize)
-{
-    int *result;
-    zend_string *key;
-    zend_ulong idx;
-    zval *val;
-    *outsize = 0;
-    if (Z_TYPE_P(arg) != IS_LONG && Z_TYPE_P(arg) != IS_ARRAY)
-    {
-        zend_throw_error(NULL, "`%s` argument must be either integer or an array of integers.", name);
-        return NULL;
-    }
-    if (Z_TYPE_P(arg) == IS_LONG) {
-        result = emalloc(sizeof(int));
-        *result = zval_get_long(arg);
-        *outsize = 1;
-        return result;
-    }
-
-    result = emalloc(sizeof(int) * zend_array_count(Z_ARRVAL_P(arg)));
-    ZEND_HASH_FOREACH_KEY_VAL(Z_ARRVAL_P(arg), idx, key, val) {
-        if (Z_TYPE_P(val) != IS_LONG) {
-            efree(result);
-            zend_throw_error(NULL, "`%s` argument must be either integer or an array of integers.", name);
-            return NULL;
-        }
-        result[idx] = zval_get_long(val);
-        (*outsize)++;
-    } ZEND_HASH_FOREACH_END();
-    return result;
-}
-
 int
 get_object_uuid(zval* obj) {
     return Z_LVAL_P(OBJ_PROP_NUM(Z_OBJ_P(obj), 0));
+}
+
+/**
+ * @brief Initializes a new PHP object representing an NDArray or returns a scalar value.
+ *
+ * This function handles conversion of an internal NDArray structure into either:
+ * - A PHP object of type `phpsci_ce_NDArray` for multi-dimensional arrays
+ * - A direct PHP scalar value for 0-dimensional arrays (single values)
+ *
+ * @param[in]  array         Pointer to the internal NDArray structure to convert. If NULL,
+ *                           throws an exception and returns immediately.
+ * @param[out] return_value  zval that will be initialized either as:
+ *                            - An NDArray object (for dim > 0)
+ *                            - A double scalar value (for 0-dim arrays)
+ *
+ * @note For NDArrays (dim > 0):
+ *       1. Adds the array to the global buffer for tracking
+ *       2. Creates a new PHP object of class `phpsci_ce_NDArray`
+ *       3. Stores the array's UUID as object property #0
+ *
+ * @note For 0-dimensional arrays:
+ *       1. Extracts the scalar value as double
+ *       2. Frees the NDArray memory
+ *       3. Returns the scalar directly
+ *
+ * @warning If array is NULL, throws an exception via RETURN_THROWS()
+ * @warning The NDArray memory is managed differently based on dimensionality:
+ *          - For dim > 0: Memory is tracked via the global buffer
+ *          - For dim 0: Memory is freed immediately
+ */
+void ndarray_init_new_object(NDArray* array, zval* return_value) {
+    if (array == NULL) {
+        RETURN_THROWS();
+        return;
+    }
+    if (NDArray_NDIM(array) > 0) {
+        add_to_buffer(array);
+        object_init_ex(return_value, phpsci_ce_NDArray);
+        ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
+    } else {
+        ZVAL_DOUBLE(return_value, NDArray_GetFloatScalar(array));
+        NDArray_FREE(array);
+    }
 }
 
 NDArray* ZVAL_TO_NDARRAY(zval* obj) {
@@ -133,21 +148,6 @@ void CHECK_INPUT_AND_FREE(zval *a, NDArray *nda) {
         }
     }
 #endif
-}
-
-void RETURN_NDARRAY(NDArray* array, zval* return_value) {
-    if (array == NULL) {
-        RETURN_THROWS();
-        return;
-    }
-    if (NDArray_NDIM(array) > 0) {
-        add_to_buffer(array);
-        object_init_ex(return_value, phpsci_ce_NDArray);
-        ZVAL_LONG(OBJ_PROP_NUM(Z_OBJ_P(return_value), 0), NDArray_UUID(array));
-    } else {
-        ZVAL_DOUBLE(return_value, NDArray_GetFloatScalar(array));
-        NDArray_FREE(array);
-    }
 }
 
 NDArray**
@@ -227,7 +227,7 @@ static int ndarray_do_operation_ex(zend_uchar opcode, zval *result, zval *op1, z
     }
     CHECK_INPUT_AND_FREE(op1, nda);
     CHECK_INPUT_AND_FREE(op2, ndb);
-    RETURN_NDARRAY(rtn, result);
+    ndarray_init_new_object(rtn, result);
     if (rtn != NULL) {
         return SUCCESS;
     }
@@ -368,8 +368,8 @@ void RETURN_2NDARRAY(NDArray* array1, NDArray* array2, zval* return_value) {
     add_to_buffer(array1);
     add_to_buffer(array2);
 
-    RETURN_NDARRAY(array1, &a);
-    RETURN_NDARRAY(array2, &b);
+    ndarray_init_new_object(array1, &a);
+    ndarray_init_new_object(array2, &b);
     array_init(return_value);
     add_next_index_object(return_value, Z_OBJ(a));
     add_next_index_object(return_value, Z_OBJ(b));
@@ -544,7 +544,7 @@ PHP_METHOD(NDArray, gpu) {
         return;
     }
     rtn = NDArray_ToGPU(array);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 #else
     zend_throw_error(NULL, "No GPU device available or CUDA not enabled");
     RETURN_NULL();
@@ -563,7 +563,7 @@ PHP_METHOD(NDArray, cpu) {
         return;
     }
     rtn = NDArray_ToCPU(array);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_is_gpu, 0)
@@ -613,7 +613,7 @@ PHP_METHOD(NumPower, load) {
         Z_PARAM_STR(name)
     ZEND_PARSE_PARAMETERS_END();
     NDArray *rtn = NDArray_Load(name->val);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_save, 0)
@@ -690,7 +690,7 @@ PHP_METHOD(NDArray, reshape) {
         NDArray_FREE(shape);
     }
     CHECK_INPUT_AND_FREE(a, target);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 PHP_FUNCTION(print_r_) {
@@ -752,7 +752,7 @@ PHP_METHOD(NumPower, zeros) {
     }
     rtn = NDArray_Zeros(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32, NDARRAY_DEVICE_CPU);
     NDArray_FREE(nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -784,7 +784,7 @@ PHP_METHOD(NumPower, equal) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -816,7 +816,7 @@ PHP_METHOD(NumPower, greater) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -848,7 +848,7 @@ PHP_METHOD(NumPower, greaterEqual) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -880,7 +880,7 @@ PHP_METHOD(NumPower, less) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -912,7 +912,7 @@ PHP_METHOD(NumPower, lessEqual) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -944,7 +944,7 @@ PHP_METHOD(NumPower, notEqual) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -964,7 +964,7 @@ PHP_METHOD(NumPower, identity) {
     Z_PARAM_LONG(size)
     ZEND_PARSE_PARAMETERS_END();
     rtn = NDArray_Identity((int)size);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1008,7 +1008,7 @@ PHP_METHOD(NumPower, normal) {
     rtn = NDArray_Normal(loc, scale, shape, NDArray_NUMELEMENTS(nda), accelerator_i);
     NDArray_FREE(nda);
     
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1054,7 +1054,7 @@ PHP_METHOD(NumPower, truncatedNormal) {
     rtn = NDArray_TruncatedNormal(loc, scale, shape, NDArray_NUMELEMENTS(nda), accelerator_i);
     NDArray_FREE(nda);
 
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1086,7 +1086,7 @@ PHP_METHOD(NumPower, randomBinomial) {
     }
     rtn = NDArray_Binomial(ishape, NDArray_NUMELEMENTS(nda), (int)n, (float)p);
     NDArray_FREE(nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1134,7 +1134,7 @@ PHP_METHOD(NumPower, standardNormal) {
     rtn = NDArray_StandardNormal(NDArray_ToIntVector(nda), NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
 
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1186,7 +1186,7 @@ PHP_METHOD(NumPower, poisson) {
     rtn = NDArray_Poisson(lam, NDArray_ToIntVector(nda), NDArray_NUMELEMENTS(nda));
 
     NDArray_FREE(nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1221,7 +1221,7 @@ PHP_METHOD(NumPower, uniform) {
     }
     rtn = NDArray_Uniform(low, high, shape, NDArray_NUMELEMENTS(nda));
     NDArray_FREE(nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1245,7 +1245,7 @@ PHP_METHOD(NumPower, diag) {
     if (Z_TYPE_P(target) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1269,7 +1269,7 @@ PHP_METHOD(NumPower, diagonal) {
     if (Z_TYPE_P(target) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1321,7 +1321,7 @@ PHP_METHOD(NumPower, full) {
 
     efree(new_shape);
     NDArray_FREE(nd_shape);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1348,7 +1348,7 @@ PHP_METHOD(NumPower, ones) {
     shape = NDArray_ToIntVector(nda);
     rtn = NDArray_Ones(shape, NDArray_NUMELEMENTS(nda), NDARRAY_TYPE_FLOAT32);
     NDArray_FREE(nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1379,7 +1379,7 @@ PHP_METHOD(NumPower, arange) {
         step  = 1.0f;
     }
     rtn = NDArray_Arange(start, stop, step);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1420,7 +1420,7 @@ PHP_METHOD(NumPower, all) {
         zend_throw_error(NULL, "Not implemented");
         return;
         rtn = single_reduce(nda, &axis_i, &NDArray_All);
-        RETURN_NDARRAY(rtn, return_value);
+        ndarray_init_new_object(rtn, return_value);
     }
 }
 
@@ -1517,7 +1517,7 @@ PHP_METHOD(NumPower, transpose) {
     CHECK_INPUT_AND_FREE(array, nda);
     if (ZEND_NUM_ARGS() == 2) efree(dims);
     if (rtn == NULL) return;
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1553,7 +1553,7 @@ PHP_METHOD(NumPower, copy) {
         return;
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1578,7 +1578,7 @@ PHP_METHOD(NumPower, atleast1d) {
     NDArray *output = NDArray_AtLeast1D(nda);
 
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(output, return_value);
+    ndarray_init_new_object(output, return_value);
 }
 
 /**
@@ -1603,7 +1603,7 @@ PHP_METHOD(NumPower, atleast2d) {
     NDArray *output = NDArray_AtLeast2D(nda);
 
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(output, return_value);
+    ndarray_init_new_object(output, return_value);
 }
 
 /**
@@ -1629,7 +1629,7 @@ PHP_METHOD(NumPower, atleast3d) {
     NDArray *output = NDArray_AtLeast3D(nda);
 
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(output, return_value);
+    ndarray_init_new_object(output, return_value);
 }
 
 /**
@@ -1674,7 +1674,7 @@ PHP_METHOD(NumPower, flatten) {
     }
     rtn = NDArray_Flatten(nda);
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1702,7 +1702,7 @@ PHP_METHOD(NumPower, abs) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1737,7 +1737,7 @@ PHP_METHOD(NumPower, sin) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1772,7 +1772,7 @@ PHP_METHOD(NumPower, cos) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1807,7 +1807,7 @@ PHP_METHOD(NumPower, tan) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1842,7 +1842,7 @@ PHP_METHOD(NumPower, arcsin) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1877,7 +1877,7 @@ PHP_METHOD(NumPower, rsqrt) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1912,7 +1912,7 @@ PHP_METHOD(NumPower, arccos) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1947,7 +1947,7 @@ PHP_METHOD(NumPower, arctan) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -1984,7 +1984,7 @@ PHP_METHOD(NumPower, arctan2) {
     }
     CHECK_INPUT_AND_FREE(x, ndx);
     CHECK_INPUT_AND_FREE(y, ndy);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2019,7 +2019,7 @@ PHP_METHOD(NumPower, degrees) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2054,7 +2054,7 @@ PHP_METHOD(NumPower, sinh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2089,7 +2089,7 @@ PHP_METHOD(NumPower, cosh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2124,7 +2124,7 @@ PHP_METHOD(NumPower, tanh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2159,7 +2159,7 @@ PHP_METHOD(NumPower, arcsinh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2194,7 +2194,7 @@ PHP_METHOD(NumPower, arccosh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2217,7 +2217,7 @@ PHP_METHOD(NumPower, fromImage) {
         Z_PARAM_BOOL(channelLast)
     ZEND_PARSE_PARAMETERS_END();
     rtn = NDArray_FromGD(image, channelLast);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2252,7 +2252,7 @@ PHP_METHOD(NumPower, arctanh) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2287,7 +2287,7 @@ PHP_METHOD(NumPower, rint) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2322,7 +2322,7 @@ PHP_METHOD(NumPower, fix) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2357,7 +2357,7 @@ PHP_METHOD(NumPower, trunc) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2392,7 +2392,7 @@ PHP_METHOD(NumPower, sinc) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2427,7 +2427,7 @@ PHP_METHOD(NumPower, negative) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2462,7 +2462,7 @@ PHP_METHOD(NumPower, positive) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2497,7 +2497,7 @@ PHP_METHOD(NumPower, reciprocal) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 
@@ -2533,7 +2533,7 @@ PHP_METHOD(NumPower, sign) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2576,7 +2576,7 @@ PHP_METHOD(NumPower, clip) {
     if (Z_TYPE_P(array) != IS_ARRAY) {
         CHECK_INPUT_AND_FREE(array, nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2606,7 +2606,7 @@ PHP_METHOD(NumPower, maximum) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2636,7 +2636,7 @@ PHP_METHOD(NumPower, minimum) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 
@@ -2672,7 +2672,7 @@ PHP_METHOD(NumPower, argmax) {
     rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, keepdims, true);
     if (rtn == NULL) return;
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2707,7 +2707,7 @@ PHP_METHOD(NumPower, argmin) {
     rtn = NDArray_ArgMinMaxCommon(nda, (int)axis, keepdims, false);
     if (rtn == NULL) return;
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2765,7 +2765,7 @@ PHP_METHOD(NumPower, mean) {
         NDArray_FREE(nda);
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2808,7 +2808,7 @@ PHP_METHOD(NumPower, median) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2854,7 +2854,7 @@ PHP_METHOD(NumPower, std) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2889,7 +2889,7 @@ PHP_METHOD(NumPower, quantile) {
     }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(q, ndq);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2926,7 +2926,7 @@ PHP_METHOD(NumPower, average) {
         CHECK_INPUT_AND_FREE(weights, ndw);
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -2972,7 +2972,7 @@ PHP_METHOD(NumPower, variance) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3007,7 +3007,7 @@ PHP_METHOD(NumPower, ceil) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3045,7 +3045,7 @@ PHP_METHOD(NumPower, round) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3080,7 +3080,7 @@ PHP_METHOD(NumPower, floor) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3115,7 +3115,7 @@ PHP_METHOD(NumPower, radians) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3149,7 +3149,7 @@ PHP_METHOD(NumPower, sqrt) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3175,7 +3175,7 @@ PHP_METHOD(NumPower, square) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3209,7 +3209,7 @@ PHP_METHOD(NumPower, exp) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3235,7 +3235,7 @@ PHP_METHOD(NumPower, exp2) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3270,7 +3270,7 @@ PHP_METHOD(NumPower, expm1) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3304,7 +3304,7 @@ PHP_METHOD(NumPower, log) {
     if (Z_TYPE_P(array) == IS_ARRAY) {
         NDArray_FREE(nda);
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3336,7 +3336,7 @@ PHP_METHOD(NumPower, logb) {
 #endif
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3368,7 +3368,7 @@ PHP_METHOD(NumPower, log10) {
 #endif
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3400,7 +3400,7 @@ PHP_METHOD(NumPower, log1p) {
 #endif
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3432,7 +3432,7 @@ PHP_METHOD(NumPower, log2) {
 #endif
     }
     CHECK_INPUT_AND_FREE(array, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3465,7 +3465,7 @@ PHP_METHOD(NumPower, subtract) {
     rtn = NDArray_Subtract_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3498,7 +3498,7 @@ PHP_METHOD(NumPower, mod) {
     rtn = NDArray_Mod_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(a, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3532,7 +3532,7 @@ PHP_METHOD(NumPower, pow) {
     rtn = NDArray_Pow_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3566,7 +3566,7 @@ PHP_METHOD(NumPower, multiply) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3598,7 +3598,7 @@ PHP_METHOD(NumPower, divide) {
     rtn = NDArray_Divide_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3631,7 +3631,7 @@ PHP_METHOD(NumPower, add) {
     rtn = NDArray_Add_Float(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3666,7 +3666,7 @@ PHP_METHOD(NumPower, expandDims) {
     if (rtn == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3703,7 +3703,7 @@ PHP_METHOD(NumPower, squeeze) {
     if (rtn == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3738,7 +3738,7 @@ PHP_METHOD(NumPower, flip) {
     if (rtn == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3770,7 +3770,7 @@ PHP_METHOD(NumPower, swapAxes) {
     if (rtn == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3803,47 +3803,65 @@ PHP_METHOD(NumPower, rollAxis) {
     if (rtn == NULL) {
     return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
 * NumPower::moveAxis
 */
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_moveaxis, 0, 0, 3)
-ZEND_ARG_INFO(0, a)
-ZEND_ARG_INFO(0, source)
-ZEND_ARG_INFO(0, destination)
+    ZEND_ARG_INFO(0, a)
+    ZEND_ARG_INFO(0, source)
+    ZEND_ARG_INFO(0, destination)
 ZEND_END_ARG_INFO()
 PHP_METHOD(NumPower, moveAxis) {
-    NDArray *rtn = NULL;
     zval *a;
     zval *source, *destination;
+
     ZEND_PARSE_PARAMETERS_START(3, 3)
         Z_PARAM_ZVAL(a)
         Z_PARAM_ZVAL(source)
         Z_PARAM_ZVAL(destination)
     ZEND_PARSE_PARAMETERS_END();
-    int src_size, dest_size;
-    int *src = zval_axis_argument(source, "source", &src_size);
-    int *dest = zval_axis_argument(destination, "destination", &dest_size);
-    if (src == NULL) return;
-    if (dest == NULL) return;
 
     NDArray *nda = ZVAL_TO_NDARRAY(a);
     if (nda == NULL) {
+        zend_throw_error(NULL, "Invalid NDArray provided.");
         return;
     }
 
-    rtn = NDArray_Moveaxis(nda, src, dest, src_size, dest_size);
+    int ndim = NDArray_NDIM(nda);
+    int src_size, dest_size;
 
-    CHECK_INPUT_AND_FREE(a, nda);
+    int *src = zval_parameter_to_normalized_axis_argument(source, "source", ndim, &src_size);
+    if (src == NULL) {
+        return;
+    }
+
+    int *dest = zval_parameter_to_normalized_axis_argument(destination, "destination", ndim, &dest_size);
+    if (dest == NULL) {
+        efree(src);
+        return;
+    }
+
+    if (src_size != dest_size) {
+        zend_throw_error(NULL, "`source` and `destination` must have the same number of elements.");
+        efree(src);
+        efree(dest);
+        return;
+    }
+
+    NDArray *result = ndarray_moveaxis(nda, src, dest, src_size);
     efree(src);
     efree(dest);
-    if (rtn == NULL) {
+
+    if (result == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+
+    ndarray_init_new_object(result, return_value);
 }
+
 
 /**
 * NumPower::verticalStack
@@ -3866,7 +3884,7 @@ PHP_METHOD(NumPower, verticalStack) {
         NDArray_FREE(ndarrays[i]);
     }
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3890,7 +3908,7 @@ PHP_METHOD(NumPower, horizontalStack) {
         NDArray_FREE(ndarrays[i]);
     }
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3914,7 +3932,7 @@ PHP_METHOD(NumPower, depthStack) {
         NDArray_FREE(ndarrays[i]);
     }
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3938,7 +3956,7 @@ PHP_METHOD(NumPower, columnStack) {
         NDArray_FREE(ndarrays[i]);
     }
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -3975,7 +3993,7 @@ PHP_METHOD(NumPower, concatenate) {
         NDArray_FREE(ndarrays[i]);
     }
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4011,7 +4029,7 @@ ZEND_END_ARG_INFO()
     CHECK_INPUT_AND_FREE(array, ndarrays[0]);
     CHECK_INPUT_AND_FREE(values, ndarrays[1]);
     efree(ndarrays);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4044,7 +4062,7 @@ PHP_METHOD(NumPower, matmul) {
     }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4075,7 +4093,7 @@ PHP_METHOD(NumPower, inner) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4106,7 +4124,7 @@ PHP_METHOD(NumPower, outer) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4136,7 +4154,7 @@ PHP_METHOD(NumPower, dot) {
     rtn = NDArray_Dot(nda, ndb);
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4161,7 +4179,7 @@ PHP_METHOD(NumPower, trace) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4213,7 +4231,7 @@ PHP_METHOD(NumPower, cholesky) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4245,7 +4263,7 @@ PHP_METHOD(NumPower, solve) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4276,7 +4294,7 @@ PHP_METHOD(NumPower, lstsq) {
 
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4360,7 +4378,7 @@ PHP_METHOD(NumPower, matrixRank) {
     }
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 
@@ -4388,7 +4406,7 @@ PHP_METHOD(NumPower, dnnConv2dForward) {
     }
     CHECK_INPUT_AND_FREE(input, ndinput);
     CHECK_INPUT_AND_FREE(filters, ndfilters);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4415,7 +4433,7 @@ PHP_METHOD(NumPower, dnnConv1dForward) {
     }
     CHECK_INPUT_AND_FREE(input, ndinput);
     CHECK_INPUT_AND_FREE(filters, ndfilters);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4505,7 +4523,7 @@ PHP_METHOD(NumPower, convolve2d) {
     }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4566,7 +4584,7 @@ PHP_METHOD(NumPower, correlate2d) {
     }
     CHECK_INPUT_AND_FREE(a, nda);
     CHECK_INPUT_AND_FREE(b, ndb);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4593,7 +4611,7 @@ PHP_METHOD(NumPower, norm) {
     rtn = NDArray_Norm(nda, (int)order);
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4617,7 +4635,7 @@ PHP_METHOD(NumPower, cond) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4641,7 +4659,7 @@ PHP_METHOD(NumPower, inv) {
     rtn = NDArray_Inverse(nda);
 
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4688,7 +4706,7 @@ PHP_METHOD(NumPower, det) {
     }
     rtn = NDArray_Det(nda);
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4722,7 +4740,7 @@ PHP_METHOD(NumPower, sum) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4757,7 +4775,7 @@ PHP_METHOD(NumPower, min) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 /**
@@ -4796,7 +4814,7 @@ PHP_METHOD(NumPower, max) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 ZEND_BEGIN_ARG_INFO_EX(arginfo_ndarray_prod, 0, 0, 1)
@@ -4828,7 +4846,7 @@ PHP_METHOD(NumPower, prod) {
         return;
     }
     CHECK_INPUT_AND_FREE(a, nda);
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_array, 0)
@@ -4845,7 +4863,7 @@ PHP_METHOD(NumPower, array) {
     if (nda == NULL) {
         return;
     }
-    RETURN_NDARRAY(nda, return_value);
+    ndarray_init_new_object(nda, return_value);
 }
 
 ZEND_BEGIN_ARG_WITH_RETURN_TYPE_INFO_EX(arginfo_slice, 0, 0, IS_MIXED, 0)
@@ -4891,7 +4909,7 @@ PHP_METHOD(NDArray, slice) {
     if (rtn == NULL) {
         return;
     }
-    RETURN_NDARRAY(rtn, return_value);
+    ndarray_init_new_object(rtn, return_value);
 }
 
 ZEND_BEGIN_ARG_INFO(arginfo_size, 0)
@@ -4928,7 +4946,7 @@ PHP_METHOD(NDArray, current) {
     NDArray* ndarray = ZVALUUID_TO_NDARRAY(obj_uuid);
     NDArray* result  = NDArrayIteratorPHP_GET(ndarray);
     add_to_buffer(result);
-    RETURN_NDARRAY(result, return_value);
+    ndarray_init_new_object(result, return_value);
 }
 
 PHP_METHOD(NDArray, key) {
@@ -4998,7 +5016,7 @@ PHP_METHOD(NDArray, offsetGet) {
         ndarray->iterator->current_index = (int) Z_LVAL_P(offset);
         NDArray *rtn = NDArrayIterator_GET(ndarray);
         NDArrayIterator_REWIND(ndarray);
-        RETURN_NDARRAY(rtn, return_value);
+        ndarray_init_new_object(rtn, return_value);
         return;
     }
     zend_throw_error(NULL, "Invalid offset");
@@ -5369,6 +5387,13 @@ PHP_MINFO_FUNCTION(ndarray) {
 }
 
 PHP_MSHUTDOWN_FUNCTION(ndarray) {
+    buffer_free();
+#ifdef ZTS
+    if (MAIN_MEM_STACK.lock) {
+        tsrm_mutex_free(MAIN_MEM_STACK.lock);
+        MAIN_MEM_STACK.lock = NULL;
+    }
+#endif
     return SUCCESS;
 }
 

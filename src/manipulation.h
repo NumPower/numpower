@@ -3,7 +3,6 @@
 
 #include "ndarray.h"
 
-
 NDArray* NDArray_Transpose(NDArray *a, NDArray_Dims *permute);
 NDArray* NDArray_Reshape(NDArray *target, int *new_shape, int ndim);
 NDArray* NDArray_Flatten(NDArray *target);
@@ -22,11 +21,12 @@ NDArray* NDArray_Flip(NDArray *a, NDArray *axis);
 NDArray* NDArray_Squeeze(NDArray *a, NDArray *axis);
 NDArray* NDArray_SwapAxes(NDArray *a, int axis1, int axis2);
 NDArray* NDArray_Rollaxis(NDArray *a, int axis, int start);
-NDArray* NDArray_Moveaxis(NDArray *a, int* src, int* dest, int n_source, int n_dest);
+NDArray* ndarray_moveaxis(NDArray *a, int* src, int* dest, int n_axes);
 NDArray* NDArray_Concatenate(NDArray **arrays, int narrays, int axis);
 NDArray* NDArray_VSTACK(NDArray **arrays, int narrays);
 NDArray* NDArray_HSTACK(NDArray **arrays, int narrays);
 NDArray* NDArray_DSTACK(NDArray **arrays, int narrays);
 NDArray* NDArray_ColumnStack(NDArray **arrays, int narrays);
 int NDArray_ConvertMultiAxis(NDArray *axis_in, int ndim, bool *out_axis_flags);
+
 #endif //PHPSCI_NDARRAY_MANIPULATION_H

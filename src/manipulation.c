@@ -844,52 +844,117 @@ NDArray_Rollaxis(NDArray *a, int axis, int start)
     return result;
 }
 
+/**
+ * @brief Validates and normalizes axis indices.
+ *
+ * This function checks if each axis index in the provided array is within the valid range
+ * for the given number of dimensions. Negative indices are adjusted to their positive counterparts.
+ * 
+ * @author  Henrique Borba
+ * @author  Aleksei Nechaev <omfg.rus@gmail.com>
+ *
+ * @param[in,out] axes   Array of axis indices to be validated and adjusted.
+ * @param[in]     n_axes Number of axes in the array.
+ * @param[in]     ndim   Number of dimensions in the target array.
+ * @return               0 on success; -1 and throws a PHP error on failure.
+ *
+ * @warning The function throws a PHP error if any axis index is out of bounds.
+ */
+static inline int check_and_adjust_axes(int *axes, int n_axes, int ndim) {
+    for (int i = 0; i < n_axes; i++) {
+        if (axes[i] < -ndim || axes[i] >= ndim) {
+            zend_throw_error(NULL, "Axis %d is out of bounds for array with %d dimensions.", axes[i], ndim);
+            return -1;
+        }
+        if (axes[i] < 0) {
+            axes[i] += ndim;
+        }
+    }
+    return 0;
+}
 
-NDArray*
-NDArray_Moveaxis(NDArray *a, int* src, int* dest, int n_source, int n_dest)
-{
-    NDArray *result;
+/**
+ * @brief Moves specified axes of an NDArray to new positions.
+ *
+ * This function takes a multi-dimensional array and repositions the specified axes
+ * to new locations, returning a new array with the updated axis order.
+ * 
+ * @author  Henrique Borba
+ * @author  Aleksei Nechaev <omfg.rus@gmail.com>
+ *
+ * @param a       Pointer to the source NDArray.
+ * @param src     Array of source axis indices to be moved.
+ * @param dest    Array of destination indices for the moved axes.
+ * @param n_axes  Number of axes to move.
+ * @return        Pointer to a new NDArray with the reordered axes, or NULL on error.
+ *
+ * @note The function assumes that the arrays `src` and `dest` have a length equal to `n_axes`.
+ * @warning If non-unique or invalid axis indices are provided, the function will throw an error and return NULL.
+ */
+NDArray* ndarray_moveaxis(NDArray *a, int* src, int* dest, int n_axes) {
+    int ndim = NDArray_NDIM(a);
+
+    // Validate and adjust axes
+    if (check_and_adjust_axes(src, n_axes, ndim) < 0) {
+        return NULL;
+    }
+    if (check_and_adjust_axes(dest, n_axes, ndim) < 0) {
+        return NULL;
+    }
+
+    // Ensure axes are unique
+    for (int i = 0; i < n_axes; i++) {
+        for (int j = i + 1; j < n_axes; j++) {
+            if (src[i] == src[j] || dest[i] == dest[j]) {
+                zend_throw_error(NULL, "Axes in `source` and `destination` must be unique.");
+                return NULL;
+            }
+        }
+    }
+
+    // Create new axis order
     int order[NDARRAY_MAX_DIMS];
-    int n = NDArray_NDIM(a);
+    int remaining_axes[NDARRAY_MAX_DIMS];
+    int r_count = 0;
 
-    if (check_and_adjust_axis_msg(src, n) < 0) {
-        return NULL;
-    }
-    if (check_and_adjust_axis_msg(dest, n) < 0) {
-        return NULL;
-    }
-
-    if (n_source != n_dest) {
-        zend_throw_error(NULL, "`source` and `destination` must have the same number of elements.");
-        return NULL;
-    }
-
-    int found;
-    int count_order = 0;
-    for (int i = 0; i < n; i++) {
-        found = 0;
-        for (int j = 0; j < n_source; j++) {
-            if (src[j] == i) found = 1;
+    // Initialize array of remaining axes
+    for (int i = 0; i < ndim; i++) {
+        int found = 0;
+        for (int j = 0; j < n_axes; j++) {
+            if (src[j] == i) {
+                found = 1;
+                break;
+            }
         }
         if (!found) {
-            order[count_order] = i;
-            count_order++;
+            remaining_axes[r_count++] = i;
         }
     }
 
-    for (int i = 0; i < n_source; i++) {
-        if (dest[i] < 0) {
-            dest[i] = dest[i] + (count_order + 1);
+    // Insert axes into new positions
+    int dest_positions[NDARRAY_MAX_DIMS];
+    for (int i = 0; i < ndim; i++) {
+        dest_positions[i] = -1;
+    }
+    for (int i = 0; i < n_axes; i++) {
+        dest_positions[dest[i]] = src[i];
+    }
+
+    int r_idx = 0, s_idx = 0;
+    for (int i = 0; i < ndim; i++) {
+        if (dest_positions[i] != -1) {
+            order[i] = dest_positions[i];
+        } else {
+            order[i] = remaining_axes[r_idx++];
         }
-        order[dest[i]] = src[i];
-        count_order++;
     }
 
     NDArray_Dims order_dims;
-    order_dims.len = count_order;
+    order_dims.len = ndim;
     order_dims.ptr = order;
     return NDArray_Transpose(a, &order_dims);
 }
+
 
 NDArray*
 NDArray_Concatenate(NDArray **arrays, int narrays, int axis)

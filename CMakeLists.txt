@@ -11,6 +11,7 @@ include_directories(/usr/local/include/php)
 include_directories(/usr/local/include)
 include_directories(.)
 include_directories(src)
+include_directories(src/zvals)
 include_directories(src/ndmath)
 include_directories(src/ndmath/cuda)
 
@@ -25,6 +26,8 @@ add_executable(numpower
         src/ndmath/linalg.h
         src/ndmath/statistics.c
         src/ndmath/statistics.h
+        src/sanitizers.c
+        src/sanitizers.h
         src/buffer.c
         src/buffer.h
         src/debug.c

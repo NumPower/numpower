@@ -135,6 +135,7 @@ if test "$PHP_NDARRAY" != "no"; then
       src/ndmath/calculation.c \
       src/ndmath/statistics.c \
       src/ndmath/signal.c \
+      src/sanitizers.c \
       src/types.c,
       $ext_shared)
 fi

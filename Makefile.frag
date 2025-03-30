@@ -65,7 +65,7 @@ COMMON_FLAGS = $(DEFS) $(INCLUDES) $(EXTRA_INCLUDES) $(CPPFLAGS) $(PHP_FRAMEWORK
 install-cuda:
 	rm ./.libs -rf
 	mkdir ./.libs
-	$(NVCC)  -I. -I  $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./numpower.c -shared -Xcompiler -fPIC -o .libs/numpower.o
+	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./numpower.c -shared -Xcompiler -fPIC -o .libs/numpower.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/buffer.c -shared -Xcompiler -fPIC -o .libs/buffer.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/debug.c -shared -Xcompiler -fPIC -o .libs/debug.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/indexing.c -shared -Xcompiler -fPIC -o .libs/indexing.o
@@ -73,6 +73,7 @@ install-cuda:
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/iterators.c -shared -Xcompiler -fPIC -o .libs/iterators.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/logic.c -shared -fPIC -o .libs/logic.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/manipulation.c -shared -fPIC -o .libs/manipulation.o
+	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/sanitizers.c -shared -fPIC -o .libs/sanitizers.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndarray.c -shared -fPIC -o .libs/ndarray.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/types.c -shared -Xcompiler -fPIC -o .libs/types.o
 	$(CC)    -I. -I $(CXX) $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/arithmetics.c -shared -fPIC -o .libs/arithmetics.o
@@ -85,7 +86,9 @@ install-cuda:
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/cuda/cuda_math.cu -shared -Xcompiler -fPIC -o .libs/cuda_math.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/cuda/cuda_dnn.cu -shared -Xcompiler -fPIC -o .libs/cuda_dnn.o
 	$(NVCC)  -I. -I $(COMMON_FLAGS) $(CFLAGS_CLEAN) $(EXTRA_CFLAGS)  $(ALL_CCFLAGS) $(GENCODE_FLAGS)  -c $(builddir)./src/ndmath/statistics.c -shared -Xcompiler -fPIC -o .libs/statistics.o
-	$(NVCC)  -shared .libs/numpower.o .libs/signal.o .libs/initializers.o .libs/double_math.o .libs/ndarray.o .libs/debug.o .libs/statistics.o .libs/calculation.o .libs/buffer.o .libs/dnn.o .libs/cuda_dnn.o .libs/logic.o .libs/gpu_alloc.o .libs/linalg.o .libs/manipulation.o .libs/iterators.o .libs/indexing.o .libs/arithmetics.o .libs/types.o  .libs/cuda_math.o $(CFLAGS_CLEAN) -o .libs/ndarray.so
+	$(NVCC)  -shared .libs/numpower.o .libs/signal.o .libs/initializers.o .libs/double_math.o .libs/ndarray.o .libs/debug.o .libs/statistics.o .libs/calculation.o .libs/buffer.o .libs/dnn.o \
+	.libs/cuda_dnn.o .libs/logic.o .libs/gpu_alloc.o .libs/linalg.o .libs/manipulation.o .libs/iterators.o .libs/indexing.o .libs/arithmetics.o .libs/types.o .libs/sanitizers.o  \
+	.libs/cuda_math.o $(CFLAGS_CLEAN) -o .libs/ndarray.so
 	cp ./.libs/ndarray.so $(phplibdir)/ndarray.so
 	cp ./.libs/ndarray.so $(EXTENSION_DIR)/ndarray.so
 

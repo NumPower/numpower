@@ -13,6 +13,9 @@ struct MemoryStack {
     int totalGPUAllocated;
     int totalAllocated;
     int totalFreed;
+#ifdef ZTS
+    tsrm_mutex_t lock;
+#endif
 };
 
 extern struct MemoryStack MAIN_MEM_STACK;
