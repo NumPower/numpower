@@ -49,35 +49,47 @@ NDArray_FMatmul(NDArray *a, NDArray *b) {
 
     NDArray* result = NDArray_Zeros(output_shape, 2, NDARRAY_TYPE_FLOAT32, NDArray_DEVICE(a));
 
+    int m = NDArray_SHAPE(a)[0];
+    int k = NDArray_SHAPE(a)[1];
+    int n = NDArray_SHAPE(b)[1];
+
+    float alpha = 1.0f;
+    float beta = 0.0f;
+
     if (NDArray_DEVICE(a) == NDARRAY_DEVICE_GPU) {
-        // Perform GPU matrix multiplication
 #ifdef HAVE_CUBLAS
-        cublasHandle_t handle;
-        cublasCreate(&handle);
+        static cublasHandle_t handle = NULL;
+        static bool handle_initialized = false;
 
-        float* deviceResult;
-        size_t sizeResult = NDArray_NUMELEMENTS(result) * sizeof(float);
+        if (!handle_initialized) {
+            cublasCreate(&handle);
+            cublasSetMathMode(handle, CUBLAS_TENSOR_OP_MATH);
+            handle_initialized = true;
+        }
 
-        vmalloc((void**)&deviceResult, sizeResult);
-        int m = NDArray_SHAPE(a)[0];
-        int n = NDArray_SHAPE(b)[1];
-        int k = NDArray_SHAPE(a)[1];
-        float alpha = 1.0f;
-        float beta = 0.0f;
-
-        cublasSgemm(handle, CUBLAS_OP_N, CUBLAS_OP_N, n, m, k, &alpha, NDArray_FDATA(b), n, NDArray_FDATA(a), k, &beta, deviceResult, n);
-        vfree(result->data);
-        result->data = (void*)deviceResult;
-        cublasDestroy(handle);
+        cublasSgemm(
+            handle,
+            CUBLAS_OP_N, CUBLAS_OP_N,
+            n, m, k,
+            &alpha,
+            NDArray_FDATA(b), n,
+            NDArray_FDATA(a), k,
+            &beta,
+            (float*)NDArray_FDATA(result), n
+        );
 #endif
     } else {
-        // Perform CPU matrix multiplication
-        cblas_sgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans,
-                    NDArray_SHAPE(a)[0], NDArray_SHAPE(b)[1], NDArray_SHAPE(a)[1],
-                    1.0f, NDArray_FDATA(a), NDArray_SHAPE(a)[1],
-                    NDArray_FDATA(b), NDArray_SHAPE(b)[1],
-                    0.0f, NDArray_FDATA(result), NDArray_SHAPE(b)[1]);
+        cblas_sgemm(
+            CblasRowMajor, CblasNoTrans, CblasNoTrans,
+            m, n, k,
+            alpha,
+            NDArray_FDATA(a), k,
+            NDArray_FDATA(b), n,
+            beta,
+            NDArray_FDATA(result), n
+        );
     }
+
     return result;
 }
 

@@ -113,15 +113,12 @@ NDArray* ZVAL_TO_NDARRAY(zval* obj) {
         return NDArray_CreateFromDoubleScalar(Z_DVAL_P(obj));
     }
     if (Z_TYPE_P(obj) == IS_OBJECT) {
-        zend_class_entry* ce = NULL;
-        ce = Z_OBJCE_P(obj);
-        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
-        if (strcmp(ZSTR_VAL(class_name), "NDArray") == 0) {
-            if (ce == phpsci_ce_NDArray) {
-                return buffer_get(get_object_uuid(obj));
-            }
+        zend_class_entry *ce = Z_OBJCE_P(obj);
+        if (instanceof_function(ce, phpsci_ce_NDArray)) {
+            return buffer_get(get_object_uuid(obj));
         }
 #ifdef HAVE_GD
+        zend_string* class_name = Z_OBJ_P(obj)->ce->name;
         /* Check if the zend_object class name is "GdImage" */
         if (strcmp(ZSTR_VAL(class_name), "GdImage") == 0) {
             return NDArray_FromGD(obj, false);
@@ -4033,6 +4030,17 @@ ZEND_END_ARG_INFO()
 }
 
 /**
+ * NumPower::syncDevice
+ */
+ZEND_BEGIN_ARG_INFO(arginfo_ndarray_devicesync, 0)
+ZEND_END_ARG_INFO()
+PHP_METHOD(NumPower, syncDevice) {
+#ifdef HAVE_CUBLAS
+    cudaDeviceSynchronize();
+#endif    
+}
+
+/**
  * NumPower::matmul
  */
 ZEND_BEGIN_ARG_INFO(arginfo_ndarray_matmul, 0)
@@ -4042,7 +4050,6 @@ ZEND_END_ARG_INFO()
 PHP_METHOD(NumPower, matmul) {
     NDArray *rtn = NULL;
     zval *a, *b;
-    long axis;
     ZEND_PARSE_PARAMETERS_START(2, 2)
     Z_PARAM_ZVAL(a)
     Z_PARAM_ZVAL(b)
@@ -5207,6 +5214,7 @@ static const zend_function_entry class_NumPower_methods[] = {
     ZEND_ME(NumPower, dnnConv2dForward, arginfo_ndarray_dnn_conv2d_forward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NumPower, dnnConv2dBackward, arginfo_ndarray_dnn_conv2d_backward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
     ZEND_ME(NumPower, dnnConv1dForward, arginfo_ndarray_dnn_conv1d_forward, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
+    ZEND_ME(NumPower, syncDevice, arginfo_ndarray_devicesync, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
 
     // LOGIC
     ZEND_ME(NumPower, all, arginfo_ndarray_all, ZEND_ACC_PUBLIC | ZEND_ACC_STATIC)
